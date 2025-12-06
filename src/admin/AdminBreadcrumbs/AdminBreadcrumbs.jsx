@@ -1,14 +1,12 @@
 import { Breadcrumbs, Link, Typography } from '@mui/material';
-import { Link as RouterLink, useLocation, matchPath } from 'react-router-dom';
-import {h3,} from '../../styles/typographyStyles.jsx';
-
-
-
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { h3 } from '../../styles/typographyStyles.jsx';
 
 export default function AdminBreadcrumbs() {
   const { pathname } = useLocation();
 
   const labels = {
+    admin: 'Admin',
     products: 'Products',
     add: 'Add Product',
     edit: 'Edit Product',
@@ -17,10 +15,21 @@ export default function AdminBreadcrumbs() {
   };
 
   let segments = pathname.split('/').filter(Boolean);
-  if (segments[0] === 'admin') segments = segments.slice(1);
+  
+  if (segments[0] !== 'admin') {
+    segments = ['admin', ...segments];
+  }
 
-  if (segments.length >= 3 && segments[1] === 'edit') {
-    segments = segments.slice(0, 2);
+  if (segments.length >= 4 && segments[2] === 'edit') {
+    segments = segments.slice(0, 3);
+  }
+
+  if (segments.length === 1 && segments[0] === 'admin') {
+    return (
+      <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
+        <Typography sx={{ ...h3 }}>Admin</Typography>
+      </Breadcrumbs>
+    );
   }
 
   return (
@@ -28,7 +37,7 @@ export default function AdminBreadcrumbs() {
       {segments.map((seg, idx) => {
         const to = `/${segments.slice(0, idx + 1).join('/')}`;
         const isLast = idx === segments.length - 1;
-        const label = labels[seg] || seg;
+        const label = labels[seg] || seg.charAt(0).toUpperCase() + seg.slice(1);
 
         return isLast ? (
           <Typography key={to} sx={{ ...h3 }}>

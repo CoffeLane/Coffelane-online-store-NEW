@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { jwtDecode } from "jwt-decode";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
@@ -11,7 +12,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import { useSelector } from "react-redux";
-import { logoutUser } from "../store/slice/authSlice.jsx";
+import { logoutUser, fetchProfile } from "../store/slice/authSlice.jsx";
 import PersonalInfoForm from "../components/account/PersonalInfoForm";
 import AccountSettingsForm from "../components/account/AccountSettingsForm";
 import OrdersHistory from "../components/account/OrdersHistory";
@@ -25,15 +26,25 @@ export default function AccountPage() {
   const location = useLocation();
   const dispatch = useDispatch();
 const auth = useSelector((state) => state.auth);
-console.log("▶ AccountPage. auth:", auth);
+// console.log("▶ AccountPage. auth:", auth);
+let userEmail = null;
+if (auth.user?.email) {
+  userEmail = auth.user.email;
+} else if (auth.profile?.email) {
+  userEmail = auth.profile.email;
+} else if (auth.email) {
+  userEmail = auth.email;
+}
 
 const userData = auth.user
-  ? { ...auth.user, email: auth.email } // <- берём email из auth.email
+  ? { ...auth.user, email: userEmail || "" }
   : null;
 
-console.log("▶ AccountPage. userData:", userData);
-
-  
+// console.log("▶ AccountPage. userData:", userData);
+// console.log("▶ AccountPage. userEmail:", userEmail);
+// console.log("▶ AccountPage. auth.user:", auth.user);
+// console.log("▶ AccountPage. auth.profile:", auth.profile);
+// console.log("▶ AccountPage. auth.email:", auth.email);
 
   const getTabIndexFromPath = () => {
     const path = location.pathname.split("/").pop();
@@ -54,13 +65,20 @@ console.log("▶ AccountPage. userData:", userData);
 
   useEffect(() => {
     setTab(getTabIndexFromPath());
-  }, [location.pathname]);
+  }, [location.pathname]);
+  useEffect(() => {
+    const token = localStorage.getItem("access");
+    if (token && auth.user && !auth.email) {
+      // console.log("▶ AccountPage - Fetching profile to get email...");
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, auth.user, auth.email]);
 
   const handleLogout = async () => {
-    console.log("▶ LOGOUT CLICK");
+    // console.log("▶ LOGOUT CLICK");
     const result = await dispatch(logoutUser());
      navigate("/");
-    console.log("LOGOUT RESULT:", result);
+    // console.log("LOGOUT RESULT:", result);
   };
 
   return (

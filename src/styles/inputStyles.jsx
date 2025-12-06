@@ -67,7 +67,6 @@ export const inputStyles = {
   },
 };
 
-
 export const helperTextRed = {
   color: '#FF2F2F',
   fontSize: '14px',

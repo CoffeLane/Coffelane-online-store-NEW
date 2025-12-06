@@ -48,7 +48,7 @@ export default function ResetPasswordModal({ open, handleClose, setSuccessModalO
             handleClose(); 
             setSuccessModalOpen(true); 
         } catch (error) {
-            console.error("Error resetting password:", error);
+            // console.error("Error resetting password:", error);
             setServerError(error.response?.data?.message || "Server error. Try again later.");
         } finally {
             setLoading(false);

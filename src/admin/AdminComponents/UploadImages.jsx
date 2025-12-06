@@ -5,7 +5,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 export default function UploadImages({ images, cover, setCover, handleImageUpload, handleDeletePhoto }) {
   return (
     <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-      {/* Cover Image */}
+      {}
       <Box>
         <label htmlFor="upload-cover" style={{ cursor: "pointer" }}>
           <Box
@@ -57,8 +57,6 @@ export default function UploadImages({ images, cover, setCover, handleImageUploa
 
         <input type="file" id="upload-cover" accept="image/*" hidden onChange={handleImageUpload} />
       </Box>
-
-      {/* Thumbnails */}
       <Box display="flex" flexDirection="column" gap={2}>
         {images.map((img, i) => {
           const src = img.url || (img.file ? URL.createObjectURL(img.file) : "");

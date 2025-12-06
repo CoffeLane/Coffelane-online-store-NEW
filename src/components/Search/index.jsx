@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { TextField, InputAdornment, Box, IconButton, } from '@mui/material';
 import SearchIcon from '../../assets/icons/search-icon.svg';
 
-
 const Search = () => {
   const [value, setValue] = useState('');
-
 
   const onChange = (e) => {
     setValue(e.target.value);

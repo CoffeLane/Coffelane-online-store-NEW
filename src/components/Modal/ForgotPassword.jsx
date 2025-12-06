@@ -7,13 +7,11 @@ import { inputStyles } from "../../styles/inputStyles.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import api from "../../store/api/axios.js";
 
-
 export default function ForgotPasswordModal({ open, handleClose, backToLogin, setToken, openIntermediate }) {
     const [email, setEmail] = useState("");
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [serverError, setServerError] = useState("");
-
 
     const validate = () => {
         const newErrors = {};

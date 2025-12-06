@@ -82,6 +82,3 @@ export default function ProductSettings({ visible, setVisible, stock }) {
   );
 }
 
-
-
-

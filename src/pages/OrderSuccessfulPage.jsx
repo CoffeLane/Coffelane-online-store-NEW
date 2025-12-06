@@ -23,8 +23,7 @@ export default function OrderSuccessfulPage() {
 
             <Box component="img" src={order} alt="order" sx={{ width: '440px', height: '440px', mt: 4 }} />
             <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button sx={{ ...btnStyles, textTransform: 'none' }} 
-                // onClick={() => navigate('/account/orders-history')}
+                <Button sx={{ ...btnStyles, textTransform: 'none' }} 
                 >
                     <Typography >View Order</Typography>
                 </Button>

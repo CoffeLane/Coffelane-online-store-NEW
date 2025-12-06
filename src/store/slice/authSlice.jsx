@@ -3,9 +3,6 @@ import api from "../api/axios";
 import { apiWithAuth } from "../api/axios";
 
 
-// ===== Thunks =====
-
-// Регистрация (с profile)
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (data, { rejectWithValue }) => {
@@ -18,12 +15,11 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// ===== Login User =====
 export const loginUser = createAsyncThunk(
   "auth/login",
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      // 1. Логинимся и получаем токены
+
       const res = await api.post("/auth/login", { email, password });
       const { access, refresh } = res.data;
 
@@ -31,41 +27,51 @@ export const loginUser = createAsyncThunk(
         return rejectWithValue("No access token received");
       }
 
-      // Сохраняем токены в localStorage
       localStorage.setItem("access", access);
       localStorage.setItem("refresh", refresh);
 
-      // 2. Запрашиваем профиль с токеном
       const profileRes = await api.get("/users/info", {
         headers: { Authorization: `Bearer ${access}` },
       });
 
-      const profileData = profileRes.data; // тут сами данные пользователя
+      const profileData = profileRes.data; // Структура: { id, email, profile: {...} }
+      // console.log("▶ loginUser - profileData (FULL):", JSON.stringify(profileData, null, 2));
+      // console.log("▶ loginUser - profileData.email:", profileData.email);
+      // console.log("▶ loginUser - email from login param:", email);
 
-      return { user: profileData.profile, profile: profileData.profile, token: access };
+      const userEmail = profileData.email || email;
+      
+      // console.log("▶ loginUser - final userEmail:", userEmail);
+
+      const profileWithEmail = profileData.profile 
+        ? { ...profileData.profile, email: userEmail }
+        : null;
+
+      return { 
+        user: profileWithEmail, 
+        profile: profileWithEmail, 
+        token: access,
+        email: userEmail // Сохраняем email отдельно
+      };
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
 
-// ===== Register + Auto-Login =====
 export const registerAndLoginUser = createAsyncThunk(
   "auth/registerAndLogin",
   async (data, { dispatch, rejectWithValue }) => {
     try {
-      console.log("🔹 Register + Login start");
+      // console.log("🔹 Register + Login start");
 
-      // 1. Регистрируем пользователя
       const registerResult = await dispatch(registerUser(data));
       if (registerResult.meta.requestStatus !== "fulfilled") {
         return rejectWithValue(registerResult.payload);
       }
 
-      // 2. Делаем небольшую задержку (100-200ms), чтобы сервер точно успел создать пользователя
       await new Promise(res => setTimeout(res, 200));
 
-      // 3. Логинимся с тем же email/password
       const loginResult = await dispatch(
         loginUser({ email: data.email, password: data.password })
       );
@@ -74,7 +80,7 @@ export const registerAndLoginUser = createAsyncThunk(
         return rejectWithValue(loginResult.payload);
       }
 
-      console.log("✅ Register + Login successful:", loginResult.payload);
+      // console.log("✅ Register + Login successful:", loginResult.payload);
 
       return loginResult.payload;
     } catch (err) {
@@ -83,13 +89,11 @@ export const registerAndLoginUser = createAsyncThunk(
   }
 );
 
-
-// ===== Login via Google =====
 export const loginWithGoogle = createAsyncThunk(
   "auth/loginWithGoogle",
   async ({ email, token }, { rejectWithValue }) => {
     try {
-      // 1. Отправляем токен и email на твой бекенд
+
       const res = await api.post("/auth_google/callback", {
         email,
         token,
@@ -101,21 +105,27 @@ export const loginWithGoogle = createAsyncThunk(
         return rejectWithValue("No access token received");
       }
 
-      // 2. Сохраняем токены
       localStorage.setItem("access", access);
       localStorage.setItem("refresh", refresh);
 
-      // 3. Получаем профиль
       const profileRes = await api.get("/users/info", {
         headers: { Authorization: `Bearer ${access}` },
       });
 
-      const profileData = profileRes.data;
+      const profileData = profileRes.data; // Структура: { id, email, profile: {...} }
+      // console.log("▶ loginWithGoogle - profileData:", profileData);
+
+      const userEmail = profileData.email || email;
+
+      const profileWithEmail = profileData.profile 
+        ? { ...profileData.profile, email: userEmail }
+        : null;
 
       return {
-        user: profileData.profile,
-        profile: profileData.profile,
+        user: profileWithEmail,
+        profile: profileWithEmail,
         token: access,
+        email: userEmail // Сохраняем email отдельно
       };
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -123,24 +133,57 @@ export const loginWithGoogle = createAsyncThunk(
   }
 );
 
-// ===== Fetch Profile =====
 export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
   async (_, { rejectWithValue, dispatch }) => {
     const token = localStorage.getItem("access");
     if (!token) {
-      // Нет токена — не делаем fetch
+
       return rejectWithValue("No access token");
     }
 
-    try {
+      try {
       const apiAuth = apiWithAuth();
+
       const res = await apiAuth.get("/users/info");
-      return { user: res.data.profile, profile: res.data.profile };
+      // console.log("▶ fetchProfile - /users/info res.data (FULL):", JSON.stringify(res.data, null, 2));
+
+      let userEmail = res.data.email;
+
+      if (!userEmail) {
+        // console.log("⚠️ Email not found in /users/info, trying /users/autofill_form...");
+        try {
+          const autofillRes = await apiAuth.get("/users/autofill_form");
+          // console.log("▶ fetchProfile - /users/autofill_form res.data:", JSON.stringify(autofillRes.data, null, 2));
+          userEmail = autofillRes.data?.email;
+        } catch (autofillErr) {
+          // console.warn("⚠️ Could not fetch from /users/autofill_form:", autofillErr.response?.data || autofillErr.message);
+        }
+      }
+      
+      if (!userEmail) {
+        // console.warn("⚠️ Email not found in any API response!");
+      }
+
+      const profileWithEmail = res.data.profile 
+        ? { ...res.data.profile, email: userEmail }
+        : null;
+      
+      // console.log("▶ fetchProfile - returning:", { 
+      //   user: profileWithEmail, 
+      //   profile: profileWithEmail,
+      //   email: userEmail 
+      // });
+      
+      return { 
+        user: profileWithEmail, 
+        profile: profileWithEmail,
+        email: userEmail // Сохраняем email отдельно
+      };
     } catch (err) {
       const message = err.response?.data;
       if (message?.code === "token_not_valid") {
-        // Очистка токенов и state при invalid token
+
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
         dispatch(clearAuthState());
@@ -150,7 +193,6 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
-// ===== Logout User =====
 
 export const logoutUser = createAsyncThunk(
   "auth/logout",
@@ -163,14 +205,11 @@ export const logoutUser = createAsyncThunk(
         });
       }
 
-      // Удаляем токены
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
 
-      // Очищаем persisted auth
       localStorage.removeItem("persist:auth");
 
-      // Очищаем auth state
       dispatch(clearAuthState());
 
       return {};
@@ -184,16 +223,19 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
-
-// ===== Change Password =====
 export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async ({ oldPassword, newPassword }, { rejectWithValue }) => {
     try {
-      const res = await apiWithAuth().post("/auth/change-password", {
-        oldPassword,
-        newPassword,
-      });
+      const apiAuth = apiWithAuth();
+
+      const payload = {
+        old_password: oldPassword,
+        new_password: newPassword
+      };
+      
+      const res = await apiAuth.put("/auth/change_password", payload);
+      
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -201,7 +243,6 @@ export const changePassword = createAsyncThunk(
   }
 );
 
-// ===== Slice =====
 
 const authSlice = createSlice({
   name: "auth",
@@ -209,6 +250,7 @@ const authSlice = createSlice({
     token: localStorage.getItem("access") || null,
     user: null,
     profile: null,
+    email: null, // Сохраняем email отдельно
     loading: false,
     error: null,
     changePasswordLoading: false,
@@ -220,6 +262,7 @@ const authSlice = createSlice({
       state.user = null;
       state.profile = null;
       state.token = null;
+      state.email = null;
       state.error = null;
       state.loading = false;
       state.changePasswordLoading = false;
@@ -269,6 +312,7 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.profile = action.payload.profile;
         state.token = action.payload.token || null;
+        state.email = action.payload.email || null; // сохраняем email
       })
       .addCase(loginWithGoogle.rejected, (state, action) => {
         state.loading = false;
@@ -278,6 +322,7 @@ const authSlice = createSlice({
         state.user = null;
         state.profile = null;
         state.token = null;
+        state.email = null;
         state.loading = false;
         state.error = null;
       })
@@ -285,10 +330,12 @@ const authSlice = createSlice({
         state.user = null;
         state.profile = null;
         state.token = null;
+        state.email = null;
       })
     .addCase(fetchProfile.fulfilled, (state, action) => {
       state.user = action.payload.user;
       state.profile = action.payload.profile;
+      state.email = action.payload.email || null; // сохраняем email
       state.loading = false;
     })
     .addCase(fetchProfile.pending, (state) => {
@@ -315,7 +362,6 @@ const authSlice = createSlice({
       });
 },
 });
-
 
 export const { clearAuthState, clearChangePasswordSuccess } = authSlice.actions;
 export default authSlice.reducer;

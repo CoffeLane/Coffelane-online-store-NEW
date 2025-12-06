@@ -43,5 +43,3 @@ export const validateProfile = ({ type = "all", ...formData }) => {
     return errors;
 };
 
-
-

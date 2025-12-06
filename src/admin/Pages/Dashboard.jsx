@@ -39,7 +39,7 @@ export default function Dashboard() {
 
       setProducts(combined);
     } catch (error) {
-      console.error('Error loading products:', error);
+      // console.error('Error loading products:', error);
     }
   };
 
@@ -76,7 +76,7 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ width: '100%', my: 4 }}>
-      {/* HEADER */}
+      {}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 4 }}>
         <Typography sx={{ ...h3 }}>Dashboard</Typography>
         <Button sx={{ ...btnCart, gap: 1, display: 'flex', alignItems: 'center' }}>
@@ -85,7 +85,7 @@ export default function Dashboard() {
         </Button>
       </Box>
 
-      {/* SALES CARDS */}
+      {}
       <Box mb={4} sx={{ backgroundColor: '#fff', borderRadius: '24px', p: 2 }}>
         <Typography sx={{ ...h5 }}>Today’s Sales</Typography>
         <Typography sx={{ ...h7, color: '#999', mb: 2 }}>Sales Summary</Typography>
@@ -119,7 +119,7 @@ export default function Dashboard() {
 
       <RevenueChart />
 
-      {/* PRODUCTS TABLE */}
+      {}
       <ProductsTable
         products={paginatedProducts}
         selectedIds={selectedIds}

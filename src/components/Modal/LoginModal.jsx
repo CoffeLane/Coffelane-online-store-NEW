@@ -17,13 +17,12 @@ import ForgotPasswordModal from "../Modal/ForgotPassword.jsx";
 import ResetPasswordModal from "../Modal/ResetPasswordModal.jsx";
 import IntermediateModal from "../Modal/IntermediateModal.jsx";
 
-
-export default function LoginModal({ open, handleClose, openResetByLink = false, tokenFromLink = null }) {
+export default function LoginModal({ open, handleClose, openResetByLink = false, tokenFromLink = null, returnPath = null }) {
     const dispatch = useDispatch();
     const { loading } = useSelector((state) => state.auth);
     const navigate = useNavigate();
 
-    const [tab, setTab] = useState(1);
+    const [tab, setTab] = useState(0);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [repeatPassword, setRepeatPassword] = useState("");
@@ -43,13 +42,12 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
     const [forgotEmail, setForgotEmail] = useState("");
 
     useEffect(() => {
-        console.log("openResetByLink", openResetByLink, "tokenFromLink", tokenFromLink);
+        // console.log("openResetByLink", openResetByLink, "tokenFromLink", tokenFromLink);
         if (openResetByLink && tokenFromLink) {
             setResetToken(tokenFromLink);
             setResetOpen(true);
         }
     }, [openResetByLink, tokenFromLink]);
-
 
     const openIntermediate = (email) => {
         setIntermediateEmail(email);
@@ -124,7 +122,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
         try {
             const token = credentialResponse?.credential;
             if (!token) {
-                console.error("No Google credential");
+                // console.error("No Google credential");
                 return;
             }
 
@@ -132,52 +130,53 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             const email = decoded?.email;
 
             if (!email) {
-                console.error("No email in Google token");
+                // console.error("No email in Google token");
                 return;
             }
 
             const result = await dispatch(loginWithGoogle({ email, token }));
 
             if (result.meta.requestStatus === "fulfilled") {
-                console.log("✔ Google login successful. Closing modal...");
+                // console.log("✔ Google login successful. Closing modal...");
                 if (handleClose) handleClose();
-                setSuccessModalOpen(true);
+
             } else {
-                console.log("✖ Google login failed:", result.payload);
+                // console.log("✖ Google login failed:", result.payload);
             }
         } catch (e) {
-            console.error("Google login error", e);
+            // console.error("Google login error", e);
         }
     };
 
     const handleLogin = async () => {
         if (!validateLoginForm()) return;
-        console.log("▶ LOGIN CLICK");
-        console.log("Email:", email);
-        console.log("Password:", password);
+        // console.log("▶ LOGIN CLICK");
+        // console.log("Email:", email);
+        // console.log("Password:", password);
 
         const result = await dispatch(loginUser({ email, password }));
 
-        console.log("LOGIN RESULT:", result);
+        // console.log("LOGIN RESULT:", result);
 
         if (result.meta.requestStatus === "fulfilled") {
-            console.log("✔ Login successful. Closing modal...");
+            // console.log("✔ Login successful. Closing modal...");
             if (handleClose) handleClose();
-            navigate("/account/personal-info");
+
+
         } else {
-            console.log("✖ Login failed:", result.payload);
+            // console.log("✖ Login failed:", result.payload);
         }
     };
 
     const handleRegister = async () => {
         if (!validateRegisterForm()) return;
-        console.log("▶ REGISTER CLICK");
-        console.log("Email:", email);
-        console.log("Password:", password);
-        console.log("Repeat:", repeatPassword);
+        // console.log("▶ REGISTER CLICK");
+        // console.log("Email:", email);
+        // console.log("Password:", password);
+        // console.log("Repeat:", repeatPassword);
 
         if (password !== repeatPassword) {
-            console.log("❌ Passwords do not match!");
+            // console.log("❌ Passwords do not match!");
             alert("Passwords do not match!");
             return;
         }
@@ -201,17 +200,17 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             },
         };
 
-        console.log("DATA SENT TO REGISTER:", registrationData);
+        // console.log("DATA SENT TO REGISTER:", registrationData);
 
         const result = await dispatch(registerUser(registrationData));
 
-        console.log("REGISTER RESULT:", result);
+        // console.log("REGISTER RESULT:", result);
 
         if (result.meta.requestStatus === "fulfilled") {
-            console.log("✔ Registration successful. Closing modal...");
+            // console.log("✔ Registration successful. Closing modal...");
             setSuccessModalOpen(true);
         } else {
-            console.log("✖ Registration failed:", result.payload);
+            // console.log("✖ Registration failed:", result.payload);
         }
     };
 
@@ -290,26 +289,11 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                         </Box>
 
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
-                            {/* <GoogleLogin
-                                onSuccess={async (res) => {
-                                    const token = res?.credential;
-                                    if (!token) return;
-                                    const decoded = jwtDecode(token);
-                                    const email = decoded?.email;
-                                    await dispatch(loginWithGoogle({ email, token }));
-                                    handleClose();
-                                    setSuccessModalOpen(true);
-                                }}
-                                onError={() => console.error("Google login failed")}
-                                useOneTap={false}
-                                locale="en"
-                                text="continue_with"
-                            /> */}
-
+                            {}
 
                             <GoogleLogin
                                 onSuccess={handleGoogleLogin}
-                                onError={() => console.error("Google login failed")}
+                                onError={() => {/* console.error("Google login failed") */}}
                                 useOneTap={false}
                                 locale="en"
                                 text="continue_with"
@@ -347,8 +331,4 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
         </Dialog>
     );
 }
-
-
-
-
 

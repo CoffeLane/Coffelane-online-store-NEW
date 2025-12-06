@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Grid, TextField, Button, Typography, Box, Alert, IconButton, InputAdornment } from "@mui/material";
+import { Grid, TextField, Button, Typography, Box, Alert, IconButton, InputAdornment, CircularProgress } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { inputStyles, helperTextRed } from "../../styles/inputStyles.jsx";
 import { btnStyles } from "../../styles/btnStyles.jsx";
-import { changePassword, clearChangePasswordSuccess } from "../../store/slice/authSlice.jsx";
+import { changePassword, clearChangePasswordSuccess, fetchProfile } from "../../store/slice/authSlice.jsx";
 import { validatePasswords } from "../../components/utils/validation/validatePasswords.jsx";
+import { apiWithAuth } from "../../store/api/axios.js";
 
 export default function AccountSettingsForm() {
   const dispatch = useDispatch();
-  const { loading, error, changePasswordSuccess } = useSelector((state) => state.auth);
+  const auth = useSelector((state) => state.auth);
+  const { changePasswordLoading, changePasswordError, changePasswordSuccess } = auth;
+  const userEmail = auth.user?.email || auth.profile?.email || auth.email || "";
 
   const [formData, setFormData] = useState({
     email: "",
@@ -20,11 +23,17 @@ export default function AccountSettingsForm() {
 
   const [errors, setErrors] = useState({});
   const [leftSuccess, setLeftSuccess] = useState("");
+  const [leftLoading, setLeftLoading] = useState(false);
   const [showPassword, setShowPassword] = useState({
     currentPassword: false,
     newPassword: false,
     repeatNewPassword: false,
-  });
+  });
+  useEffect(() => {
+    if (userEmail) {
+      setFormData((prev) => ({ ...prev, email: userEmail }));
+    }
+  }, [userEmail]);
 
   const handleChange = (field) => (e) => {
     setFormData({ ...formData, [field]: e.target.value });
@@ -49,25 +58,60 @@ export default function AccountSettingsForm() {
       currentPassword: formData.currentPassword,
       newPassword: formData.newPassword,
       repeatNewPassword: formData.repeatNewPassword,
-    });
-    setErrors(newErrors);
+    });
+    setErrors((prev) => ({ ...newErrors, submit: undefined }));
+    
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveLeft = () => {
+  const handleSaveLeft = async () => {
     if (!validateLeft()) return;
-    setLeftSuccess("Personal info saved!");
-    setTimeout(() => setLeftSuccess(""), 3000);
+    
+    setLeftLoading(true);
+    setLeftSuccess("");
+    setErrors((prev) => ({ ...prev, submit: undefined }));
+    
+    try {
+      const updateData = {
+        email: formData.email,
+      };
+      
+      // console.log("▶ Saving email:", updateData);
+      
+      const apiAuth = apiWithAuth();
+      const response = await apiAuth.patch("/users/update", updateData);
+      
+      // console.log("✅ Email saved:", response.data);
+      setLeftSuccess("Email saved!");
+      setTimeout(() => setLeftSuccess(""), 3000);
+      dispatch(fetchProfile());
+    } catch (error) {
+      // console.error("❌ Error saving email:", error);
+      setErrors((prev) => ({ 
+        ...prev, 
+        submit: error.response?.data?.message || error.response?.data?.email?.[0] || "Failed to save email" 
+      }));
+    } finally {
+      setLeftLoading(false);
+    }
   };
 
-  const handleSaveRight = () => {
-    if (!validateRight()) return;
-
-    dispatch(
+  const handleSaveRight = async () => {
+    const validationErrors = validatePasswords({
+      currentPassword: formData.currentPassword,
+      newPassword: formData.newPassword,
+      repeatNewPassword: formData.repeatNewPassword,
+    });
+    setErrors((prev) => ({ ...validationErrors, submit: undefined }));
+    const isValid = Object.keys(validationErrors).length === 0;
+    
+    if (!isValid) {
+      return;
+    }
+    await dispatch(
       changePassword({
-        currentPassword: formData.currentPassword,
+        oldPassword: formData.currentPassword,
         newPassword: formData.newPassword,
-        repeatNewPassword: formData.repeatNewPassword,
       })
     );
   };
@@ -123,8 +167,17 @@ export default function AccountSettingsForm() {
             sx={{ ...inputStyles, mt: 1 }}
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
-          <Button fullWidth variant="contained" sx={{ ...btnStyles, textTransform: "none", mt: 3 }} onClick={handleSaveLeft}> Save changes</Button>
+          <Button 
+            fullWidth 
+            variant="contained" 
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+            onClick={handleSaveLeft}
+            disabled={leftLoading}
+          >
+            {leftLoading ? <CircularProgress size={24} color="inherit" /> : "Save changes"}
+          </Button>
           {leftSuccess && <Alert severity="success" sx={{ mt: 2 }}>{leftSuccess}</Alert>}
+          {errors.submit && <Alert severity="error" sx={{ mt: 2 }}>{errors.submit}</Alert>}
         </Grid>
 
         <Grid size={6}>
@@ -135,12 +188,22 @@ export default function AccountSettingsForm() {
           <Typography sx={{ mt: 2 }}>Repeat new password</Typography>
           {renderPasswordField("repeatNewPassword", "Repeat new password")}
 
-          <Button fullWidth variant="contained" sx={{ ...btnStyles, textTransform: "none", mt: 3 }} onClick={handleSaveRight} disabled={loading}>
-            {loading ? "Saving..." : "Save changes"}
+          <Button 
+            fullWidth 
+            variant="contained" 
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+            onClick={handleSaveRight} 
+            disabled={changePasswordLoading}
+          >
+            {changePasswordLoading ? <CircularProgress size={24} color="inherit" /> : "Save changes"}
           </Button>
 
-          {changePasswordSuccess && <Alert severity="success" sx={{ mt: 2 }}>{changePasswordSuccess}</Alert>}
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          {changePasswordSuccess && <Alert severity="success" sx={{ mt: 2 }}>Password changed successfully!</Alert>}
+          {changePasswordError && <Alert severity="error" sx={{ mt: 2 }}>
+            {typeof changePasswordError === 'string' 
+              ? changePasswordError 
+              : changePasswordError?.message || "Failed to change password"}
+          </Alert>}
         </Grid>
       </Grid>
     </Box>

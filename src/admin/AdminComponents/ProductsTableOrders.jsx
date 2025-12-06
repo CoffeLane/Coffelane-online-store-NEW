@@ -42,7 +42,7 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                         }}
                                     />
                                 </TableCell>
-                                <TableCell><ActionsMenu id={p.id}/></TableCell>
+                                <TableCell><ActionsMenu id={p.id} type="order" /></TableCell>
                             </TableRow>
                         );
                     })}

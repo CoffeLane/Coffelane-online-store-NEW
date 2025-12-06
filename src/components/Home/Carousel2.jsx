@@ -41,8 +41,6 @@ const items = [
     },
 ];
 
-
-
 const Carousel2 = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [visibleCards, setVisibleCards] = useState(3);
@@ -66,7 +64,6 @@ const Carousel2 = () => {
             window.removeEventListener('resize', updateVisibleCards);
         };
     }, []);
-
 
     const handlePrev = () => {
         setCurrentIndex((prev) =>
@@ -111,7 +108,6 @@ const Carousel2 = () => {
                     </Box>
                 ))}
             </Box>
-
 
             <IconButton onClick={handleNext} sx={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", backgroundColor: "#16675C", color: "#fff", borderRadius: "50px", zIndex: 1, "&:hover": { backgroundColor: "#02715C" }, }}>
                 <ArrowForwardIos />

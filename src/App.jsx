@@ -27,17 +27,24 @@ import Orders from './admin/Pages/Orders.jsx';
 import MyAccount from './admin/Pages/MyAccount.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
 
-
 function App() {
   const dispatch = useDispatch();
-  const { user, token, loading } = useSelector(state => state.auth);
-
+  const { user, token, loading } = useSelector(state => state.auth);
   useEffect(() => {
-    if (token && !user && !loading) {
+    const tokenFromStorage = localStorage.getItem("access");
+    if (token && !tokenFromStorage) {
+      localStorage.setItem("access", token);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const tokenFromStorage = localStorage.getItem("access");
+    const currentToken = token || tokenFromStorage;
+    
+    if (currentToken && !user && !loading) {
       dispatch(fetchProfile());
     }
   }, [dispatch, token, user, loading]);
-
 
   return (
     <BrowserRouter>
@@ -63,7 +70,6 @@ function App() {
           <Route path="/account" element={<Navigate to="/account/personal-info" replace />} />
           <Route path="/account/:tab" element={<AccountPage />} />
           <Route path="recovery_password/:token" element={<LoginModalWrapper />} />
-
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

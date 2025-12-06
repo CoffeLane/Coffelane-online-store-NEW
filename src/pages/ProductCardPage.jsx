@@ -15,8 +15,7 @@ export default function ProductCardPage() {
 
     const { items, selectedProduct, loading } = useSelector(
         (state) => state.products
-    );
-    // console.log('Product',selectedProduct)
+    );
     const [quantity, setQuantity] = useState(1);
     const [selectedSupplyId, setSelectedSupplyId] = useState(null);
 
@@ -63,5 +62,4 @@ export default function ProductCardPage() {
         </Box>
     );
 }
-
 

@@ -9,7 +9,6 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store/store.jsx';
 
-
 const theme = createTheme({
   typography: { fontFamily: "'Work Sans', sans-serif" },
 });
@@ -27,6 +26,4 @@ createRoot(document.getElementById('root')).render(
     </Provider>
   </StrictMode>
 );
-
-
 

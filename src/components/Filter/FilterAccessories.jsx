@@ -5,7 +5,6 @@ import { inputDropdown, selectMenuProps, } from '../../styles/inputStyles.jsx';
 
 export default function FilterAccessories({ filters, setFilters }) {
 
-
   return (
     <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1, mb: 4, pr: 3  }}>
       <Typography sx={{ ...h5,}}>Sort By</Typography>

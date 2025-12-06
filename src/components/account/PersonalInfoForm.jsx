@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Grid, TextField, Button, Typography, Box, Alert } from "@mui/material";
+import { useDispatch } from "react-redux";
+import { Grid, TextField, Button, Typography, Box, Alert, CircularProgress } from "@mui/material";
 import { inputStyles, helperTextRed } from "../../styles/inputStyles.jsx";
 import { btnStyles } from "../../styles/btnStyles.jsx";
 import { formatPhone } from "../../components/utils/formatters.jsx";
 import { validateProfile } from "../../components/utils/validation/validateProfile.jsx";
+import { apiWithAuth } from "../../store/api/axios.js";
+import { fetchProfile } from "../../store/slice/authSlice.jsx";
 
 export default function PersonalInfoForm({ user }) {
   const [formData, setFormData] = useState({
@@ -18,10 +21,13 @@ export default function PersonalInfoForm({ user }) {
     aptNumber: "",
   });
 
+  const dispatch = useDispatch();
   const [leftErrors, setLeftErrors] = useState({});
   const [rightErrors, setRightErrors] = useState({});
   const [leftSuccess, setLeftSuccess] = useState("");
   const [rightSuccess, setRightSuccess] = useState("");
+  const [leftLoading, setLeftLoading] = useState(false);
+  const [rightLoading, setRightLoading] = useState(false);
 
 useEffect(() => {
     if (user) {
@@ -52,23 +58,80 @@ const handleChange = (field, column = "left") => (e) => {
     }
   };
 
-  const handleSaveLeft = () => {
+  const handleSaveLeft = async () => {
     const errors = validateProfile({ type: "personal", ...formData });
     setLeftErrors(errors);
 
     if (Object.keys(errors).length === 0) {
-      setLeftSuccess("Personal info saved!");
-      setTimeout(() => setLeftSuccess(""), 3000);
+      setLeftLoading(true);
+      setLeftSuccess("");
+      
+      try {
+        const nameParts = formData.fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+        const updateData = {
+          profile: {
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: formData.phone.replace(/\s+/g, ""),
+          },
+          email: formData.email, // Email может быть в корне или в profile, зависит от API
+        };
+        
+        // console.log("▶ Saving personal info:", updateData);
+        
+        const apiAuth = apiWithAuth();
+        const response = await apiAuth.patch("/users/update", updateData);
+        
+        // console.log("✅ Personal info saved:", response.data);
+        setLeftSuccess("Personal info saved!");
+        setTimeout(() => setLeftSuccess(""), 3000);
+        dispatch(fetchProfile());
+      } catch (error) {
+        // console.error("❌ Error saving personal info:", error);
+        setLeftErrors({ submit: error.response?.data?.message || "Failed to save personal info" });
+      } finally {
+        setLeftLoading(false);
+      }
     }
   };
 
-  const handleSaveRight = () => {
+  const handleSaveRight = async () => {
     const errors = validateProfile({ type: "address", ...formData });
     setRightErrors(errors);
 
     if (Object.keys(errors).length === 0) {
-      setRightSuccess("Address saved!");
-      setTimeout(() => setRightSuccess(""), 3000);
+      setRightLoading(true);
+      setRightSuccess("");
+      
+      try {
+        const updateData = {
+          profile: {
+            country: formData.country,
+            region: formData.city, // city -> region
+            state: formData.state,
+            street_name: formData.streetName,
+            zip_code: formData.houseNumber, // houseNumber -> zip_code
+            apartment_number: formData.aptNumber,
+          },
+        };
+        
+        // console.log("▶ Saving address:", updateData);
+        
+        const apiAuth = apiWithAuth();
+        const response = await apiAuth.patch("/users/update", updateData);
+        
+        // console.log("✅ Address saved:", response.data);
+        setRightSuccess("Address saved!");
+        setTimeout(() => setRightSuccess(""), 3000);
+        dispatch(fetchProfile());
+      } catch (error) {
+        // console.error("❌ Error saving address:", error);
+        setRightErrors({ submit: error.response?.data?.message || "Failed to save address" });
+      } finally {
+        setRightLoading(false);
+      }
     }
   };
 
@@ -76,7 +139,7 @@ const handleChange = (field, column = "left") => (e) => {
     <Box sx={{ px: 2, py: 0 }}>
       <Grid container spacing={4}>
         <Grid size={6}>
-          {/* Левые поля */}
+          {}
           <Typography>Full Name</Typography>
           <TextField
             fullWidth
@@ -116,15 +179,22 @@ const handleChange = (field, column = "left") => (e) => {
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
 
-          <Button fullWidth variant="contained" sx={{ ...btnStyles, textTransform: "none", mt: 3 }} onClick={handleSaveLeft}>
-            Save changes
+          <Button 
+            fullWidth 
+            variant="contained" 
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+            onClick={handleSaveLeft}
+            disabled={leftLoading}
+          >
+            {leftLoading ? <CircularProgress size={24} color="inherit" /> : "Save changes"}
           </Button>
 
           {leftSuccess && <Alert severity="success" sx={{ mt: 2 }}>{leftSuccess}</Alert>}
+          {leftErrors.submit && <Alert severity="error" sx={{ mt: 2 }}>{leftErrors.submit}</Alert>}
         </Grid>
 
         <Grid size={6}>
-          {/* Правые поля */}
+          {}
           <Typography>Country</Typography>
           <TextField
             fullWidth
@@ -197,11 +267,18 @@ const handleChange = (field, column = "left") => (e) => {
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
 
-          <Button fullWidth variant="contained" sx={{ ...btnStyles, textTransform: "none", mt: 3 }} onClick={handleSaveRight}>
-            Save changes
+          <Button 
+            fullWidth 
+            variant="contained" 
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+            onClick={handleSaveRight}
+            disabled={rightLoading}
+          >
+            {rightLoading ? <CircularProgress size={24} color="inherit" /> : "Save changes"}
           </Button>
 
           {rightSuccess && <Alert severity="success" sx={{ mt: 2 }}>{rightSuccess}</Alert>}
+          {rightErrors.submit && <Alert severity="error" sx={{ mt: 2 }}>{rightErrors.submit}</Alert>}
         </Grid>
       </Grid>
     </Box>

@@ -1,15 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { Button, Collapse, Box, Typography } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { Button, Collapse, Box, Typography, CircularProgress, Alert } from "@mui/material";
 import { btnCart, btnInCart } from "../../styles/btnStyles.jsx";
 import { h4, h5, h6 } from "../../styles/typographyStyles.jsx";
-import { orders } from "../../mockData/orders.jsx";
+import { fetchOrders } from "../../store/slice/ordersSlice.jsx";
 import deliveredImg from "../../assets/images/status/delivered.png";
 import deliveringImg from "../../assets/images/status/delivering.png";
 import cancelledImg from "../../assets/images/status/cancelled.png";
 
 export default function OrderHistory() {
+  const dispatch = useDispatch();
+  const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
 
+  useEffect(() => {
+    // console.log("▶ OrdersHistory - Fetching orders...");
+    dispatch(fetchOrders({ page: 1, size: 10 }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    // console.log("▶ OrdersHistory - Redux state:", { orders, loading, error });
+    // console.log("▶ OrdersHistory - orders type:", typeof orders, "isArray:", Array.isArray(orders));
+    if (orders) {
+      // console.log("▶ OrdersHistory - orders length:", orders.length);
+      // console.log("▶ OrdersHistory - orders content:", orders);
+    }
+  }, [orders, loading, error]);
 
   const toggleOrder = (id) => {
     setOpenOrderId(openOrderId === id ? null : id);
@@ -21,9 +37,34 @@ export default function OrderHistory() {
     Cancelled: cancelledImg,
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error">
+        {typeof error === 'string' ? error : 'Failed to load orders. Please try again later.'}
+      </Alert>
+    );
+  }
+  const ordersList = orders || [];
+
+  if (ordersList.length === 0) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}>
+        <Typography sx={{ ...h5, color: "#666" }}>No orders found</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {orders?.results?.map(order => (
+      {ordersList.map(order => (
         <Box key={order.id} sx={{ border: "1px solid #E0E0E0", borderRadius: "24px", p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -71,6 +112,4 @@ export default function OrderHistory() {
     </Box>
   );
 }
-
-
 

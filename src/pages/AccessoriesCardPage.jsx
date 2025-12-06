@@ -12,16 +12,13 @@ export default function AccessoriesCardPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
 
-  const { items, selectedAccessory, loading } = useSelector((state) => state.accessories );
-//  console.log('Accessory',selectedAccessory)
+  const { items, selectedAccessory, loading } = useSelector((state) => state.accessories );
 
   const [quantity, setQuantity] = useState(1);
-  
 
   useEffect(() => {
     dispatch(fetchAccessoryById(id));
   }, [id, dispatch]);
-
 
   if (loading) return <div>Loading...</div>;
   if (!selectedAccessory) return <div>Accessoryes not found</div>;

@@ -12,12 +12,7 @@ import userAvatar from '../../assets/admin/user-avatar.jpg';
 import { Link as RouterLink } from 'react-router-dom';
 
 export default function AdminLayout() {
-  const dispatch = useDispatch();
-  // const { user } = useSelector((state) => state.auth);
-
-  // if (!user || user.role !== 'admin') {
-  //   return <Navigate to="/" replace />;
-  // }
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
     dispatch(logoutUser());
@@ -77,7 +72,6 @@ export default function AdminLayout() {
             </ListItem>
           </List>
         </Box>
-
 
         <Box component={RouterLink} to="/admin/account" sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 'auto', px: 1, pb: 2, textDecoration: 'none', color: 'inherit', cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover', borderRadius:'16px', pt:'16px' } }}>
           <Box component="img" src={user.avatar} alt="Avatar" sx={{ width: 48, height: 48, borderRadius: '50%' }} />

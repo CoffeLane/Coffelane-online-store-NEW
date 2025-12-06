@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Grid from '@mui/material/Grid';
 import CoffeeCardData from '../components/Coffe/CoffeeCardData.jsx';
 import { h5 } from "../styles/typographyStyles.jsx";
@@ -7,7 +7,7 @@ import Filter from '../components/Filter/Filter.jsx';
 import PaginationControl from "../components/PaginationControl/PaginationControl.jsx";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slice/productsSlice.jsx';
-import { toggleFavoriteItem } from '../store/slice/favoritesSlice.jsx';
+import { toggleFavoriteItem, fetchFavorites } from '../store/slice/favoritesSlice.jsx';
 import { useNavigate, useLocation } from "react-router-dom";
 
 const itemsPerPage = 12;
@@ -19,6 +19,14 @@ export default function CatalogCoffeePage() {
 
   const { items, loading, error } = useSelector((state) => state.products);
   const favorites = useSelector((state) => state.favorites.favorites);
+  const token = useSelector((state) => state.auth.token);
+
+  useEffect(() => {
+    const accessToken = token || localStorage.getItem("access");
+    if (accessToken) {
+      dispatch(fetchFavorites());
+    }
+  }, [dispatch, token]);
 
   const [filters, setFilters] = useState({
     brand: "Brand",
@@ -48,8 +56,15 @@ export default function CatalogCoffeePage() {
   };
 
   const handleToggleFavorite = (item) => {
-    dispatch(toggleFavoriteItem(item)); 
+    // console.log("handleToggleFavorite called:", item);
+    const itemType = item.sku ? "product" : "accessory";
+    // console.log("Dispatching toggleFavoriteItem:", { itemType, itemId: item.id, itemData: item });
+    dispatch(toggleFavoriteItem({ itemType, itemId: item.id, itemData: item }));
   };
+
+  const favoritesMap = useMemo(() => {
+    return favorites.reduce((acc, item) => ({ ...acc, [String(item.id)]: true }), {});
+  }, [favorites]);
 
   const totalPages = Math.ceil(items.length / itemsPerPage);
   const paginatedItems = items.slice((page - 1) * itemsPerPage, page * itemsPerPage);
@@ -78,7 +93,7 @@ export default function CatalogCoffeePage() {
         ) : (
           <CoffeeCardData
             products={paginatedItems}
-            favorites={favorites}
+            favorites={favoritesMap}
             onToggleFavorite={handleToggleFavorite}
           />
         )}

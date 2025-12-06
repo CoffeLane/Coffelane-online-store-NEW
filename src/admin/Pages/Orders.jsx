@@ -9,8 +9,6 @@ import image1 from '../../assets/images/coffe/image_1.png';
 import image2 from '../../assets/images/coffe/image_2.png';
 import userAvatar from '../../assets/admin/user-avatar.jpg';
 
-
-
 const productsData = [
   {
     id: 1,
@@ -101,8 +99,6 @@ const productsData = [
     items: 1,
   },
 ];
-
-
 
 export default function Orders() {
   const [products] = useState(productsData);

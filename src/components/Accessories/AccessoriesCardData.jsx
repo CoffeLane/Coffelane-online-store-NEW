@@ -24,7 +24,7 @@ export default function AccessoriesCardData({ products, favorites, onToggleFavor
         dispatch(addToCart({ product: { ...item, price: Number(item.price) || 0 }, quantity: 1 }));
 
     if (!products || products.length === 0) return <Typography>No accessories found</Typography>;
-console.log(favorites);
+
     return (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center" }}>
             {products.map(item => {
@@ -48,7 +48,10 @@ console.log(favorites);
                                 src={favorites?.[itemId] ? favoriteActive : favorite}
                                 alt="favorite"
                                 sx={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, cursor: "pointer" }}
-                                onClick={() => onToggleFavorite(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleFavorite(item);
+                                }}
                             />
                         </Box>
                         <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -75,7 +78,4 @@ console.log(favorites);
         </Box>
     );
 }
-
-
-
 

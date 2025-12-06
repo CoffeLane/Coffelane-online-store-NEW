@@ -3,10 +3,7 @@ import { Box, Button } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
-import { btnStyles, btnBorderStyles } from "../../styles/btnStyles.jsx";
-// import CartModal from "../CartModal/index.jsx";
-
-
+import { btnStyles, btnBorderStyles } from "../../styles/btnStyles.jsx";
 
 export default function AddToCartButtons({ product, quantity, selectedSupplyId }) {
     const dispatch = useDispatch();
@@ -64,7 +61,7 @@ export default function AddToCartButtons({ product, quantity, selectedSupplyId }
                 </Button>
             </Box>
 
-            {/* <CartModal open={isCartOpen} onClose={() => setIsCartOpen(false)} /> */}
+            {}
         </>
     );
 }

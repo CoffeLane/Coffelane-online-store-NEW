@@ -1,37 +1,11 @@
 import React from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Button,
-  Box,
-  Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  Avatar,
-  ListItemText,
-  TextField,
-  Divider,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { Drawer, IconButton, Button, Box, Typography, Divider} from "@mui/material";
+// import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-
-/**
- * props:
- *  open (bool) - открыть модалку
- *  onClose (fn) - закрыть
- *  items (array) - [{ id, name, price, qty, img }]
- *  onChangeQty(id, newQty)
- *  onRemove(id)
- *  onCheckout()
- *
- * Если используешь Redux — передавай items и обработчики из контейнера.
- */
+import deleteIcon from "../../assets/icons/delete-icon.svg";
+import { btnCart } from "../../styles/btnStyles.jsx";
+import {h3, h5} from "../../styles/typographyStyles.jsx"
 
 export default function BasketModal({
   open,
@@ -40,132 +14,110 @@ export default function BasketModal({
   onChangeQty = () => {},
   onRemove = () => {},
   onCheckout = () => {},
+  discount = 0, 
 }) {
-  const total = items.reduce((s, it) => s + it.price * it.qty, 0);
+  const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+  const total = subtotal - discount;
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      aria-labelledby="basket-dialog-title"
-    >
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="h6">Корзина</Typography>
-        <IconButton onClick={onClose} size="small" aria-label="close">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+    <Drawer anchor="right" open={open} onClose={onClose} sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 400, md: 480 }, boxSizing: "border-box", borderTopLeftRadius: "20px", }}} >
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", p: 3, position: "relative" }}>
+          <Typography sx={{...h3 }}>Shopping cart</Typography>
+          {/* <IconButton 
+            onClick={onClose} 
+            size="small" 
+            aria-label="close"
+            sx={{ position: "absolute", right: 16 }}
+          >
+            <CloseIcon />
+          </IconButton> */}
+        </Box>
 
-      <DialogContent dividers>
-        {items.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: "center" }}>
-            <Typography variant="subtitle1">Ваша корзина пуста</Typography>
-            <Typography variant="body2" color="text.secondary">Добавьте товары, чтобы увидеть их здесь.</Typography>
-          </Box>
-        ) : (
-          <List>
-            {items.map((item) => (
-              <React.Fragment key={item.id}>
-                <ListItem alignItems="flex-start" sx={{ py: 2 }}>
-                  <ListItemAvatar>
-                    <Avatar
-                      variant="rounded"
-                      src={item.img}
-                      alt={item.name}
-                      sx={{ width: 64, height: 64, mr: 2 }}
-                    />
-                  </ListItemAvatar>
-
-                  <ListItemText
-                    primary={
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+        <Box sx={{ flex: 1, overflow: "auto", px: 2 }}>
+          <Box>
+            {items.map((item, index) => (
+              <Box key={item.id}>
+                <Box sx={{ display: "flex", gap: 2, py: 3, position: "relative" }}>
+                  <Box component="img" src={item.img} alt={item.name} sx={{ width: 120, height: 120, objectFit: "contain", borderRadius: 1, }}/>
+                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <Typography sx={{...h5, pr: 2 }}>
                         {item.name}
                       </Typography>
-                    }
-                    secondary={
-                      <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-                        <Typography variant="body2">Цена: {item.price.toFixed(2)} ₴</Typography>
+                      <IconButton onClick={() => onRemove(item.id)} aria-label="remove" size="small" sx={{  padding: 0.5,"&:hover": { opacity: 0.7 }, }} >
+                        <Box component="img" src={deleteIcon} alt="delete" sx={{ width: 20, height: 20 }} />
+                      </IconButton>
+                    </Box>
 
-                        {/* Количественые кнопки */}
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <IconButton
-                            size="small"
-                            onClick={() => onChangeQty(item.id, Math.max(1, item.qty - 1))}
-                            aria-label="decrement"
-                          >
-                            <RemoveIcon fontSize="small" />
-                          </IconButton>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 1 }}>
+                      <Box sx={{ display: "flex", alignItems: "center"}}>
+                        <IconButton
+                          onClick={() => onChangeQty(item.id, Math.max(1, item.qty - 1))}
+                          aria-label="decrement"
+                          sx={{
+                            backgroundColor: "#3E3027",
+                            color: "#fff",
+                            "&:hover": { backgroundColor: "#3E3027", opacity: 0.9 },
+                            width: 24,
+                            height: 24,
+                            padding: 0,
+                          }}
+                        >
+                          <RemoveIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
 
-                          <TextField
-                            value={item.qty}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value || "0", 10);
-                              if (!Number.isNaN(v) && v > 0) onChangeQty(item.id, v);
-                            }}
-                            inputProps={{ inputMode: "numeric", pattern: "[0-9]*", style: { textAlign: "center", width: 36 } }}
-                            size="small"
-                          />
-
-                          <IconButton
-                            size="small"
-                            onClick={() => onChangeQty(item.id, item.qty + 1)}
-                            aria-label="increment"
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
+                        <Typography  sx={{...h5, minWidth: 24, textAlign: "center" }}>
+                          {item.qty}
+                        </Typography>
 
                         <IconButton
-                          color="error"
-                          onClick={() => onRemove(item.id)}
-                          aria-label="remove"
-                          sx={{ ml: 1 }}
+                          onClick={() => onChangeQty(item.id, item.qty + 1)}
+                          aria-label="increment"
+                          sx={{
+                            backgroundColor: "#3E3027",
+                            color: "#fff",
+                            "&:hover": { backgroundColor: "#3E3027", opacity: 0.9 },
+                            width: 24,
+                            height: 24,
+                            padding: 0,
+                          }}
                         >
-                          <DeleteIcon />
+                          <AddIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Box>
-                    }
-                  />
 
-                  <Box sx={{ ml: 2, textAlign: "right" }}>
-                    <Typography variant="subtitle2">{(item.price * item.qty).toFixed(2)} ₴</Typography>
-                    <Typography variant="caption" color="text.secondary">({item.qty} × {item.price.toFixed(2)})</Typography>
+                      <Typography sx={{...h5 }}>${(item.price * item.qty).toFixed(2)}</Typography>
+                    </Box>
                   </Box>
-                </ListItem>
-
-                <Divider component="li" />
-              </React.Fragment>
+                </Box>
+                {index < items.length - 1 && <Divider />}
+              </Box>
             ))}
-          </List>
-        )}
-      </DialogContent>
-
-      <DialogActions sx={{ flexDirection: "column", gap: 1, alignItems: "stretch", p: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 1 }}>
-          <Typography variant="subtitle1">Итого</Typography>
-          <Typography variant="h6">{total.toFixed(2)} ₴</Typography>
+          </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="outlined" fullWidth onClick={onClose}>
-            Продолжить покупки
-          </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={() => {
-              onCheckout();
-              // если нужно — можно закрывать модалку после checkout:
-              // onClose();
-            }}
-            disabled={items.length === 0}
-          >
-            Оформить заказ
+        <Box sx={{ borderTop: 1, borderColor: "divider", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography sx={{...h5}}>Subtotal</Typography>
+              <Typography sx={{...h5}}>${subtotal.toFixed(2)}</Typography>
+            </Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography sx={{...h5}}>Discount</Typography>
+              <Typography sx={{...h5}}>-${discount.toFixed(2)}</Typography>
+            </Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography sx={{...h5}}>Total</Typography>
+             <Typography sx={{...h5}}>${total.toFixed(2)}</Typography>
+            </Box>
+          </Box>
+
+          <Button fullWidth onClick={() => { onCheckout(); onClose(); }} disabled={items.length === 0} sx={btnCart}>
+            PLACE ON ORDER
           </Button>
         </Box>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Drawer>
   );
 }

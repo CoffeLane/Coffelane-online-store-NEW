@@ -3,7 +3,6 @@ import { h4, h6 } from '../../styles/typographyStyles';
 import { inputStyles, helperTextRed } from '../../styles/inputStyles';
 import { formatPhone,  formatZip } from "../../components/utils/formatters.jsx";
 
-
 export default function ContactDetailsForm({
     step,
     firstName, setFirstName,
@@ -14,6 +13,7 @@ export default function ContactDetailsForm({
     region, setRegion,
     state, setState,
     zip, setZip,
+    country, setCountry,
     errors,
     handleContinue,
     openLogin,
@@ -49,6 +49,7 @@ export default function ContactDetailsForm({
                 <Typography sx={{ ...h4 }}>Delivery</Typography>
             </Box>
 
+            <TextField id="country" fullWidth margin="normal" placeholder="Country" value={country} onChange={handleFieldChange(setCountry, "country")} error={!!errors.country} helperText={errors.country} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
             <TextField id="street" fullWidth margin="normal" placeholder="Street address" value={street} onChange={handleFieldChange(setStreet, "street")} error={!!errors.street} helperText={errors.street} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
             <Box display="flex" gap={1} mt={1}>
                 <TextField id="region" placeholder="City" value={region} onChange={handleFieldChange(setRegion, "region")} error={!!errors.region} helperText={errors.region} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />

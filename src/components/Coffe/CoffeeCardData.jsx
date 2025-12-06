@@ -34,7 +34,6 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
 
   if (!products || products.length === 0) return <Typography>No products found</Typography>;
 
-
   return (
     <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
       {products.map((item) => {
@@ -43,6 +42,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
         const cartKey = `${item.id}-${selectedSupply.id}`;
         const isInCart = cartEntries.some(([key]) => key === cartKey);
         const price = Number(selectedSupply.price || item.price || 0);
+        const isFavorite = favorites?.[itemId];
 
         return (
           <Card
@@ -64,10 +64,13 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
               )}
               <Box
                 component="img"
-                src={favorites?.[itemId] ? favoriteActive : favorite}
+                src={isFavorite ? favoriteActive : favorite}
                 alt="favorite"
                 sx={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, cursor: "pointer" }}
-                onClick={() => onToggleFavorite(item)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(item);
+                }}
               />
             </Box>
             <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -102,7 +105,4 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
     </Box>
   );
 }
-
-
-
 

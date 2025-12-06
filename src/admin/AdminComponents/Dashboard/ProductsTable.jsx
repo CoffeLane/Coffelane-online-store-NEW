@@ -18,6 +18,7 @@ export default function ProductsTable({
   variant,
   categoryFilter,
   setCategoryFilter,
+  onRefresh,
 }) {
   
   const categories = useMemo(() => ['Category', ...new Set(products.map(p => p.category))], [products]);
@@ -91,7 +92,12 @@ export default function ProductsTable({
                     />
                   </TableCell>
                   <TableCell>
-                    <ActionsMenu id={p.id} />
+                    <ActionsMenu 
+                      id={p.id} 
+                      type="product" 
+                      productType={p.type === 'accessory' ? 'accessory' : 'coffee'}
+                      onRefresh={onRefresh} 
+                    />
                   </TableCell>
                 </TableRow>
               );
@@ -103,5 +109,4 @@ export default function ProductsTable({
     </TableContainer>
   );
 }
-
 

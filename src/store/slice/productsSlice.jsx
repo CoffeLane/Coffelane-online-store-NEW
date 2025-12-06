@@ -1,24 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../api/axios';
-// import products from '../../mockData/products.jsx';
-
-// // Thunk для работы с моками
-// export const fetchProducts = createAsyncThunk(
-//   'products/fetchProducts',
-//   async ({ page = 1, limit = 9 } = {}, thunkAPI) => {
-//     const startIndex = (page - 1) * limit;
-//     const endIndex = startIndex + limit;
-//     const currentItems = products.slice(startIndex, endIndex);
-
-//     return {
-//       data: currentItems,
-//       totalItems: products.length,
-//       totalPages: Math.ceil(products.length / limit),
-//       currentPage: page,
-//     };
-//   }
-// );
-
+import api from '../api/axios';
 
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
@@ -50,33 +31,23 @@ export const fetchProducts = createAsyncThunk(
         responses.forEach((res, index) => {
           allProducts = allProducts.concat(res.data.data);
         });
-      }
-
-      // Roast filter
+      }
       if (filters.roast && filters.roast.length) {
         allProducts = allProducts.filter(p => filters.roast.includes(p.roast));
-      }
-
-      // Caffeine filter
+      }
       if (filters.caffeine && filters.caffeine.length) {
         allProducts = allProducts.filter(p => filters.caffeine.includes(p.caffeine_type));
-      }
-
-      // Bean filter
+      }
       if (filters.bean && filters.bean.length) {allProducts = allProducts.filter(p => 
         filters.bean.some(f => p.sort?.toLowerCase().includes(f.toLowerCase())));
-      }
-
-      // Grind filter
+      }
       if (filters.grind && filters.grind.length) {
-        console.log("Applying grind filter:", filters.grind);
+        // console.log("Applying grind filter:", filters.grind);
         allProducts = allProducts.filter(p => {
           const servingTypes = p.supplies.map(s => s.serving_type);
           return filters.grind.some(g => servingTypes.includes(g));
         });
-      }
-
-      // Price filter
+      }
       if (filters.priceRange) {
         allProducts = allProducts.filter(p => {
           const price = parseFloat(p.supplies[0]?.price || 0);
@@ -99,7 +70,7 @@ export const fetchProducts = createAsyncThunk(
         currentPage: 1,
       };
     } catch (error) {
-      console.error("Error fetching products:", error);
+      // console.error("Error fetching products:", error);
       return thunkAPI.rejectWithValue(error.response?.data || "Error");
     }
   }

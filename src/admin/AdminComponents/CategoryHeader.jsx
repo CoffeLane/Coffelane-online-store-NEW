@@ -41,4 +41,3 @@ export default function CategoryHeader({ categories, selectedCategory, onCategor
   );
 }
 
-

@@ -11,6 +11,7 @@ import deleteIcon from '../../assets/admin/delete.svg';
 import ProductsTable from '../AdminComponents/Dashboard/ProductsTable.jsx';
 import { useNavigate } from 'react-router-dom';
 import api from '../../store/api/axios.js';
+import { apiWithAuth } from '../../store/api/axios.js';
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -39,7 +40,7 @@ export default function Products() {
       setTotalPages(productsRes.data.total_pages);
       setSelectedIds([]);
     } catch (error) {
-      console.error('Error loading products/accessories:', error);
+      // console.error('Error loading products/accessories:', error);
     }
   };
 
@@ -75,31 +76,29 @@ export default function Products() {
 
   const handleDeleteSelected = async () => {
     try {
+      const apiAuth = apiWithAuth(token);
       await Promise.all(
         selectedIds.map(id =>
-          api.delete(`/products/${id}/deletion`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
+          apiAuth.delete(`/products/${id}/deletion`)
         )
       );
       fetchAllProducts(page);
     } catch (error) {
-      console.error('Error deleting:', error);
+      // console.error('Error deleting:', error);
     }
   };
 
   const handleHideSelected = async () => {
     try {
+      const apiAuth = apiWithAuth(token);
       await Promise.all(
         selectedIds.map(id =>
-          api.patch(`/products/product/${id}`, { status: 'Hidden' }, {
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          })
+          apiAuth.patch(`/products/product/${id}`, { status: 'Hidden' })
         )
       );
       fetchAllProducts(page);
     } catch (error) {
-      console.error('Hiding error:', error);
+      // console.error('Hiding error:', error);
     }
   };
 
@@ -133,6 +132,7 @@ export default function Products() {
       </Box>
 
       <ProductsTable
+        onRefresh={fetchAllProducts}
         products={adminProducts}
         selectedIds={selectedIds}
         handleSelectAll={handleSelectAll}
@@ -150,9 +150,4 @@ export default function Products() {
     </Box>
   );
 }
-
-
-
-
-
 

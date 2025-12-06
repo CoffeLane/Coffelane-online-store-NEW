@@ -3,8 +3,6 @@ import { Box, Typography } from "@mui/material";
 import QuantitySelector from "./QuantitySelector";
 import { h3, h6 } from "../../styles/typographyStyles.jsx";
 
-
-
 export default function AccessoriesInfo({ product, quantity, onIncrement, onDecrement, }) {
 
   if (!product) return null;

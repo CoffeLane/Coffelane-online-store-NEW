@@ -44,7 +44,7 @@ export default function MyAccount() {
         <AdminBreadcrumbs />
       </Box>
 
-      {/* Avatar */}
+      {}
       <Paper sx={{ p: 3, mb: 3, borderRadius:"24px" }}>
         <Box component={RouterLink} to="/admin/account" sx={{ display: "flex", alignItems: "center", gap: 2, textDecoration: "none", color: "inherit", cursor: "pointer", "&:hover": { backgroundColor: "action.hover", borderRadius: "16px" }, p: 1}}>
           <Box component="img" src={user.avatar} alt="Avatar" sx={{ width: 64, height: 64, borderRadius: "50%" }}/>
@@ -55,7 +55,7 @@ export default function MyAccount() {
         </Box>
       </Paper>
 
-      {/* Personal Information */}
+      {}
       <Paper sx={paperStyle(isEditingPersonal)}>
         <Box mb={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -99,7 +99,7 @@ export default function MyAccount() {
         </Grid>
       </Paper>
 
-      {/* Address */}
+      {}
       <Paper sx={paperStyle(isEditingAddress)} >
         <Box mb={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -149,10 +149,4 @@ export default function MyAccount() {
     </Box>
   );
 }
-
-
-
-
-
-
 

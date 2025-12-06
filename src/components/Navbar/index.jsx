@@ -2,7 +2,6 @@ import React from "react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { AppBar, Toolbar, Typography } from "@mui/material";
 
-
 const navLinkStyles = {
   textDecoration: 'none',
   cursor: 'pointer',

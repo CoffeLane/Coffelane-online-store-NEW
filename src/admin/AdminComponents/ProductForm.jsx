@@ -18,12 +18,26 @@ export default function ProductForm({
             <TextField fullWidth value={productName || ""}  onChange={(e) => setProductName(e.target.value)} sx={{ ...inputStyles, mb: 2 }}/>
 
             <Typography sx={{ ...h7 }} mb={1}>Category</Typography>
-            <FormControl fullWidth sx={{ ...h6, ...inputDropdown, ...inputStyles, mb: 2 }}>
-                <Select value={category} onChange={(e) => setCategory(e.target.value)} MenuProps={selectMenuProps}>
-                    <MenuItem value="Coffee">Coffee</MenuItem>
-                    <MenuItem value="Tea">Tea</MenuItem>
-                </Select>
-            </FormControl>
+            {category && category !== "Coffee" && category !== "Tea" ? (
+                <TextField 
+                    fullWidth 
+                    value={category} 
+                    onChange={(e) => setCategory(e.target.value)} 
+                    sx={{ ...inputStyles, mb: 2 }}
+                />
+            ) : (
+                <FormControl fullWidth sx={{ ...h6, ...inputDropdown, ...inputStyles, mb: 2 }}>
+                    <Select 
+                        value={category || ""} 
+                        onChange={(e) => setCategory(e.target.value)} 
+                        MenuProps={selectMenuProps}
+                        displayEmpty
+                    >
+                        <MenuItem value="Coffee">Coffee</MenuItem>
+                        <MenuItem value="Tea">Tea</MenuItem>
+                    </Select>
+                </FormControl>
+            )}
 
             <Typography sx={{ ...h7 }} mb={1}>Stock</Typography>
             <TextField fullWidth type="number" value={stock || ""} onChange={(e) => setStock(Number(e.target.value))}  sx={{ ...inputStyles, mb: 2 }} />

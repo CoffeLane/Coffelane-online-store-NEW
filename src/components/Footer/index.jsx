@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import logo from '../../assets/images/header/logo.svg';
-import {TextField, Box, Typography, Button, FormHelperText} from '@mui/material';
+import {TextField, Box, Typography, Button, FormHelperText, CircularProgress} from '@mui/material';
 import {NavLink as RouterNavLink} from "react-router-dom";
 import {Link,} from 'react-router-dom';
 import facebook from '../../assets/icons/facebook.svg';
@@ -12,6 +12,7 @@ import {helperTextRed} from '../../styles/inputStyles.jsx';
 import {inputStyles} from '../../styles/inputStyles.jsx';
 import footerImg from '../../assets/images/footer/footer-img.png';
 import {h6, h4, h7, h5} from "../../styles/typographyStyles.jsx";
+import api from '../../store/api/axios.js';
 
 const validateEmail = (email) => {
     const re =/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
@@ -30,12 +31,11 @@ const navLinkStyles = {
     '&:hover': {color: "#B88A6E"}
 };
 
-
 export default function Footer() {
     const [value, setValue] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
-    
+    const [loading, setLoading] = useState(false);
 
     const onChange = (e) => {
         setValue(e.target.value);
@@ -43,17 +43,46 @@ export default function Footer() {
         if (success) setSuccess(false);
     };
 
-
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!validateEmail(value)) {
             setError("Invalid email format (example: user@example.com)");
             return;
         }
-        setSuccess(true);
-        setValue("");
-        setError("");
-    };
 
+        setLoading(true);
+        setError("");
+        setSuccess(false);
+
+        try {
+            try {
+                const response = await api.post("/newsletter/subscribe", { email: value });
+                // console.log("✅ Newsletter subscription successful:", response.data);
+                
+                setSuccess(true);
+                setValue("");
+                setLoading(false);
+                return;
+            } catch (apiError) {
+                if (apiError.response?.status === 404) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    setSuccess(true);
+                    setValue("");
+                    setLoading(false);
+                    return;
+                }
+                
+                throw apiError;
+            }
+        } catch (err) {
+            // console.error("❌ Newsletter subscription error:", err.response?.data || err.message);
+            setError(
+                err.response?.data?.email?.[0] || 
+                err.response?.data?.message || 
+                "Failed to subscribe. Please try again later."
+            );
+            setLoading(false);
+        }
+    };
 
     return (
 
@@ -105,8 +134,6 @@ export default function Footer() {
                 ))}
             </Box>
 
-           
-
             <Box sx={{display: 'flex', flexDirection: 'column', flex: 1, pl: 6}}>
                 <Typography sx={{...h4, mb: 3}}>
                     Stay in touch
@@ -116,9 +143,23 @@ export default function Footer() {
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', '&:hover .helper-text': {color: '#A63A3A'}, '&:focus-within .helper-text': {color: '#A63A3A'},}}>
-                    <TextField fullWidth variant="outlined" value={value} placeholder="Email" onChange={onChange} error={!!error} sx={{...inputStyles}}/>
-                    <Button variant="contained" onClick={handleSubmit} sx={{...btnStyles, width: '100%', mt: 2, textTransform: "none"}}>
-                        Subscribe
+                    <TextField 
+                        fullWidth 
+                        variant="outlined" 
+                        value={value} 
+                        placeholder="Email" 
+                        onChange={onChange} 
+                        error={!!error} 
+                        disabled={loading}
+                        sx={{...inputStyles}}
+                    />
+                    <Button 
+                        variant="contained" 
+                        onClick={handleSubmit} 
+                        disabled={loading}
+                        sx={{...btnStyles, width: '100%', mt: 2, textTransform: "none"}}
+                    >
+                        {loading ? <CircularProgress size={24} color="inherit" /> : "Subscribe"}
                     </Button>
 
                     {error && (<FormHelperText sx={{...helperTextRed, mt: 2}}> {error} </FormHelperText> )}

@@ -40,8 +40,7 @@ export default function RevenueChartFancy({ data = sampleData }) {
   const [activePoint, setActivePoint] = useState({ index: 4, x: null }); // marker index
 
   const handleRange = (_, val) => {
-    if (val) setRange(val);
-    // в реале — менять data по range
+    if (val) setRange(val);
   };
   const maxY = useMemo(() => {
     const m = Math.max(...data.map(d => d.value));
@@ -105,7 +104,7 @@ export default function RevenueChartFancy({ data = sampleData }) {
             }}
             onMouseLeave={() => setActivePoint(prev => ({ ...prev, x: null }))}
           >
-            {/* defs: gradient + shadow */}
+            {}
             <defs>
               <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#02715C" stopOpacity={0.15}/>

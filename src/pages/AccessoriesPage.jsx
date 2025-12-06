@@ -19,13 +19,17 @@ export default function AccessoriesPage() {
 
   const { items, loading, error, totalPages, currentPage } = useSelector(state => state.accessories);
   const favorites = useSelector(state => state.favorites.favorites);
-const favoritesMap = useMemo(() => {
-  const map = {};
-  favorites.forEach(f => {
-    if (f?.id) map[String(f.id)] = true;  // пропускаем undefined
-  });
-  return map;
-}, [favorites]);
+  const token = useSelector(state => state.auth.token);
+  
+  const favoritesMap = useMemo(() => {
+    const map = {};
+    favorites.forEach(f => {
+      if (f?.id !== undefined && f?.id !== null) {
+        map[String(f.id)] = true;  // всегда используем строку как ключ
+      }
+    });
+    return map;
+  }, [favorites]);
 
   const [filters, setFilters] = useState({ sort: "lowToHigh" });
   const [page, setPage] = useState(1);
@@ -35,6 +39,18 @@ const favoritesMap = useMemo(() => {
     const pageParam = parseInt(params.get("page"), 10);
     setPage(!isNaN(pageParam) && pageParam > 0 ? pageParam : 1);
   }, [location.search]);
+
+  useEffect(() => {
+    const tokenFromState = token;
+    const tokenFromStorage = localStorage.getItem("access");
+    const currentToken = tokenFromState || tokenFromStorage;
+    if (tokenFromState && !tokenFromStorage) {
+      localStorage.setItem("access", tokenFromState);
+    }
+    if (currentToken) {
+      dispatch(fetchFavorites());
+    }
+  }, [dispatch, token]);
 
   useEffect(() => {
     let ordering = "";
@@ -49,24 +65,9 @@ const favoritesMap = useMemo(() => {
     navigate(`?page=${value}`);
   };
 
- const [localFavorites, setLocalFavorites] = useState({});
-
-useEffect(() => {
-  const map = {};
-  favorites.forEach(f => map[String(f.id)] = true);
-  setLocalFavorites(map);
-}, [favorites]);
-
-const handleToggleFavorite = (item) => {
-  const itemId = String(item.id);
-  // сразу обновляем локальный map
-  setLocalFavorites(prev => ({
-    ...prev,
-    [itemId]: !prev[itemId],
-  }));
-  dispatch(toggleFavoriteItem({ itemType: "accessory", itemId }));
-};
-
+  const handleToggleFavorite = (item) => {
+    dispatch(toggleFavoriteItem({ itemType: "accessory", itemId: item.id, itemData: item }));
+  };
 
   if (error) return <p>{error?.detail || error || "Error"}</p>;
 
@@ -91,7 +92,7 @@ const handleToggleFavorite = (item) => {
         ) : (
           <AccessoriesCardData
             products={items}
-               favorites={localFavorites}
+            favorites={favoritesMap}
             onToggleFavorite={handleToggleFavorite} 
           />
         )}

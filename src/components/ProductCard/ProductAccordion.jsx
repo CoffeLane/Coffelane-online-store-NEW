@@ -3,8 +3,6 @@ import { Accordion, AccordionSummary, AccordionDetails, Typography, Box } from "
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { h4, h6 } from "../../styles/typographyStyles.jsx";
 
-
-
 export default function ProductAccordion({ product }) {
   const sections = [
     { title: "Coffee Brew Guide", content: product?.coffee_brew_guide || "No brew guide available." },

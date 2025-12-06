@@ -9,7 +9,6 @@ import ordersReducer from './slice/ordersSlice';
 import accessoriesReducer from './slice/accessoriesSlice';
 import favoritesReducer from "./slice/favoritesSlice";
 
-
 const authPersistConfig = {
     key: 'auth',
     storage,
@@ -17,13 +16,14 @@ const authPersistConfig = {
 };
 const cartPersistConfig = { key: 'cart', storage };
 const productsPersistConfig = { key: 'products', storage };
+const favoritesPersistConfig = { key: 'favorites', storage };
 
 const rootReducer = combineReducers({
     auth: persistReducer(authPersistConfig, authReducer),
     profile: profileReducer,
     orders: ordersReducer,
     accessories: accessoriesReducer,
-    favorites: favoritesReducer,
+    favorites: persistReducer(favoritesPersistConfig, favoritesReducer),
     cart: persistReducer(cartPersistConfig, cartReducer),
     products: persistReducer(productsPersistConfig, productsReducer),
 });
@@ -35,5 +35,4 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
-
 

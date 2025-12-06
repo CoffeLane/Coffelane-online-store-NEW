@@ -38,16 +38,16 @@ const CoffeeBanner = () => {
 
     const selectedSupply = product.supplies?.[0] || { id: 'default', price: product.price || 0 };
 
-    const originalPrice = Number(selectedSupply.price) || 0;
-    const discountedPrice = Number(originalPrice * 0.85);
+    const originalPrice = Number(selectedSupply.price) || Number(product.price) || 0;
+    const discountedPrice = Number((originalPrice * 0.85).toFixed(2)); // 15% скидка, округляем до 2 знаков
 
     const updatedSupplies = product.supplies
       ? product.supplies.map(supply =>
         supply.id === selectedSupply.id
-          ? { ...supply, price: discountedPrice.toString() }
+          ? { ...supply, price: discountedPrice } // Сохраняем как число для консистентности
           : supply
       )
-      : [{ id: 'default', price: discountedPrice.toString() }];
+      : [{ id: 'default', price: discountedPrice }];
 
     dispatch(addToCart({
       product: {
@@ -103,11 +103,11 @@ const CoffeeBanner = () => {
 
           <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', mb: 2 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 48, color: '#fff' }}>
-              ${((productToShow?.supplies?.[0]?.price || productToShow?.price || 0) * 0.85).toFixed(2)}
+              ${((Number(productToShow?.supplies?.[0]?.price) || Number(productToShow?.price) || 0) * 0.85).toFixed(2)}
             </Typography>
 
             <Typography sx={{ fontWeight: 600, fontSize: 32, color: '#999', ml: 1, textDecoration: 'line-through'}}>
-              ${Number(productToShow?.supplies?.[0]?.price || productToShow?.price || 0).toFixed(2)}
+              ${(Number(productToShow?.supplies?.[0]?.price) || Number(productToShow?.price) || 0).toFixed(2)}
             </Typography>
           </Box>
           <Button

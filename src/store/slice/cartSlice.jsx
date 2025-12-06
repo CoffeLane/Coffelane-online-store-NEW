@@ -64,7 +64,6 @@ const cartSlice = createSlice({
   },
 });
 
-
 export const selectCartItems = createSelector(
   (state) => state.cart.items || {},
   (items) => Object.entries(items)

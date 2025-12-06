@@ -5,13 +5,10 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Функция для запроса с access токеном
-export const apiWithAuth = () => {
-  const access = localStorage.getItem("access");
- 
-console.log("Access token:", access);
+});
+export const apiWithAuth = (tokenFromState = null) => {
+  const tokenFromStorage = localStorage.getItem("access");
+  const access = tokenFromState || tokenFromStorage;
 
   return axios.create({
     baseURL: "https://onlinestore-928b.onrender.com/api",
@@ -21,6 +18,5 @@ console.log("Access token:", access);
     },
   });
 };
-
 
 export default api;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Grid, Card } from "@mui/material";
 import AdminBreadcrumbs from "../AdminBreadcrumbs/AdminBreadcrumbs.jsx";
@@ -8,6 +8,7 @@ import ProductSettings from "../AdminComponents/ProductSettings.jsx";
 import RelatedItems from "../AdminComponents/RelatedItems.jsx";
 import BottomButtons from "../AdminComponents/BottomButtons.jsx";
 import api from "../../store/api/axios.js";
+import { apiWithAuth } from "../../store/api/axios.js";
 
 export default function ProductEdit() {
   const { id } = useParams();
@@ -20,50 +21,212 @@ export default function ProductEdit() {
   const [description, setDescription] = useState("");
   const [visible, setVisible] = useState(false);
 
-  const [images, setImages] = useState([]); // {id, url, file?}
+  const [images, setImages] = useState([]);
   const [cover, setCover] = useState(null);
+  const fetchingRef = useRef(false);
+  const fetchedIdRef = useRef(null);
 
   const isProductReady = productName && category && price && weight;
 
   useEffect(() => {
     const fetchProduct = async () => {
+      if (fetchingRef.current && fetchedIdRef.current === id) {
+        // console.log("⏸️ Already fetching this product, skipping...");
+        return;
+      }
+      
+      if (fetchedIdRef.current === id && !fetchingRef.current) {
+        // console.log("⏸️ Product already loaded, skipping...");
+        return;
+      }
+      
+      fetchingRef.current = true;
+      fetchedIdRef.current = id;
       try {
-        const response = await api.get(`/products/${id}`);
+        const token = localStorage.getItem("access");
+        const refreshToken = localStorage.getItem("refresh");
+        let response;
+        
+        if (token) {
+          try {
+            const apiAuth = apiWithAuth(token);
+            try {
+              response = await apiAuth.get(`/products/product/${id}`);
+              // console.log(`✅ Product loaded via /products/product/${id}`);
+            } catch (e1) {
+              if (e1.response?.status !== 401) {
+                // console.log(`⚠️ Admin endpoint failed (${e1.response?.status}), trying /products/${id}`);
+                response = await apiAuth.get(`/products/${id}`);
+                // console.log(`✅ Product loaded via /products/${id}`);
+              } else {
+                throw e1;
+              }
+            }
+          } catch (authError) {
+            if (authError.response?.status === 401 && refreshToken) {
+              try {
+                // console.log("🔄 Token expired, trying to refresh...");
+                const refreshResponse = await api.post("/auth/refresh", {
+                  refresh: refreshToken
+                });
+                
+                const newToken = refreshResponse.data?.access || refreshResponse.data?.access_token;
+                if (newToken) {
+                  localStorage.setItem("access", newToken);
+                  const apiAuth = apiWithAuth(newToken);
+                  try {
+                    response = await apiAuth.get(`/products/product/${id}`);
+                    // console.log(`✅ Product loaded after token refresh via /products/product/${id}`);
+                  } catch (e1) {
+                    if (e1.response?.status !== 401) {
+                      response = await apiAuth.get(`/products/${id}`);
+                      // console.log(`✅ Product loaded after token refresh via /products/${id}`);
+                    } else {
+                      throw e1;
+                    }
+                  }
+                } else {
+                  throw new Error("No access token in refresh response");
+                }
+              } catch (refreshError) {
+                if (refreshError.response?.status === 401) {
+                  // console.warn("⚠️ Refresh token expired, clearing tokens");
+                  localStorage.removeItem("access");
+                  localStorage.removeItem("refresh");
+                }
+                throw new Error("Authentication required. Please log in again.");
+              }
+            } else {
+              // console.warn("⚠️ Auth failed, trying without auth as fallback");
+              try {
+                response = await api.get(`/products/${id}`);
+                // console.log(`✅ Product loaded without auth via /products/${id}`);
+              } catch (e) {
+                throw new Error("Product not found or requires authentication");
+              }
+            }
+          }
+        } else {
+          // console.log("⚠️ No token, trying without auth");
+          try {
+            response = await api.get(`/products/${id}`);
+            // console.log(`✅ Product loaded without auth via /products/${id}`);
+          } catch (e) {
+            throw new Error("Product not found or requires authentication");
+          }
+        }
+
         const product = response.data;
+        
+        if (!product) {
+          throw new Error("Product data is empty");
+        }
+
+        // console.log("📦 Product data structure:", {
+        //   name: product.name,
+        //   category: product.category,
+        //   price: product.price,
+        //   weight: product.weight,
+        //   supplies: product.supplies,
+        //   brand: product.brand,
+        //   firstSupply: product.supplies?.[0],
+        //   fullProduct: product
+        // });
+
+        let productPrice = "";
+        if (product.supplies && Array.isArray(product.supplies) && product.supplies.length > 0) {
+          const supplyPrice = product.supplies[0].price;
+          if (supplyPrice !== undefined && supplyPrice !== null) {
+            productPrice = supplyPrice.toString();
+          } else if (product.price !== undefined && product.price !== null) {
+            productPrice = product.price.toString();
+          }
+          // console.log("💰 Price from supplies[0]:", supplyPrice, "→ Final price:", productPrice);
+        } else {
+          if (product.price !== undefined && product.price !== null) {
+            productPrice = product.price.toString();
+          }
+        }
+
+        let productCategory = product.category || product.brand || "";
+        // console.log("🏷️ Category/Brand:", productCategory);
+
+        let productWeight = product.weight || product.supplies?.[0]?.weight || "";
+        // console.log("⚖️ Weight:", productWeight, "from:", product.weight ? "product.weight" : product.supplies?.[0]?.weight ? "supplies[0].weight" : "none");
 
         setProductName(product.name || "");
-        setCategory(product.category || "");
-        setStock(product.stock || null);
-        setPrice(product.price || "");
-        setWeight(product.weight || "");
+        setCategory(productCategory);
+        setStock(product.stock !== undefined ? product.stock : null);
+        setPrice(productPrice);
+        setWeight(productWeight);
         setDescription(product.description || "");
         setVisible(product.visible ?? false);
 
-        const imageUrls = product.photos_url?.map(photo => ({
-          id: photo.id,
-          url: photo.url,
-        })) || [];
+        // console.log("✅ Set values:", {
+        //   name: product.name || "",
+        //   category: productCategory,
+        //   price: productPrice,
+        //   weight: productWeight,
+        //   stock: product.stock !== undefined ? product.stock : null
+        // });
+
+        let imageUrls = [];
+        if (product.photos_url && Array.isArray(product.photos_url)) {
+          imageUrls = product.photos_url.map(photo => ({
+            id: photo.id,
+            url: photo.url || photo,
+          }));
+        } else if (product.images && Array.isArray(product.images)) {
+          imageUrls = product.images.map((img, idx) => ({
+            id: img.id || idx,
+            url: img.url || img,
+          }));
+        }
 
         setImages(imageUrls);
         setCover(imageUrls[0] || null);
 
-        console.log("Продукт загружен:", product);
+        // console.log("✅ Product loaded:", { 
+        //   name: product.name, 
+        //   hasImages: imageUrls.length > 0,
+        //   imagesCount: imageUrls.length 
+        // });
       } catch (error) {
-        console.error("Error loading the product:", error.response || error);
+        // console.error("❌ Error loading the product:", error.response?.data || error.message);
+        fetchedIdRef.current = null;
+        const errorMessage = error.response?.data?.detail || 
+                           error.response?.data?.message || 
+                           error.message ||
+                           "Product not found or you don't have permission to view it.";
+        alert(errorMessage);
+      } finally {
+        fetchingRef.current = false;
       }
     };
 
-    fetchProduct();
+    if (id) {
+      fetchProduct();
+    }
+    
+    return () => {
+      fetchingRef.current = false;
+    };
   }, [id]);
 
   const handleDeletePhoto = async (photoId) => {
     try {
-      await api.delete(`/products/photo/${photoId}/deletion`);
+      const token = localStorage.getItem("access");
+      if (!token) {
+        // console.error("No token found");
+        return;
+      }
+      const apiAuth = apiWithAuth(token);
+      await apiAuth.delete(`/products/photo/${photoId}/deletion`);
       setImages(prev => prev.filter(img => img.id !== photoId));
       if (cover?.id === photoId) setCover(images[0] || null);
-      console.log("Фото удалено:", photoId);
+      // console.log("✅ Photo deleted:", photoId);
     } catch (error) {
-      console.error("Error when deleting photo:", error.response || error);
+      // console.error("❌ Error when deleting photo:", error.response?.data || error.message);
     }
   };
 
@@ -84,14 +247,27 @@ export default function ProductEdit() {
     if (!isProductReady) return;
 
     try {
+      const token = localStorage.getItem("access");
+      if (!token) {
+        alert("You must be logged in to update products!");
+        return;
+      }
+
+      const apiAuth = apiWithAuth(token);
       const formData = new FormData();
-      formData.append("name", productName);
+      
+      formData.append("name", productName.trim());
       formData.append("category", category);
-      formData.append("stock", stock);
-      formData.append("price", price);
-      formData.append("weight", weight);
-      formData.append("description", description);
-      formData.append("visible", visible);
+      
+      if (stock !== null && stock !== undefined) {
+        formData.append("stock", stock);
+      }
+      
+      const priceNum = Number(price);
+      formData.append("price", priceNum.toString());
+      formData.append("weight", weight.trim());
+      formData.append("description", description.trim());
+      formData.append("visible", visible ? "true" : "false");
 
       images.forEach(img => {
         if (img.file) formData.append("images", img.file);
@@ -103,15 +279,17 @@ export default function ProductEdit() {
         formData.append("coverId", cover.id);
       }
 
-      const response = await api.put(`/products/product/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await apiAuth.put(`/products/product/${id}`, formData);
 
-      console.log("Продукт обновлен:", response.data);
+      // console.log("✅ Product updated successfully:", response.data);
       alert("The product has been updated successfully!");
     } catch (error) {
-      console.error("Error when updating the product:", error.response || error);
-      alert("Error when updating the product. See the console.");
+      // console.error("❌ Error when updating the product:", error.response?.data || error.message);
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          "Error when updating the product. Please try again.";
+      alert(errorMessage);
     }
   };
 
@@ -152,9 +330,4 @@ export default function ProductEdit() {
   );
 }
 
-
-
-
-
- 
  

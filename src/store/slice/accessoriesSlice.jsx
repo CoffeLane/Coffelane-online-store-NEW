@@ -10,8 +10,7 @@ export const fetchAccessories = createAsyncThunk(
       params.append("size", Number(size));
       if (ordering) params.append("ordering", ordering);
 
-      const response = await api.get(`/accessories?${params.toString()}`);
-      // console.log(`Запрос аксессуаров: /accessories?${params.toString()}`);
+      const response = await api.get(`/accessories?${params.toString()}`);
 
       return {
         data: response.data.data,

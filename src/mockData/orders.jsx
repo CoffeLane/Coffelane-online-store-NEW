@@ -3,7 +3,6 @@ import image2 from '../assets/images/coffe/image_2.png';
 import image3 from '../assets/images/coffe/image_3.png';
 import image4 from '../assets/images/coffe/image_8.png';
 
-
 export const orders = {
   count: 2,
   next: null,

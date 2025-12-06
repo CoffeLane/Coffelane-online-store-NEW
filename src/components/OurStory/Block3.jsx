@@ -1,7 +1,6 @@
 import { Box, Typography, Grid } from "@mui/material";
 import { h3, h6 } from "../../styles/typographyStyles.jsx";
 
-
 function Block3() {
 
     return (

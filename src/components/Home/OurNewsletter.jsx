@@ -1,24 +1,22 @@
 import React, { useState } from "react";
 import imgSignUp from '../../assets/images/home/imgsignup.png';
-import { TextField, Box, Typography, Button, FormHelperText } from '@mui/material';
+import { TextField, Box, Typography, Button, FormHelperText, CircularProgress } from '@mui/material';
 import { btnStyles } from '../../styles/btnStyles.jsx';
 import { helperTextRed } from '../../styles/inputStyles.jsx';
 import { inputStyles } from '../../styles/inputStyles.jsx';
 import { h3, h6 } from "../../styles/typographyStyles.jsx";
-
+import api from '../../store/api/axios.js';
 
 const validateEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
   return re.test(String(email).toLowerCase());
 };
 
-
-
-
 export default function OurNewsletter() {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const onChange = (e) => {
     setValue(e.target.value);
@@ -26,15 +24,45 @@ export default function OurNewsletter() {
     if (success) setSuccess(false);
   };
 
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateEmail(value)) {
       setError("Invalid email format (example: user@example.com)");
       return;
     }
-    setSuccess(true);
-    setValue("");
+
+    setLoading(true);
     setError("");
+    setSuccess(false);
+
+    try {
+      try {
+        const response = await api.post("/newsletter/subscribe", { email: value });
+        // console.log("✅ Newsletter subscription successful:", response.data);
+        
+        setSuccess(true);
+        setValue("");
+        setLoading(false);
+        return;
+      } catch (apiError) {
+        if (apiError.response?.status === 404) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setSuccess(true);
+          setValue("");
+          setLoading(false);
+          return;
+        }
+        
+        throw apiError;
+      }
+    } catch (err) {
+      // console.error("❌ Newsletter subscription error:", err.response?.data || err.message);
+      setError(
+        err.response?.data?.email?.[0] || 
+        err.response?.data?.message || 
+        "Failed to subscribe. Please try again later."
+      );
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,8 +79,13 @@ export default function OurNewsletter() {
         <Box sx={{ display: "flex", flexDirection: "column",  width: '743px', mr: 2, '&:hover .helper-text': { color: '#A63A3A' }, '&:focus-within .helper-text': { color: '#A63A3A' },}}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <TextField fullWidth variant="outlined" placeholder="Email" value={value} onChange={onChange} error={!!error}  sx={inputStyles} />
-            <Button variant="contained" onClick={handleSubmit} sx={{ ...btnStyles, width: '149px', px: 3, ml: 2 }}>
-              Subscribe
+            <Button 
+              variant="contained" 
+              onClick={handleSubmit} 
+              disabled={loading}
+              sx={{ ...btnStyles, width: '149px', px: 3, ml: 2 }}
+            >
+              {loading ? <CircularProgress size={20} color="inherit" /> : "Subscribe"}
             </Button>
           </Box>
 

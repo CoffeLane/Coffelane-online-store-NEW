@@ -2,12 +2,7 @@ import { Box, Typography, IconButton } from "@mui/material";
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 
-
-
-
 export default function CartSummary({ items, handleRemove, handleQuantityChange, icondelete }) {
-
-
 
   return (
     <Box sx={{ flex: 1, backgroundColor: "#fff", p: 3, borderRadius: 2 }}>
