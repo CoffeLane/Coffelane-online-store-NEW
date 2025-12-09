@@ -8,6 +8,7 @@ import authReducer from './slice/authSlice';
 import ordersReducer from './slice/ordersSlice';
 import accessoriesReducer from './slice/accessoriesSlice';
 import favoritesReducer from "./slice/favoritesSlice";
+import searchReducer from './slice/searchSlice';
 
 const authPersistConfig = {
     key: 'auth',
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
     favorites: persistReducer(favoritesPersistConfig, favoritesReducer),
     cart: persistReducer(cartPersistConfig, cartReducer),
     products: persistReducer(productsPersistConfig, productsReducer),
+    search: searchReducer,
 });
 
 export const store = configureStore({

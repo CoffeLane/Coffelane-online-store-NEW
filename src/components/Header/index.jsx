@@ -17,6 +17,10 @@ import SettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 
+import { searchProducts, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
+import SearchDropdown from "../SearchDropdown/index.jsx";
+
+
 function Header() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -32,17 +36,38 @@ function Header() {
     const cartItems = useSelector(selectCartItems);
     const orderCompleted = useSelector((state) => state.cart.orderCompleted);
 
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
+    const { results, loading } = useSelector(state => state.search);
+
     const user = useSelector((state) => state.auth.user);
     // console.log("Header - user:", useSelector((state) => state.auth.user));
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (searchInput.trim()) {
+                // console.log(' Dispatching search for:', searchInput);
+                dispatch(searchProducts(searchInput));
+                setShowSearchDropdown(true);
+            } else {
+                dispatch(clearSearch());
+                setShowSearchDropdown(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchInput, dispatch]);
+
 
     useEffect(() => {
         // console.log("Header updated:", { user });
     }, [user])
 
     const handleAccountClick = () => {
-        if (user) {
+        if (user) {
+
             navigate('/account/personal-info');
-        } else {
+        } else {
+
             setReturnPath(location.pathname);
             setIsLoginModalOpen(true);
         }
@@ -52,8 +77,10 @@ function Header() {
         setIsLoginModalOpen(true);
     }
     const handleCloseLoginModal = () => {
-        setIsLoginModalOpen(false);
-        setModalParams({ initialScreen: null, recoveryToken: null });
+        setIsLoginModalOpen(false);
+
+        setModalParams({ initialScreen: null, recoveryToken: null });
+
         setReturnPath(null);
     };
 
@@ -63,7 +90,8 @@ function Header() {
 
     const handleCloseCartModal = () => {
         setIsCartModalOpen(false);
-    };
+    };
+
     const basketItems = cartItems.map(([key, item]) => {
         const product = item.product;
         const photoUrl = product?.photos_url?.[0]?.url || product?.image || "";
@@ -86,11 +114,13 @@ function Header() {
                 const currentQty = item.quantity;
                 const diff = newQty - currentQty;
                 
-                if (diff < 0) {
+                if (diff < 0) {
+
                     for (let i = 0; i < Math.abs(diff); i++) {
                         dispatch(decrementQuantity(id));
                     }
-                } else if (diff > 0) {
+                } else if (diff > 0) {
+
                     dispatch(addToCart({
                         product: item.product,
                         quantity: diff,
@@ -127,8 +157,10 @@ function Header() {
 
         if (messageParam === 'password-reset-success') {
             setMessageType('success');
-            setShowSuccessMessage(true);
-            setSearchParams({});
+            setShowSuccessMessage(true);
+
+            setSearchParams({});
+
             setTimeout(() => setShowSuccessMessage(false), 5000);
         }
 
@@ -142,12 +174,26 @@ function Header() {
 
     const favoriteItems = useSelector(state => state.favorites.favorites); // массив избранных
     const favoritesCount = favoriteItems ? favoriteItems.length : 0;
-    const hasFavorites = favoritesCount > 0;
+    const hasFavorites = favoritesCount > 0;
+
     // console.log("Header - favoriteItems:", favoriteItems);
     // console.log("Header - favoritesCount:", favoritesCount);
 
     const goToFavorites = () => {
         navigate('/favourite');
+    };
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        if (searchInput.trim()) {
+            navigate(`/coffee?search=${encodeURIComponent(searchInput)}`);
+            setShowSearchDropdown(false);
+            setSearchInput('');
+        }
+    };
+
+    const handleCloseSearch = () => {
+        setShowSearchDropdown(false);
     };
 
     return (
@@ -173,10 +219,61 @@ function Header() {
                     <Navbar />
                 </Grid>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Button disableRipple sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", } }}>
+                <Box sx={{ position: 'relative' }}>
+                        <form onSubmit={handleSearchSubmit}>
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    bgcolor: 'rgba(255,255,255,0.5)',
+                                    borderRadius: '8px',
+                                    px: 2,
+                                    py: 0.5,
+                                }}
+                            >
+                                <input
+                                    type="text"
+                                    placeholder="Search products..."
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    onFocus={() => searchInput.trim() && setShowSearchDropdown(true)}
+                                    onBlur={() => setTimeout(() => setShowSearchDropdown(false), 300)}
+                                    style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        outline: 'none',
+                                        width: '200px',
+                                        fontSize: '14px',
+                                    }}
+                                />
+                                <Button
+                                    type="submit"
+                                    disableRipple
+                                    sx={{
+                                        minWidth: 0,
+                                        padding: 0,
+                                        ml: 1,
+                                    }}
+                                >
+                                    <Box component="img" src={Search} alt="search-icon"
+                                        sx={{ width: '20px', height: '20px' }} />
+                                </Button>
+                            </Box>
+                        </form>
+
+                        {showSearchDropdown && (
+                            <SearchDropdown
+                                results={results}
+                                loading={loading}
+                                query={searchInput}
+                                onClose={handleCloseSearch}
+                            />
+                        )}
+                    </Box>
+                    {/* <Button disableRipple sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", } }}>
                         <Box component="img" src={Search} alt="search-icon"
                             sx={{ width: '24px', height: '24px', cursor: 'pointer', }} />
-                    </Button>
+                    </Button> */}
 
                     <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                         {hasFavorites ? (
