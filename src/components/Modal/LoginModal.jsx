@@ -114,6 +114,10 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             newErrors.repeatPassword = "Passwords do not match";
         }
 
+        if (!agreePrivacy) {
+            newErrors.agreePrivacy = "You must agree to the privacy policy";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -121,30 +125,28 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
     const handleGoogleLogin = async (credentialResponse) => {
         try {
             const token = credentialResponse?.credential;
-            if (!token) {
-                // console.error("No Google credential");
-                return;
-            }
+            if (!token) return;
 
             const decoded = jwtDecode(token);
             const email = decoded?.email;
-
-            if (!email) {
-                // console.error("No email in Google token");
-                return;
-            }
+            if (!email) return;
 
             const result = await dispatch(loginWithGoogle({ email, token }));
 
             if (result.meta.requestStatus === "fulfilled") {
-                // console.log("✔ Google login successful. Closing modal...");
-                if (handleClose) handleClose();
+                const serverToken = result.payload.access;
+                if (serverToken) {
+                    localStorage.setItem("access", serverToken);
+                } else {
+                    console.error("❌ Server did not return access token!");
+                }
 
+                if (handleClose) handleClose();
             } else {
-                // console.log("✖ Google login failed:", result.payload);
+                console.error("Google login failed:", result.payload);
             }
         } catch (e) {
-            // console.error("Google login error", e);
+            console.error("Google login error", e);
         }
     };
 
@@ -271,6 +273,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                                     <FormControlLabel sx={{ ...checkboxStyles }} control={
                                         <Checkbox checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} />
                                     } label="I agree to the privacy policy" />
+                                    {errors.agreePrivacy && <Typography sx={{ color: "#d32f2f", fontSize: "0.75rem", mt: 0.5 }}>{errors.agreePrivacy}</Typography>}
                                     <FormControlLabel sx={{ ...checkboxStyles }} control={
                                         <Checkbox checked={subscribeNewsletter} onChange={(e) => setSubscribeNewsletter(e.target.checked)} />
                                     } label="Subscribe to newsletter" />
@@ -289,11 +292,11 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                         </Box>
 
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
-                            {}
+                            { }
 
                             <GoogleLogin
                                 onSuccess={handleGoogleLogin}
-                                onError={() => {/* console.error("Google login failed") */}}
+                                onError={() => { console.error("Google login failed") }}
                                 useOneTap={false}
                                 locale="en"
                                 text="continue_with"
@@ -310,8 +313,8 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                 setResetOpen={setResetOpen}
                 setToken={setResetToken}
                 backToLogin={() => {
-                    setForgotOpen(false); 
-                    setTab(0);          
+                    setForgotOpen(false);
+                    setTab(0);
                 }}
 
             />

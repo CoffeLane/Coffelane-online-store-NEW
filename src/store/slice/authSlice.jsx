@@ -89,49 +89,66 @@ export const registerAndLoginUser = createAsyncThunk(
   }
 );
 
+// export const loginWithGoogle = createAsyncThunk(
+//   "auth/loginWithGoogle",
+//   async ({ email, token }, { rejectWithValue }) => {
+//     try {
+
+//       const res = await api.post("/auth_google/callback", {
+//         email,
+//         token,
+//       });
+
+//       const { access, refresh } = res.data;
+
+//       if (!access) {
+//         return rejectWithValue("No access token received");
+//       }
+
+//       localStorage.setItem("access", access);
+//       localStorage.setItem("refresh", refresh);
+
+//       const profileRes = await api.get("/users/info", {
+//         headers: { Authorization: `Bearer ${access}` },
+//       });
+
+//       const profileData = profileRes.data; // Структура: { id, email, profile: {...} }
+//       // console.log("▶ loginWithGoogle - profileData:", profileData);
+
+//       const userEmail = profileData.email || email;
+
+//       const profileWithEmail = profileData.profile 
+//         ? { ...profileData.profile, email: userEmail }
+//         : null;
+
+//       return {
+//         user: profileWithEmail,
+//         profile: profileWithEmail,
+//         token: access,
+//         email: userEmail // Сохраняем email отдельно
+//       };
+//     } catch (err) {
+//       return rejectWithValue(err.response?.data || err.message);
+//     }
+//   }
+// );
 export const loginWithGoogle = createAsyncThunk(
   "auth/loginWithGoogle",
   async ({ email, token }, { rejectWithValue }) => {
     try {
-
-      const res = await api.post("/auth_google/callback", {
-        email,
-        token,
-      });
-
-      const { access, refresh } = res.data;
-
-      if (!access) {
-        return rejectWithValue("No access token received");
-      }
-
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
-
-      const profileRes = await api.get("/users/info", {
-        headers: { Authorization: `Bearer ${access}` },
-      });
-
-      const profileData = profileRes.data; // Структура: { id, email, profile: {...} }
-      // console.log("▶ loginWithGoogle - profileData:", profileData);
-
-      const userEmail = profileData.email || email;
-
-      const profileWithEmail = profileData.profile 
-        ? { ...profileData.profile, email: userEmail }
-        : null;
+      const res = await api.post("/auth_google/callback", { email, token });
 
       return {
-        user: profileWithEmail,
-        profile: profileWithEmail,
-        token: access,
-        email: userEmail // Сохраняем email отдельно
+        user: { email: res.data.email || email }, // можно доп. поля профиля, если есть
+        access: res.data.access,    // <-- используем реальный access token
+        refresh: res.data.refresh,  // <-- если нужен refresh
       };
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
+
 
 export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
@@ -193,10 +210,10 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
-
 export const logoutUser = createAsyncThunk(
   "auth/logout",
   async (_, { dispatch, rejectWithValue }) => {
+
     try {
       const access = localStorage.getItem("access");
       if (access) {
@@ -207,7 +224,6 @@ export const logoutUser = createAsyncThunk(
 
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
-
       localStorage.removeItem("persist:auth");
 
       dispatch(clearAuthState());

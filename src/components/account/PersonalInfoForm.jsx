@@ -57,45 +57,51 @@ const handleChange = (field, column = "left") => (e) => {
       setRightErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
+  
+const handleSaveLeft = async () => {
+  const errors = validateProfile({ type: "personal", ...formData });
+  setLeftErrors(errors);
 
-  const handleSaveLeft = async () => {
-    const errors = validateProfile({ type: "personal", ...formData });
-    setLeftErrors(errors);
+  if (Object.keys(errors).length === 0) {
+    setLeftLoading(true);
+    setLeftSuccess("");
 
-    if (Object.keys(errors).length === 0) {
-      setLeftLoading(true);
-      setLeftSuccess("");
-      
-      try {
-        const nameParts = formData.fullName.trim().split(/\s+/);
-        const firstName = nameParts[0] || "";
-        const lastName = nameParts.slice(1).join(" ") || "";
-        const updateData = {
-          profile: {
-            first_name: firstName,
-            last_name: lastName,
-            phone_number: formData.phone.replace(/\s+/g, ""),
-          },
-          email: formData.email, // Email может быть в корне или в profile, зависит от API
-        };
-        
-        // console.log("▶ Saving personal info:", updateData);
-        
-        const apiAuth = apiWithAuth();
-        const response = await apiAuth.patch("/users/update", updateData);
-        
-        // console.log("✅ Personal info saved:", response.data);
-        setLeftSuccess("Personal info saved!");
-        setTimeout(() => setLeftSuccess(""), 3000);
-        dispatch(fetchProfile());
-      } catch (error) {
-        // console.error("❌ Error saving personal info:", error);
-        setLeftErrors({ submit: error.response?.data?.message || "Failed to save personal info" });
-      } finally {
+    try {
+      const token = localStorage.getItem("access");
+      if (!token) {
+        setLeftErrors({ submit: "You are not logged in. Please log in first." });
         setLeftLoading(false);
+        return;
       }
+
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const updateData = {
+        profile: {
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: formData.phone.replace(/\s+/g, ""),
+        },
+        email: formData.email,
+      };
+
+      const apiAuth = apiWithAuth(token);
+      const response = await apiAuth.patch("/users/update", updateData);
+
+      setLeftSuccess("Personal info saved!");
+      setTimeout(() => setLeftSuccess(""), 3000);
+
+      dispatch(fetchProfile());
+    } catch (error) {
+      setLeftErrors({ submit: error.response?.data?.message || "Failed to save personal info" });
+    } finally {
+      setLeftLoading(false);
     }
-  };
+  }
+};
+
 
   const handleSaveRight = async () => {
     const errors = validateProfile({ type: "address", ...formData });
@@ -105,7 +111,8 @@ const handleChange = (field, column = "left") => (e) => {
       setRightLoading(true);
       setRightSuccess("");
       
-      try {
+      try {
+
         const updateData = {
           profile: {
             country: formData.country,
@@ -124,7 +131,8 @@ const handleChange = (field, column = "left") => (e) => {
         
         // console.log("✅ Address saved:", response.data);
         setRightSuccess("Address saved!");
-        setTimeout(() => setRightSuccess(""), 3000);
+        setTimeout(() => setRightSuccess(""), 3000);
+
         dispatch(fetchProfile());
       } catch (error) {
         // console.error("❌ Error saving address:", error);
@@ -139,7 +147,6 @@ const handleChange = (field, column = "left") => (e) => {
     <Box sx={{ px: 2, py: 0 }}>
       <Grid container spacing={4}>
         <Grid size={6}>
-          {}
           <Typography>Full Name</Typography>
           <TextField
             fullWidth
@@ -194,7 +201,6 @@ const handleChange = (field, column = "left") => (e) => {
         </Grid>
 
         <Grid size={6}>
-          {}
           <Typography>Country</Typography>
           <TextField
             fullWidth
