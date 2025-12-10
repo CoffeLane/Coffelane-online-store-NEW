@@ -5,8 +5,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-export const apiWithAuth = (tokenFromState = null) => {
+  withCredentials: false,
+});
+
+
+export const apiWithAuth = (tokenFromState = null) => {
+
   const tokenFromStorage = localStorage.getItem("access");
   const access = tokenFromState || tokenFromStorage;
 
