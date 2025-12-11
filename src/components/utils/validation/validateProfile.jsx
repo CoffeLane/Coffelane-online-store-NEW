@@ -1,5 +1,15 @@
 import { patterns } from "./validatorsPatterns.jsx";
 
+// нормализация: убираем пробелы, скобки, дефисы
+export const normalizePhone = (phone) => phone.replace(/[()\s-]/g, "");
+
+// проверка strict E.164
+const e164Regex = /^\+[1-9]\d{7,14}$/;
+
+const isValidPhone = (phone) => e164Regex.test(normalizePhone(phone));
+
+
+
 export const validateProfile = ({ type = "all", ...formData }) => {
     const errors = {};
 
@@ -18,19 +28,25 @@ export const validateProfile = ({ type = "all", ...formData }) => {
         }
 
         // email validation
-        if (!email?.trim()) {
+         const forbiddenDomains = ["test.test", "example.com"]; // список запрещённых доменов
+        const domain = email.split("@")[1]?.toLowerCase();
+
+        if (!email) {
             errors.email = "Email is required";
         } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
             errors.email = "Invalid email format (example: user@example.com).";
+        } else if (forbiddenDomains.includes(domain)) {
+            errors.email = "This email domain is not allowed.";
+        }
+        
+        // phone validation
+        if (!phone.trim()) {
+            errors.phone = "Phone number is required";
+        } else if (!isValidPhone(phone)) {
+            errors.phone =
+                "Please enter a valid phone number in international format, for example +380931234567";
         }
 
-        // phone validation
-        if (!phone) {
-            errors.phone = "Phone number is required";
-        } else if (!patterns.phone.test(phone)) {
-            errors.phone =
-                "Invalid phone format. Example: +380 50 123 4567 (must include country code)";
-        }
     }
 
     // === Address info ===

@@ -54,19 +54,21 @@ export default function CheckoutPage() {
     const [discountLoading, setDiscountLoading] = useState(false);
     const [discountError, setDiscountError] = useState("");
     const [errors, setErrors] = useState({});
-    const pendingOrderDataRef = useRef(null); // Сохраняем данные заказа для повторной попытки после логина
+    const pendingOrderDataRef = useRef(null); // Сохраняем данные заказа для повторной попытки после логина
+
     useEffect(() => {
         if (user && token && pendingOrderDataRef.current && openLogin) {
-            // console.log("✅ User logged in, retrying order creation...");
+            console.log("✅ User logged in, retrying order creation...");
             const orderData = pendingOrderDataRef.current;
             pendingOrderDataRef.current = null;
-            setOpenLogin(false);
+            setOpenLogin(false);
+
             setTimeout(async () => {
                 try {
                     const result = await dispatch(createOrder(orderData));
                     if (result.meta.requestStatus === "fulfilled") {
                         const order = result.payload;
-                        // console.log("✅ Order created successfully after login:", order);
+                        console.log("✅ Order created successfully after login:", order);
                         dispatch(clearCart());
                         navigate("/order_successful", {
                             state: {
@@ -80,7 +82,7 @@ export default function CheckoutPage() {
                         });
                     }
                 } catch (error) {
-                    // console.error("❌ Error retrying order after login:", error);
+                    console.error("❌ Error retrying order after login:", error);
                 }
             }, 500);
         }
@@ -92,10 +94,11 @@ export default function CheckoutPage() {
         if (Object.keys(contactErrors).length === 0) setStep(2);
     };
 
-    const handleCompletePayment = async () => {
+    const handleCompletePayment = async () => {
+
         const accessToken = token || localStorage.getItem("access");
         if (!accessToken || !user) {
-            // console.warn("⚠️ User not authenticated, opening login modal");
+            console.warn("⚠️ User not authenticated, opening login modal");
             setOpenLogin(true);
             setErrors({ submit: "Please log in to complete your order." });
             return;
@@ -119,26 +122,26 @@ export default function CheckoutPage() {
         if (!agreed) newErrors.agreed = "You must agree to the Privacy Policy and Terms of Use.";
 
         setErrors(newErrors);
-        if (Object.keys(newErrors).length > 0) return;
+        if (Object.keys(newErrors).length > 0) return;
+
         const orderItems = items.map(([key, item]) => {
-            const product = item.product;
-            const isProduct = product.sku || product.supplies?.length > 0;
-            
-            const itemData = {
-                quantity: item.quantity,
-                price: Number(product.price) || 0,
-            };
-            
-            if (isProduct) {
-                itemData.product_id = product.id;
+            const product = item.product;
+
+            const position = { quantity: item.quantity };
+
+            if (product.id) {
+                // Если это продукт
+                position.product_id = Number(product.id);
+
                 if (product.selectedSupplyId) {
-                    itemData.supply_id = product.selectedSupplyId;
+                    position.supply_id = Number(product.selectedSupplyId);
                 }
-            } else {
-                itemData.accessory_id = product.id;
+            } else if (product.isAccessory) {
+                // Если это аксессуар
+                position.accessory_id = Number(product.id);
             }
-            
-            return itemData;
+
+            return position;
         });
 
         const orderData = {
@@ -156,30 +159,33 @@ export default function CheckoutPage() {
             discount: discountAmount > 0 ? discountAmount.toFixed(2) : "0.00",
         };
 
-        // console.log("🛒 Starting order creation process...");
-        // console.log("📦 Order data:", JSON.stringify(orderData, null, 2));
-        // console.log("🛍️ Cart items count:", items.length);
-        // console.log("💰 Total amount:", total);
-        // console.log("🎫 Discount amount:", discountAmount);
+        console.log("🛒 Starting order creation process...");
+        console.log("📦 Order data:", JSON.stringify(orderData, null, 2));
+        console.log("🛍️ Cart items count:", items.length);
+        console.log("💰 Total amount:", total);
+        console.log("🎫 Discount amount:", discountAmount);
 
-        try {
+        try {
+
             pendingOrderDataRef.current = orderData;
             const result = await dispatch(createOrder(orderData));
-            
+
             if (result.meta.requestStatus === "fulfilled") {
                 const order = result.payload;
-                // console.log("✅ Order successfully created!");
-                // console.log("📋 Order ID:", order.id);
-                // console.log("📋 Order number:", order.order_number || order.id || order.number);
-                // console.log("📋 Order status:", order.status);
-                // console.log("📋 Full order response:", JSON.stringify(order, null, 2));
+                console.log("✅ Order successfully created!");
+                console.log("📋 Order ID:", order.id);
+                console.log("📋 Order number:", order.order_number || order.id || order.number);
+                console.log("📋 Order status:", order.status);
+                console.log("📋 Full order response:", JSON.stringify(order, null, 2));
+
                 dispatch(clearCart());
-                // console.log("🛒 Cart cleared after successful order");
+                console.log("🛒 Cart cleared after successful order");
+
                 pendingOrderDataRef.current = null;
-                
+
                 const orderNumber = order.id || order.order_number || order.number || order.order_id;
-                // console.log("📝 Navigating to order success page with order number:", orderNumber);
-                
+                console.log("📝 Navigating to order success page with order number:", orderNumber);
+
                 navigate("/order_successful", {
                     state: {
                         orderNumber: orderNumber,
@@ -191,20 +197,22 @@ export default function CheckoutPage() {
                     },
                 });
             } else {
-                // console.error("❌ Order creation failed!");
-                // console.error("❌ Error details:", result.payload);
-                // console.error("❌ Error message:", result.payload?.detail || result.payload?.message || "Unknown error");
+                console.error("❌ Order creation failed!");
+                console.error("❌ Error details:", result.payload);
+                console.error("❌ Error message:", result.payload?.detail || result.payload?.message || "Unknown error");
+
                 if (result.payload?.requiresLogin) {
                     setOpenLogin(true);
                     setErrors({ submit: "Your session has expired. Please log in and try again." });
-                } else {
+                } else {
+
                     const errorMsg = result.payload?.error || result.payload?.detail || result.payload?.message || "Failed to create order. Please try again.";
-                    // console.error("❌ Order creation error details:", result.payload);
+                    console.error("❌ Order creation error details:", result.payload);
                     setErrors({ submit: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg) });
                 }
             }
         } catch (error) {
-            // console.error("❌ Unexpected error creating order:", error);
+            console.error("❌ Unexpected error creating order:", error);
             setErrors({ submit: "An unexpected error occurred. Please try again." });
         }
     };
@@ -232,13 +240,16 @@ export default function CheckoutPage() {
         try {
             const response = await api.get(`/discount-codes/${discount.trim()}/`);
             const discountData = response.data;
-            
-            // console.log("✅ Discount code fetched:", discountData);
+
+            console.log("✅ Discount code fetched:", discountData);
+
             let calculatedDiscount = 0;
-            
-            if (discountData.discount_percent) {
+
+            if (discountData.discount_percent) {
+
                 calculatedDiscount = total * (discountData.discount_percent / 100);
-            } else if (discountData.discount_amount) {
+            } else if (discountData.discount_amount) {
+
                 calculatedDiscount = Math.min(discountData.discount_amount, total);
             }
 
@@ -246,10 +257,10 @@ export default function CheckoutPage() {
             setDiscountCode(discountData);
             setDiscountError("");
         } catch (err) {
-            // console.error("❌ Discount code error:", err.response?.data || err.message);
-            const errorMsg = err.response?.data?.detail || 
-                           err.response?.data?.message || 
-                           "Invalid or expired discount code";
+            console.error("❌ Discount code error:", err.response?.data || err.message);
+            const errorMsg = err.response?.data?.detail ||
+                err.response?.data?.message ||
+                "Invalid or expired discount code";
             setDiscountError(errorMsg);
             setDiscountAmount(0);
             setDiscountCode(null);
@@ -303,11 +314,11 @@ export default function CheckoutPage() {
                     <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
 
                     <Box sx={{ flex: 1, backgroundColor: "#fff", p: 3, borderRadius: 2 }}>
-                       <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                             <TextField 
-                                fullWidth 
-                                placeholder="Discount code" 
-                                value={discount} 
+                        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                            <TextField
+                                fullWidth
+                                placeholder="Discount code"
+                                value={discount}
                                 onChange={(e) => {
                                     setDiscount(e.target.value);
                                     setDiscountError("");
@@ -315,8 +326,8 @@ export default function CheckoutPage() {
                                 error={!!discountError}
                                 sx={{ ...inputStyles }}
                             />
-                            <Button 
-                                onClick={handleApplyDiscount} 
+                            <Button
+                                onClick={handleApplyDiscount}
                                 disabled={discountLoading}
                                 sx={{ ...btnStyles, textTransform: "none", width: 127, height: 52, }}
                             >
@@ -339,11 +350,11 @@ export default function CheckoutPage() {
 
                         <Divider sx={{ my: 3, borderColor: "#3E3027" }} />
                         <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label="I agree to the Privacy Policy and Terms of Use." sx={{ ...h6, ...checkboxStyles }} />
-                             {errors.agreed && (<Typography sx={{ ...helperTextRed, mt: 0.5 }}>{errors.agreed}</Typography>)}
-                             {errors.submit && (<Typography sx={{ ...helperTextRed, mt: 0.5 }}>{errors.submit}</Typography>)}
-                        <Button 
-                            fullWidth 
-                            sx={{ ...btnCart, mt: 3 }} 
+                        {errors.agreed && (<Typography sx={{ ...helperTextRed, mt: 0.5 }}>{errors.agreed}</Typography>)}
+                        {errors.submit && (<Typography sx={{ ...helperTextRed, mt: 0.5 }}>{errors.submit}</Typography>)}
+                        <Button
+                            fullWidth
+                            sx={{ ...btnCart, mt: 3 }}
                             onClick={handleCompletePayment}
                             disabled={isCreatingOrder || items.length === 0}
                         >
@@ -359,12 +370,13 @@ export default function CheckoutPage() {
                     </Box>
                 </Box>
             </Box>
-            
-            {}
-            <LoginModal 
-                open={openLogin} 
+
+            { }
+            <LoginModal
+                open={openLogin}
                 handleClose={() => {
-                    setOpenLogin(false);
+                    setOpenLogin(false);
+
                     if (errors.submit && errors.submit.includes("session has expired")) {
                         setErrors({ ...errors, submit: undefined });
                     }

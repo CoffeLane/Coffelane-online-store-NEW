@@ -7,6 +7,7 @@ import { formatPhone } from "../../components/utils/formatters.jsx";
 import { validateProfile } from "../../components/utils/validation/validateProfile.jsx";
 import { apiWithAuth } from "../../store/api/axios.js";
 import { fetchProfile } from "../../store/slice/authSlice.jsx";
+import { normalizePhone } from "../../components/utils/validation/validateProfile.jsx";
 
 export default function PersonalInfoForm({ user }) {
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ export default function PersonalInfoForm({ user }) {
   const [leftLoading, setLeftLoading] = useState(false);
   const [rightLoading, setRightLoading] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     if (user) {
       setFormData({
         fullName: `${user.first_name || ""} ${user.last_name || ""}`,
@@ -45,7 +46,7 @@ useEffect(() => {
     }
   }, [user]);
 
-const handleChange = (field, column = "left") => (e) => {
+  const handleChange = (field, column = "left") => (e) => {
     let value = e.target.value;
     if (field === "phone") value = formatPhone(value);
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -57,51 +58,65 @@ const handleChange = (field, column = "left") => (e) => {
       setRightErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
-  
-const handleSaveLeft = async () => {
-  const errors = validateProfile({ type: "personal", ...formData });
-  setLeftErrors(errors);
 
-  if (Object.keys(errors).length === 0) {
-    setLeftLoading(true);
-    setLeftSuccess("");
+  const handleSaveLeft = async () => {
+    const errors = validateProfile({ type: "personal", ...formData });
+    setLeftErrors(errors);
 
-    try {
-      const token = localStorage.getItem("access");
-      if (!token) {
-        setLeftErrors({ submit: "You are not logged in. Please log in first." });
+    if (Object.keys(errors).length === 0) {
+      setLeftLoading(true);
+      setLeftSuccess("");
+
+      try {
+        const token = localStorage.getItem("access");
+        if (!token) {
+          setLeftErrors({ submit: "You are not logged in. Please log in first." });
+          setLeftLoading(false);
+          return;
+        }
+
+        const nameParts = formData.fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        const updateData = {
+          profile: {
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: normalizePhone(formData.phone), // убирает пробелы, скобки, дефисы
+          },
+          email: formData.email,
+        };
+
+        const apiAuth = apiWithAuth(token);
+        const response = await apiAuth.patch("/users/update", updateData);
+
+        setLeftSuccess("Personal info saved!");
+        setTimeout(() => setLeftSuccess(""), 3000);
+
+        dispatch(fetchProfile());
+      } catch (error) {
+        const data = error.response?.data;
+
+        if (data?.profile?.phone_number) {
+          // если массив
+          const msg = Array.isArray(data.profile.phone_number)
+            ? data.profile.phone_number.join(" ")
+            : data.profile.phone_number;
+
+          setLeftErrors(prev => ({ ...prev, phone: msg }));
+        } else if (data?.email) {
+          const msg = Array.isArray(data.email) ? data.email.join(" ") : data.email;
+          setLeftErrors(prev => ({ ...prev, email: msg }));
+        } else {
+          setLeftErrors(prev => ({ ...prev, submit: data?.message || "Failed to save personal info" }));
+        }
+
+      } finally {
         setLeftLoading(false);
-        return;
       }
-
-      const nameParts = formData.fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
-      const updateData = {
-        profile: {
-          first_name: firstName,
-          last_name: lastName,
-          phone_number: formData.phone.replace(/\s+/g, ""),
-        },
-        email: formData.email,
-      };
-
-      const apiAuth = apiWithAuth(token);
-      const response = await apiAuth.patch("/users/update", updateData);
-
-      setLeftSuccess("Personal info saved!");
-      setTimeout(() => setLeftSuccess(""), 3000);
-
-      dispatch(fetchProfile());
-    } catch (error) {
-      setLeftErrors({ submit: error.response?.data?.message || "Failed to save personal info" });
-    } finally {
-      setLeftLoading(false);
     }
-  }
-};
-
+  };
 
   const handleSaveRight = async () => {
     const errors = validateProfile({ type: "address", ...formData });
@@ -110,7 +125,7 @@ const handleSaveLeft = async () => {
     if (Object.keys(errors).length === 0) {
       setRightLoading(true);
       setRightSuccess("");
-      
+
       try {
 
         const updateData = {
@@ -123,12 +138,12 @@ const handleSaveLeft = async () => {
             apartment_number: formData.aptNumber,
           },
         };
-        
+
         // console.log("▶ Saving address:", updateData);
-        
+
         const apiAuth = apiWithAuth();
         const response = await apiAuth.patch("/users/update", updateData);
-        
+
         // console.log("✅ Address saved:", response.data);
         setRightSuccess("Address saved!");
         setTimeout(() => setRightSuccess(""), 3000);
@@ -177,19 +192,15 @@ const handleSaveLeft = async () => {
             placeholder="Phone number"
             value={formData.phone}
             onChange={handleChange("phone", "left")}
-            onKeyDown={(e) => {
-              if (!/[0-9]/.test(e.key) && e.key !== "Backspace" && e.key !== "Delete") e.preventDefault();
-            }}
             error={!!leftErrors.phone}
             helperText={leftErrors.phone}
             sx={{ ...inputStyles, mt: 1 }}
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
-
-          <Button 
-            fullWidth 
-            variant="contained" 
-            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+          <Button
+            fullWidth
+            variant="contained"
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }}
             onClick={handleSaveLeft}
             disabled={leftLoading}
           >
@@ -273,10 +284,10 @@ const handleSaveLeft = async () => {
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
 
-          <Button 
-            fullWidth 
-            variant="contained" 
-            sx={{ ...btnStyles, textTransform: "none", mt: 3 }} 
+          <Button
+            fullWidth
+            variant="contained"
+            sx={{ ...btnStyles, textTransform: "none", mt: 3 }}
             onClick={handleSaveRight}
             disabled={rightLoading}
           >

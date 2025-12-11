@@ -1,5 +1,14 @@
 import { patterns } from "./validatorsPatterns.jsx";
 
+// нормализация: убираем пробелы, скобки, дефисы
+const normalizePhone = (phone) => phone.replace(/[()\s-]/g, "");
+
+// проверка strict E.164
+const e164Regex = /^\+[1-9]\d{7,14}$/;
+
+const isValidPhone = (phone) => e164Regex.test(normalizePhone(phone));
+
+
 export const validateContact = ({ firstName, lastName, email, phone, street, region, state, zip, country }) => {
   const errors = {};
 
@@ -23,9 +32,11 @@ export const validateContact = ({ firstName, lastName, email, phone, street, reg
 
   if (!phone.trim()) {
     errors.phone = "Phone number is required";
-  } else if (!patterns.phone.test(phone)) {
-    errors.phone = "Invalid phone number format.";
+  } else if (!isValidPhone(phone)) {
+    errors.phone =
+      "Please enter a valid phone number in international format, for example +380931234567";
   }
+
 
   if (!street.trim()) {
     errors.street = "Street address is required";

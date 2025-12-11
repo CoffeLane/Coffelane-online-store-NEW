@@ -2,11 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Grid, TextField, Button, Typography, Box, Alert, IconButton, InputAdornment, CircularProgress } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { inputStyles, helperTextRed } from "../../styles/inputStyles.jsx"; 
+import { inputStyles, helperTextRed } from "../../styles/inputStyles.jsx";
 import { btnStyles } from "../../styles/btnStyles.jsx";
 import { changePassword, clearChangePasswordSuccess, fetchProfile } from "../../store/slice/authSlice.jsx";
 import { validatePasswords } from "../../components/utils/validation/validatePasswords.jsx";
-import { patterns } from "../../components/utils/validation/validatorsPatterns.jsx";
 import { apiWithAuth } from "../../store/api/axios.js";
 
 export default function AccountSettingsForm() {
@@ -51,11 +50,15 @@ export default function AccountSettingsForm() {
   const validateLeft = () => {
     const newErrors = {};
     const email = formData.email?.trim() || "";
+    const forbiddenDomains = ["test.test", "example.com"];
+    const domain = email.split("@")[1]?.toLowerCase(); 
 
     if (!email) {
       newErrors.email = "Email is required";
-    } else if (!patterns.email.test(email)) {
+    } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
       newErrors.email = "Invalid email format (example: user@example.com).";
+    } else if (forbiddenDomains.includes(domain)) {
+      newErrors.email = "This email domain is not allowed.";
     }
 
     setErrors(newErrors);

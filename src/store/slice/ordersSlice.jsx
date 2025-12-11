@@ -3,37 +3,33 @@ import { apiWithAuth } from "../api/axios";
 import api from "../api/axios";
 import { clearAuthState } from "./authSlice";
 
-import { orders as mockOrdersData } from "../../mockData/orders.jsx";
+// import { orders as mockOrdersData } from "../../mockData/orders.jsx";
 
 export const fetchOrders = createAsyncThunk(
   "orders/fetchOrders",
   async ({ page = 1, size = 10 }, { rejectWithValue, getState, dispatch }) => {
     try {
-
       const state = getState();
       const token = state.auth?.token || localStorage.getItem("access");
       
       if (!token) {
         return rejectWithValue("Unauthorized");
       }
-      
       const apiAuth = apiWithAuth(token);
       
       try {
-
         const response = await apiAuth.get("/orders/list", {
           params: { page, size },
         });
-        
-        // console.log("✅ Orders fetched successfully from API:", response.data);
-        // console.log("▶ API Response structure:", {
-        //   hasResults: !!response.data?.results,
-        //   resultsLength: response.data?.results?.length,
-        //   totalItems: response.data?.total_items,
-        //   currentPage: response.data?.current_page,
-        //   fullDataKeys: Object.keys(response.data || {}),
-        //   fullData: response.data
-        // });
+        console.log("✅ Orders fetched successfully from API:", response.data);
+        console.log("▶ API Response structure:", {
+          hasResults: !!response.data?.results,
+          resultsLength: response.data?.results?.length,
+          totalItems: response.data?.total_items,
+          currentPage: response.data?.current_page,
+          fullDataKeys: Object.keys(response.data || {}),
+          fullData: response.data
+        });
 
         let ordersList = [];
         let count = 0;
@@ -58,19 +54,19 @@ export const fetchOrders = createAsyncThunk(
             if (Array.isArray(response.data[field])) {
               ordersList = response.data[field];
               count = response.data.total_items || ordersList.length;
-              // console.log(`▶ Found orders in field: ${field}`);
+              console.log(`▶ Found orders in field: ${field}`);
               break;
             }
           }
 
           if (response.data?.total_items === 0 && ordersList.length === 0) {
-            // console.log("▶ No orders found (total_items = 0), returning empty array");
+            console.log("▶ No orders found (total_items = 0), returning empty array");
             return { results: [], count: 0, page, size };
           }
         }
 
         if (ordersList.length > 0) {
-          // console.log(`✅ Found ${ordersList.length} orders in API response`);
+          console.log(`✅ Found ${ordersList.length} orders in API response`);
           return { 
             results: ordersList, 
             count: count,
@@ -83,14 +79,14 @@ export const fetchOrders = createAsyncThunk(
         }
 
         if (response.data?.total_items === 0 || response.data?.total_items === undefined) {
-          // console.log("▶ No orders in API response (total_items = 0), using mock data for development");
+          console.log("▶ No orders in API response (total_items = 0), using mock data for development");
           await new Promise(resolve => setTimeout(resolve, 500));
           return { ...mockOrdersData, page, size };
         }
 
         if (response.data?.total_items > 0 && ordersList.length === 0) {
-          // console.warn("⚠️ API says there are orders (total_items > 0) but couldn't find them in response");
-          // console.warn("⚠️ Full response structure:", JSON.stringify(response.data, null, 2));
+          console.warn("⚠️ API says there are orders (total_items > 0) but couldn't find them in response");
+          console.warn("⚠️ Full response structure:", JSON.stringify(response.data, null, 2));
 
           return { results: [], count: response.data.total_items, page, size };
         }
@@ -101,20 +97,20 @@ export const fetchOrders = createAsyncThunk(
       } catch (apiError) {
 
         // console.warn("⚠️ API unavailable, using mock data:", apiError.response?.status || apiError.message);
-        // console.log("▶ API Error details:", apiError.response?.data || apiError.message);
+        console.log("▶ API Error details:", apiError.response?.data || apiError.message);
 
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // console.log("✅ Orders fetched successfully (mock):", mockOrdersData);
-        // console.log("▶ Mock data structure:", {
-        //   hasResults: !!mockOrdersData?.results,
-        //   resultsLength: mockOrdersData?.results?.length,
-        //   count: mockOrdersData?.count
-        // });
+        console.log("✅ Orders fetched successfully (mock):", mockOrdersData);
+        console.log("▶ Mock data structure:", {
+          hasResults: !!mockOrdersData?.results,
+          resultsLength: mockOrdersData?.results?.length,
+          count: mockOrdersData?.count
+        });
         return { ...mockOrdersData, page, size };
       }
     } catch (err) {
-      // console.error("❌ Error fetching orders:", err.response?.data || err.message);
+      console.error("❌ Error fetching orders:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -128,15 +124,15 @@ export const createOrder = createAsyncThunk(
       let token = state.auth?.token || localStorage.getItem("access");
       let apiAuth = apiWithAuth(token);
       
-      // console.log("📦 Creating order with data:", orderData);
-      // console.log("🔑 Using token:", token ? "Token present" : "No token");
+      console.log("📦 Creating order with data:", orderData);
+      console.log("🔑 Using token:", token ? "Token present" : "No token");
 
 
       let basketId = orderData.basket_id;
       
       if (!basketId && orderData.items && orderData.items.length > 0) {
         try {
-          // console.log("🛒 Getting active basket...");
+          console.log("🛒 Getting active basket...");
 
           let basketResponse;
           try {
@@ -144,7 +140,7 @@ export const createOrder = createAsyncThunk(
           } catch (basketError) {
 
             if (basketError.response?.status === 401) {
-              // console.warn("⚠️ Token expired when getting basket, attempting to refresh...");
+              console.warn("⚠️ Token expired when getting basket, attempting to refresh...");
               const refreshToken = localStorage.getItem("refresh");
               
               if (refreshToken) {
@@ -155,7 +151,7 @@ export const createOrder = createAsyncThunk(
                   
                   const newAccessToken = refreshResponse.data?.access;
                   if (newAccessToken) {
-                    // console.log("✅ Token refreshed successfully");
+                    console.log("✅ Token refreshed successfully");
                     localStorage.setItem("access", newAccessToken);
                     token = newAccessToken;
                     apiAuth = apiWithAuth(newAccessToken);
@@ -165,7 +161,7 @@ export const createOrder = createAsyncThunk(
                     throw new Error("No access token in refresh response");
                   }
                 } catch (refreshError) {
-                  // console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
+                  console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
                   localStorage.removeItem("access");
                   localStorage.removeItem("refresh");
                   dispatch(clearAuthState());
@@ -192,9 +188,9 @@ export const createOrder = createAsyncThunk(
           
           if (basketResponse?.data?.id) {
             basketId = basketResponse.data.id;
-            // console.log(`✅ Found active basket ID: ${basketId}`);
+            console.log(`✅ Found active basket ID: ${basketId}`);
 
-            // console.log("🛒 Adding items to basket...");
+            console.log("🛒 Adding items to basket...");
             for (const item of orderData.items) {
               try {
                 const basketItem = {
@@ -209,11 +205,11 @@ export const createOrder = createAsyncThunk(
                 if (!basketItem.supply_id) delete basketItem.supply_id;
                 
                 await apiAuth.post("/basket/add/", basketItem);
-                // console.log(`✅ Added item to basket:`, basketItem);
+                console.log(`✅ Added item to basket:`, basketItem);
               } catch (addError) {
 
                 if (addError.response?.status === 401) {
-                  // console.warn("⚠️ Token expired when adding item, attempting to refresh...");
+                  console.warn("⚠️ Token expired when adding item, attempting to refresh...");
                   const refreshToken = localStorage.getItem("refresh");
                   
                   if (refreshToken) {
@@ -229,20 +225,20 @@ export const createOrder = createAsyncThunk(
                         apiAuth = apiWithAuth(newAccessToken);
 
                         await apiAuth.post("/basket/add/", basketItem);
-                        // console.log(`✅ Added item to basket after token refresh:`, basketItem);
+                        console.log(`✅ Added item to basket after token refresh:`, basketItem);
                       }
                     } catch (refreshError) {
-                      // console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
+                      console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
                     }
                   }
                 } else {
-                  // console.warn("⚠️ Could not add item to basket:", addError.response?.data || addError.message);
+                  console.warn("⚠️ Could not add item to basket:", addError.response?.data || addError.message);
                 }
               }
             }
           } else {
 
-            // console.log("⚠️ No active basket found. Trying to add items directly...");
+            console.log("⚠️ No active basket found. Trying to add items directly...");
 
             const firstItem = orderData.items[0];
             const basketItem = {
@@ -258,12 +254,12 @@ export const createOrder = createAsyncThunk(
             
             try {
               const addResponse = await apiAuth.post("/basket/add/", basketItem);
-              // console.log("✅ Item added to basket:", addResponse.data);
+              console.log("✅ Item added to basket:", addResponse.data);
 
               const basketResponse2 = await apiAuth.get("/basket").catch(() => null);
               if (basketResponse2?.data?.id) {
                 basketId = basketResponse2.data.id;
-                // console.log(`✅ Basket created with ID: ${basketId}`);
+                console.log(`✅ Basket created with ID: ${basketId}`);
 
                 for (let i = 1; i < orderData.items.length; i++) {
                   const item = orderData.items[i];
@@ -284,7 +280,7 @@ export const createOrder = createAsyncThunk(
             } catch (e) {
 
               if (e.response?.status === 401) {
-                // console.error("❌ Authentication failed when adding item to basket");
+                console.error("❌ Authentication failed when adding item to basket");
                 localStorage.removeItem("access");
                 localStorage.removeItem("refresh");
                 dispatch(clearAuthState());
@@ -294,11 +290,11 @@ export const createOrder = createAsyncThunk(
                   requiresLogin: true,
                 });
               }
-              // console.error("❌ Error adding item to basket:", e.response?.data || e.message);
+              console.error("❌ Error adding item to basket:", e.response?.data || e.message);
             }
           }
         } catch (e) {
-          // console.error("❌ Error working with basket:", e.response?.data || e.message);
+          console.error("❌ Error working with basket:", e.response?.data || e.message);
 
           if (e.response?.status === 401) {
             localStorage.removeItem("access");
@@ -314,7 +310,7 @@ export const createOrder = createAsyncThunk(
       }
       
       if (!basketId) {
-        // console.error("❌ Could not get or create basket. Order creation will fail.");
+        console.error("❌ Could not get or create basket. Order creation will fail.");
         return rejectWithValue({
           error: "Could not get or create basket. Please try again.",
           message: "Basket is required to create order, but could not be obtained.",
@@ -367,7 +363,8 @@ export const createOrder = createAsyncThunk(
       };
 
       orderPayload.basket_id = basketId;
-      // console.log("✅ Adding basket_id to order:", basketId);
+      console.log("✅ Adding basket_id to order:", basketId);
+console.log("🛒 Order positions:", orderPayload.positions);
 
       if (orderData.email) {
         orderPayload.customer_data = {
@@ -378,20 +375,20 @@ export const createOrder = createAsyncThunk(
         orderPayload.order_notes = orderData.order_notes;
       }
       
-      // console.log("📤 Sending order payload:", JSON.stringify(orderPayload, null, 2));
-      // console.log("🛒 Positions count:", orderPayload.positions.length);
-      // console.log("📋 Billing details:", JSON.stringify(orderPayload.billing_details, null, 2));
-      // console.log("📋 Basket ID:", orderPayload.basket_id || "NOT SET");
+      console.log("📤 Sending order payload:", JSON.stringify(orderPayload, null, 2));
+      console.log("🛒 Positions count:", orderPayload.positions.length);
+      console.log("📋 Billing details:", JSON.stringify(orderPayload.billing_details, null, 2));
+      console.log("📋 Basket ID:", orderPayload.basket_id || "NOT SET");
       
       const response = await apiAuth.post("/orders/create", orderPayload);
-      // console.log("✅ Order created successfully:", response.data);
-      // console.log("📋 Order ID:", response.data.id);
-      // console.log("📋 Order details:", JSON.stringify(response.data, null, 2));
+      console.log("✅ Order created successfully:", response.data);
+      console.log("📋 Order ID:", response.data.id);
+      console.log("📋 Order details:", JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (err) {
 
       if (err.response?.status === 401) {
-        // console.warn("⚠️ Token expired, attempting to refresh...");
+        console.warn("⚠️ Token expired, attempting to refresh...");
         const refreshToken = localStorage.getItem("refresh");
         
         if (refreshToken) {
@@ -399,47 +396,47 @@ export const createOrder = createAsyncThunk(
 
             let refreshResponse;
             try {
-              // console.log("🔄 Trying /auth/token/refresh endpoint...");
+              console.log("🔄 Trying /auth/token/refresh endpoint...");
               refreshResponse = await api.post("/auth/token/refresh", {
                 refresh: refreshToken,
               });
             } catch (e1) {
               try {
-                // console.log("🔄 Trying /auth/refresh endpoint...");
+                console.log("🔄 Trying /auth/refresh endpoint...");
                 refreshResponse = await api.post("/auth/refresh", {
                   refresh: refreshToken,
                 });
               } catch (e2) {
-                // console.error("❌ Both refresh endpoints failed");
+                console.error("❌ Both refresh endpoints failed");
                 throw e2;
               }
             }
             
             const newAccessToken = refreshResponse.data?.access || refreshResponse.data?.access_token;
             if (newAccessToken) {
-              // console.log("✅ Token refreshed successfully");
+              console.log("✅ Token refreshed successfully");
               localStorage.setItem("access", newAccessToken);
 
 
               const apiAuth = apiWithAuth(newAccessToken);
               const retryResponse = await apiAuth.post("/orders/create", orderData);
-              // console.log("✅ Order created successfully after token refresh:", retryResponse.data);
-              // console.log("📋 Order ID:", retryResponse.data.id);
-              // console.log("📋 Order details:", JSON.stringify(retryResponse.data, null, 2));
+              console.log("✅ Order created successfully after token refresh:", retryResponse.data);
+              console.log("📋 Order ID:", retryResponse.data.id);
+              console.log("📋 Order details:", JSON.stringify(retryResponse.data, null, 2));
               return retryResponse.data;
             } else {
-              // console.error("❌ No access token in refresh response:", refreshResponse.data);
+              console.error("❌ No access token in refresh response:", refreshResponse.data);
             }
           } catch (refreshError) {
-            // console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
-            // console.error("❌ Refresh error status:", refreshError.response?.status);
-            // console.error("❌ Refresh error details:", refreshError.response?.data);
+            console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
+            console.error("❌ Refresh error status:", refreshError.response?.status);
+            console.error("❌ Refresh error details:", refreshError.response?.data);
           }
         } else {
-          // console.warn("⚠️ No refresh token found in localStorage");
+          console.warn("⚠️ No refresh token found in localStorage");
         }
 
-        // console.error("❌ Authentication failed, clearing auth state");
+        console.error("❌ Authentication failed, clearing auth state");
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
         dispatch(clearAuthState());
@@ -450,9 +447,9 @@ export const createOrder = createAsyncThunk(
         });
       }
       
-      // console.error("❌ Error creating order:", err.response?.data || err.message);
-      // console.error("❌ Error status:", err.response?.status);
-      // console.error("❌ Full error response:", JSON.stringify(err.response?.data, null, 2));
+      console.error("❌ Error creating order:", err.response?.data || err.message);
+      console.error("❌ Error status:", err.response?.status);
+      console.error("❌ Full error response:", JSON.stringify(err.response?.data, null, 2));
 
       let errorMessage = err.message;
       const errorData = err.response?.data;
@@ -495,12 +492,12 @@ export const fetchOrderDetails = createAsyncThunk(
       const token = state.auth?.token || localStorage.getItem("access");
       const api = apiWithAuth(token);
       
-      // console.log("🔍 Fetching order details for ID:", orderId);
+      console.log("🔍 Fetching order details for ID:", orderId);
       const response = await api.get(`/orders/details/${orderId}/`);
-      // console.log("✅ Order details fetched:", response.data);
+      console.log("✅ Order details fetched:", response.data);
       return response.data;
     } catch (err) {
-      // console.error("❌ Error fetching order details:", err.response?.data || err.message);
+      console.error("❌ Error fetching order details:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -531,16 +528,16 @@ const ordersSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (state, action) => {
         state.loading = false;
-        // console.log("▶ fetchOrders.fulfilled - action.payload:", action.payload);
-        // console.log("▶ fetchOrders.fulfilled - action.payload.results:", action.payload.results);
+        console.log("▶ fetchOrders.fulfilled - action.payload:", action.payload);
+        console.log("▶ fetchOrders.fulfilled - action.payload.results:", action.payload.results);
 
         state.orders = action.payload.results || [];
         state.count = action.payload.count || 0;
         state.page = action.payload.page || 1;
         state.size = action.payload.size || 10;
         
-        // console.log("▶ fetchOrders.fulfilled - state.orders after update:", state.orders);
-        // console.log("▶ fetchOrders.fulfilled - state.orders length:", state.orders.length);
+        console.log("▶ fetchOrders.fulfilled - state.orders after update:", state.orders);
+        console.log("▶ fetchOrders.fulfilled - state.orders length:", state.orders.length);
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.loading = false;
