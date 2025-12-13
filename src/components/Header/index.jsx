@@ -42,6 +42,7 @@ function Header() {
 
     const user = useSelector((state) => state.auth.user);
     // console.log("Header - user:", useSelector((state) => state.auth.user));
+    
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (searchInput.trim()) {
@@ -50,7 +51,6 @@ function Header() {
                 setShowSearchDropdown(true);
             } else {
                 dispatch(clearSearch());
-                setShowSearchDropdown(false);
             }
         }, 300);
 
@@ -183,17 +183,31 @@ function Header() {
         navigate('/favourite');
     };
 
-    const handleSearchSubmit = (e) => {
-        e.preventDefault();
-        if (searchInput.trim()) {
-            navigate(`/coffee?search=${encodeURIComponent(searchInput)}`);
-            setShowSearchDropdown(false);
-            setSearchInput('');
+    // const handleSearchSubmit = (e) => {
+    //     e.preventDefault();
+    //     if (searchInput.trim()) {
+    //         navigate(`/coffee?search=${encodeURIComponent(searchInput)}`);
+    //         setShowSearchDropdown(false);
+    //         setSearchInput('');
+    //     }
+    // };
+
+  
+
+    const handleSearchIconClick = () => {
+        setShowSearchDropdown(!showSearchDropdown);
+        if (!showSearchDropdown) {
+            setTimeout(() => {
+                const input = document.getElementById('header-search-input');
+                if (input) input.focus();
+            }, 100);
         }
     };
 
     const handleCloseSearch = () => {
         setShowSearchDropdown(false);
+        setSearchInput('');
+        dispatch(clearSearch());
     };
 
     return (
@@ -220,60 +234,42 @@ function Header() {
                 </Grid>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Box sx={{ position: 'relative' }}>
-                        <form onSubmit={handleSearchSubmit}>
                             <Box
                                 sx={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    bgcolor: 'rgba(255,255,255,0.5)',
                                     borderRadius: '8px',
                                     px: 2,
                                     py: 0.5,
                                 }}
                             >
-                                <input
-                                    type="text"
-                                    placeholder="Search products..."
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    onFocus={() => searchInput.trim() && setShowSearchDropdown(true)}
-                                    onBlur={() => setTimeout(() => setShowSearchDropdown(false), 300)}
-                                    style={{
-                                        border: 'none',
-                                        background: 'transparent',
-                                        outline: 'none',
-                                        width: '200px',
-                                        fontSize: '14px',
-                                    }}
-                                />
-                                <Button
-                                    type="submit"
-                                    disableRipple
-                                    sx={{
-                                        minWidth: 0,
-                                        padding: 0,
-                                        ml: 1,
-                                    }}
-                                >
-                                    <Box component="img" src={Search} alt="search-icon"
-                                        sx={{ width: '20px', height: '20px' }} />
-                                </Button>
-                            </Box>
-                        </form>
-
-                        {showSearchDropdown && (
-                            <SearchDropdown
-                                results={results}
-                                loading={loading}
-                                query={searchInput}
-                                onClose={handleCloseSearch}
-                            />
-                        )}
-                    </Box>
-                    {/* <Button disableRipple sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", } }}>
+                              
+                              <Button 
+                    onClick={handleSearchIconClick}
+                    disableRipple 
+                    sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", } }}>
                         <Box component="img" src={Search} alt="search-icon"
                             sx={{ width: '24px', height: '24px', cursor: 'pointer', }} />
-                    </Button> */}
+                    </Button> 
+                            </Box>
+                        {showSearchDropdown && (
+                        <SearchDropdown
+                            results={results}
+                            loading={loading}
+                            query={searchInput}
+                            searchInput={searchInput}
+                            setSearchInput={setSearchInput}
+                            onClose={handleCloseSearch}
+                        />
+                    )}
+                    </Box>
+                    {/* <Button 
+                    onClick={handleSearchIconClick}
+                    disableRipple 
+                    sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", } }}>
+                        <Box component="img" src={Search} alt="search-icon"
+                            sx={{ width: '24px', height: '24px', cursor: 'pointer', }} />
+                    </Button>  */}
 
                     <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                         {hasFavorites ? (
