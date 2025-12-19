@@ -14,6 +14,7 @@ export default function ContactDetailsForm({
     state, setState,
     zip, setZip,
     country, setCountry,
+    apartment, setApartment,
     errors,
     handleContinue,
     openLogin,
@@ -39,8 +40,8 @@ export default function ContactDetailsForm({
                 <Typography sx={{ ...h4 }}>Contact details</Typography>
             </Box>
 
-            <TextField id="firstName" fullWidth margin="normal" placeholder="First name" value={firstName} onChange={handleFieldChange(setFirstName, "firstName")} error={!!errors.firstName} helperText={errors.firstName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="lastName" fullWidth margin="normal" placeholder="Last name" value={lastName} onChange={handleFieldChange(setLastName, "lastName")} error={!!errors.lastName} helperText={errors.lastName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
+            <TextField id="firstName" fullWidth margin="normal" placeholder="First name *" value={firstName} onChange={handleFieldChange(setFirstName, "firstName")} error={!!errors.firstName} helperText={errors.firstName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
+            <TextField id="lastName" fullWidth margin="normal" placeholder="Last name *" value={lastName} onChange={handleFieldChange(setLastName, "lastName")} error={!!errors.lastName} helperText={errors.lastName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
             <TextField id="email" fullWidth margin="normal" placeholder="Email" value={email} onChange={handleFieldChange(setEmail, "email")} error={!!errors.email} helperText={errors.email} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
             <TextField id="phone" fullWidth margin="normal" placeholder="Phone number" value={phone} onChange={handleFieldChange(setPhone, "phone", formatPhone)} error={!!errors.phone} helperText={errors.phone} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
 
@@ -51,6 +52,7 @@ export default function ContactDetailsForm({
 
             <TextField id="country" fullWidth margin="normal" placeholder="Country" value={country} onChange={handleFieldChange(setCountry, "country")} error={!!errors.country} helperText={errors.country} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
             <TextField id="street" fullWidth margin="normal" placeholder="Street address" value={street} onChange={handleFieldChange(setStreet, "street")} error={!!errors.street} helperText={errors.street} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
+            <TextField id="apartment" fullWidth margin="normal" placeholder="Apartment number (optional)" value={apartment} onChange={handleFieldChange(setApartment, "apartment")} error={!!errors.apartment} helperText={errors.apartment} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} inputProps={{ maxLength: 30 }} />
             <Box display="flex" gap={1} mt={1}>
                 <TextField id="region" placeholder="City" value={region} onChange={handleFieldChange(setRegion, "region")} error={!!errors.region} helperText={errors.region} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
                 <TextField id="state" placeholder="State / Province" value={state} onChange={handleFieldChange(setState, "state")} error={!!errors.state} helperText={errors.state} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />

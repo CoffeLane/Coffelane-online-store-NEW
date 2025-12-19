@@ -41,6 +41,7 @@ function Header() {
     const { results, loading } = useSelector(state => state.search);
 
     const user = useSelector((state) => state.auth.user);
+    const isAdmin = useSelector((state) => state.auth.isAdmin);
     // console.log("Header - user:", useSelector((state) => state.auth.user));
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -64,10 +65,13 @@ function Header() {
 
     const handleAccountClick = () => {
         if (user) {
-
-            navigate('/account/personal-info');
+            // Если пользователь админ, ведем на админскую страницу аккаунта
+            if (isAdmin) {
+                navigate('/admin/account');
+            } else {
+                navigate('/account/personal-info');
+            }
         } else {
-
             setReturnPath(location.pathname);
             setIsLoginModalOpen(true);
         }
@@ -180,7 +184,12 @@ function Header() {
     // console.log("Header - favoritesCount:", favoritesCount);
 
     const goToFavorites = () => {
-        navigate('/favourite');
+        if (user) {
+            navigate('/favourite');
+        } else {
+            setReturnPath(location.pathname);
+            setIsLoginModalOpen(true);
+        }
     };
 
     const handleSearchSubmit = (e) => {
@@ -308,12 +317,15 @@ function Header() {
                             )}
                         </Button>
                     )}
-                    {user?.role === 'admin' && (
+                    {user && (isAdmin || user?.role === 'admin') && (
                         <Tooltip title="Admin panel">
                             <IconButton
                                 color="inherit"
                                 onClick={() => navigate('/admin')}
                                 aria-label="Admin panel"
+                                sx={{
+                                    color: '#16675C',
+                                }}
                             >
                                 <SettingsIcon />
                             </IconButton>

@@ -6,7 +6,7 @@ import { btnStyles } from "../../styles/btnStyles.jsx";
 import { formatPhone } from "../../components/utils/formatters.jsx";
 import { validateProfile } from "../../components/utils/validation/validateProfile.jsx";
 import { apiWithAuth } from "../../store/api/axios.js";
-import { fetchProfile } from "../../store/slice/authSlice.jsx";
+import { fetchProfile, refreshAccessToken } from "../../store/slice/authSlice.jsx";
 import { normalizePhone } from "../../components/utils/validation/validateProfile.jsx";
 
 export default function PersonalInfoForm({ user }) {
@@ -33,9 +33,9 @@ export default function PersonalInfoForm({ user }) {
   useEffect(() => {
     if (user) {
       setFormData({
-        fullName: `${user.first_name || ""} ${user.last_name || ""}`,
+        fullName: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
         email: user.email || "",
-        phone: user.phone_number || "",
+        phone: user.phone_number ? formatPhone(user.phone_number) : "",
         country: user.country || "",
         city: user.region || "",
         state: user.state || "",
@@ -88,30 +88,60 @@ export default function PersonalInfoForm({ user }) {
           email: formData.email,
         };
 
-        const apiAuth = apiWithAuth(token);
-        const response = await apiAuth.patch("/users/update", updateData);
+        let apiAuth = apiWithAuth(token);
+        
+        try {
+          await apiAuth.patch("/users/update", updateData);
 
-        setLeftSuccess("Personal info saved!");
-        setTimeout(() => setLeftSuccess(""), 3000);
+          setLeftSuccess("Personal info saved!");
+          setTimeout(() => setLeftSuccess(""), 3000);
 
-        dispatch(fetchProfile());
-      } catch (error) {
-        const data = error.response?.data;
+          dispatch(fetchProfile());
+        } catch (error) {
+          // Если токен истек (401), пытаемся обновить его
+          if (error.response?.status === 401) {
+            console.warn("⚠️ Token expired when saving personal info, attempting to refresh...");
+            
+            const refreshResult = await dispatch(refreshAccessToken());
+            
+            if (refreshAccessToken.fulfilled.match(refreshResult)) {
+              // Токен обновлен, повторяем запрос с новым токеном
+              console.log("✅ Token refreshed, retrying save...");
+              const newToken = refreshResult.payload.access;
+              apiAuth = apiWithAuth(newToken);
+              
+              await apiAuth.patch("/users/update", updateData);
 
-        if (data?.profile?.phone_number) {
-          // если массив
-          const msg = Array.isArray(data.profile.phone_number)
-            ? data.profile.phone_number.join(" ")
-            : data.profile.phone_number;
+              setLeftSuccess("Personal info saved!");
+              setTimeout(() => setLeftSuccess(""), 3000);
 
-          setLeftErrors(prev => ({ ...prev, phone: msg }));
-        } else if (data?.email) {
-          const msg = Array.isArray(data.email) ? data.email.join(" ") : data.email;
-          setLeftErrors(prev => ({ ...prev, email: msg }));
-        } else {
-          setLeftErrors(prev => ({ ...prev, submit: data?.message || "Failed to save personal info" }));
+              dispatch(fetchProfile());
+            } else {
+              // Не удалось обновить токен
+              setLeftErrors({ submit: "Your session has expired. Please log in again." });
+            }
+          } else {
+            // Другие ошибки
+            const data = error.response?.data;
+
+            if (data?.profile?.phone_number) {
+              // если массив
+              const msg = Array.isArray(data.profile.phone_number)
+                ? data.profile.phone_number.join(" ")
+                : data.profile.phone_number;
+
+              setLeftErrors(prev => ({ ...prev, phone: msg }));
+            } else if (data?.email) {
+              const msg = Array.isArray(data.email) ? data.email.join(" ") : data.email;
+              setLeftErrors(prev => ({ ...prev, email: msg }));
+            } else {
+              setLeftErrors(prev => ({ ...prev, submit: data?.message || "Failed to save personal info" }));
+            }
+          }
         }
-
+      } catch (error) {
+        console.error("Error saving personal info:", error);
+        setLeftErrors({ submit: "An unexpected error occurred. Please try again." });
       } finally {
         setLeftLoading(false);
       }
@@ -119,39 +149,106 @@ export default function PersonalInfoForm({ user }) {
   };
 
   const handleSaveRight = async () => {
+    console.log("▶ handleSaveRight called");
     const errors = validateProfile({ type: "address", ...formData });
+    console.log("▶ Validation errors:", errors);
     setRightErrors(errors);
 
     if (Object.keys(errors).length === 0) {
+      console.log("▶ No validation errors, proceeding with save");
       setRightLoading(true);
       setRightSuccess("");
 
       try {
+        const token = localStorage.getItem("access");
+        if (!token) {
+          setRightErrors({ submit: "You are not logged in. Please log in first." });
+          setRightLoading(false);
+          return;
+        }
+
+        // Собираем данные профиля, исключая пустые значения
+        const profileData = {};
+        if (formData.country?.trim()) profileData.country = formData.country.trim();
+        if (formData.city?.trim()) profileData.region = formData.city.trim();
+        if (formData.state?.trim()) profileData.state = formData.state.trim();
+        if (formData.streetName?.trim()) profileData.street_name = formData.streetName.trim();
+        if (formData.houseNumber?.trim()) profileData.zip_code = formData.houseNumber.trim();
+        if (formData.aptNumber?.trim()) profileData.apartment_number = formData.aptNumber.trim();
 
         const updateData = {
-          profile: {
-            country: formData.country,
-            region: formData.city, // city -> region
-            state: formData.state,
-            street_name: formData.streetName,
-            zip_code: formData.houseNumber, // houseNumber -> zip_code
-            apartment_number: formData.aptNumber,
-          },
+          profile: profileData,
         };
 
-        // console.log("▶ Saving address:", updateData);
+        console.log("▶ Saving address:", updateData);
+        console.log("▶ Profile data keys:", Object.keys(profileData));
 
-        const apiAuth = apiWithAuth();
-        const response = await apiAuth.patch("/users/update", updateData);
+        let apiAuth = apiWithAuth(token);
+        
+        try {
+          await apiAuth.patch("/users/update", updateData);
 
-        // console.log("✅ Address saved:", response.data);
-        setRightSuccess("Address saved!");
-        setTimeout(() => setRightSuccess(""), 3000);
+          console.log("✅ Address saved");
+          setRightSuccess("Address saved!");
+          setTimeout(() => setRightSuccess(""), 3000);
 
-        dispatch(fetchProfile());
+          dispatch(fetchProfile());
+        } catch (error) {
+          // Если токен истек (401), пытаемся обновить его
+          if (error.response?.status === 401) {
+            console.warn("⚠️ Token expired when saving address, attempting to refresh...");
+            
+            const refreshResult = await dispatch(refreshAccessToken());
+            
+            if (refreshAccessToken.fulfilled.match(refreshResult)) {
+              // Токен обновлен, повторяем запрос с новым токеном
+              console.log("✅ Token refreshed, retrying save...");
+              const newToken = refreshResult.payload.access;
+              apiAuth = apiWithAuth(newToken);
+              
+              await apiAuth.patch("/users/update", updateData);
+
+              setRightSuccess("Address saved!");
+              setTimeout(() => setRightSuccess(""), 3000);
+
+              dispatch(fetchProfile());
+            } else {
+              // Не удалось обновить токен
+              setRightErrors({ submit: "Your session has expired. Please log in again." });
+            }
+          } else {
+            // Другие ошибки
+            console.error("❌ Error saving address:", error);
+            console.error("❌ Error response:", error.response?.data);
+            console.error("❌ Error status:", error.response?.status);
+            
+            const data = error.response?.data;
+            let errorMessage = "Failed to save address";
+            
+            if (data) {
+              // Проверяем ошибки валидации от сервера
+              if (data.profile) {
+                // Если есть ошибки в profile, собираем их
+                const profileErrors = Object.entries(data.profile)
+                  .map(([key, value]) => {
+                    const msg = Array.isArray(value) ? value.join(" ") : value;
+                    return `${key}: ${msg}`;
+                  })
+                  .join("; ");
+                errorMessage = profileErrors || data.message || errorMessage;
+              } else if (data.message) {
+                errorMessage = data.message;
+              } else if (typeof data === 'string') {
+                errorMessage = data;
+              }
+            }
+            
+            setRightErrors({ submit: errorMessage });
+          }
+        }
       } catch (error) {
-        // console.error("❌ Error saving address:", error);
-        setRightErrors({ submit: error.response?.data?.message || "Failed to save address" });
+        console.error("Error saving address:", error);
+        setRightErrors({ submit: "An unexpected error occurred. Please try again." });
       } finally {
         setRightLoading(false);
       }
@@ -260,10 +357,10 @@ export default function PersonalInfoForm({ user }) {
             slotProps={{ formHelperText: { sx: helperTextRed } }}
           />
 
-          <Typography sx={{ mt: 2 }}>House number</Typography>
+          <Typography sx={{ mt: 2 }}>Zip / Postal Code</Typography>
           <TextField
             fullWidth
-            placeholder="House number"
+            placeholder="Zip code (e.g., 12345, 12345-6789, K1A 0B1)"
             value={formData.houseNumber}
             onChange={handleChange("houseNumber", "right")}
             error={!!rightErrors.houseNumber}

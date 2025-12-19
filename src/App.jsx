@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
-import { fetchProfile } from './store/slice/authSlice.jsx';
+import { fetchProfile, setAdminMode, refreshAccessToken, tokenRefreshedFromInterceptor } from './store/slice/authSlice.jsx';
 import HomePage from './pages/HomePage.jsx'
 import NotFoundPage from './pages/NotFoundPage';
 import Header from './components/Header/index.jsx';
@@ -19,32 +19,79 @@ import ProductCardPage from './pages/ProductCardPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import OrderSuccessfulPage from './pages/OrderSuccessfulPage.jsx';
 import AdminLayout from './admin/AdminLayout/AdminLayout.jsx';
+import AdminRoute from './admin/AdminLayout/AdminRoute.jsx';
 import Dashboard from './admin/Pages/Dashboard.jsx';
 import Products from './admin/Pages/Products.jsx';
 import ProductAdd from './admin/Pages/ProductAdd.jsx';
 import ProductEdit from './admin/Pages/ProductEdit.jsx';
 import Orders from './admin/Pages/Orders.jsx';
-import MyAccount from './admin/Pages/MyAccount.jsx';
+import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
+
+
+const ADMIN_EMAILS = [
+  'admin@coffeelane.com',
+  'admin@example.com',
+];
+
 
 function App() {
   const dispatch = useDispatch();
-  const { user, token, loading } = useSelector(state => state.auth);
+  const { user, token, loading, tokenInvalid, isAdmin, email } = useSelector(state => state.auth);
+
   useEffect(() => {
-    const tokenFromStorage = localStorage.getItem("access");
+    const handleTokenRefreshed = (event) => {
+      const { access } = event.detail;
+      dispatch(tokenRefreshedFromInterceptor({ access }));
+    };
+
+    window.addEventListener('tokenRefreshed', handleTokenRefreshed);
+    return () => window.removeEventListener('tokenRefreshed', handleTokenRefreshed);
+  }, [dispatch]);
+
+  useEffect(() => {
+    const tokenFromStorage = localStorage.getItem("access");
+
     if (token && !tokenFromStorage) {
       localStorage.setItem("access", token);
     }
   }, [token]);
 
-  useEffect(() => {
+  useEffect(() => {
     const tokenFromStorage = localStorage.getItem("access");
     const currentToken = token || tokenFromStorage;
-    
     if (currentToken && !user && !loading) {
       dispatch(fetchProfile());
     }
   }, [dispatch, token, user, loading]);
+
+ 
+  useEffect(() => {
+    if (user) {
+      const userEmail = email || user.email;
+      const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail => 
+        userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
+      ) : false;
+      const isAdminRole = user.role === 'admin' || user.role === 'Administrator';
+      
+      if ((isAdminEmail || isAdminRole) && !isAdmin) {
+        dispatch(setAdminMode(true));
+      }
+    }
+  }, [user, email, isAdmin, dispatch]);
+
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const refreshInterval = setInterval(() => {
+      const refreshToken = localStorage.getItem("refresh");
+      if (refreshToken) {
+        dispatch(refreshAccessToken());
+      }
+    }, 10 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
+  }, [user, token, dispatch]);
 
   return (
     <BrowserRouter>
@@ -61,7 +108,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/coffee" element={<CoffeePage />} />
           <Route path="/coffee/product/:id" element={<ProductCardPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/checkout" element={<CheckoutPage/>} />
           <Route path="/order_successful" element={<OrderSuccessfulPage />} />
           <Route path="/accessories" element={<AccessoriesPage />} />
           <Route path="/accessories/product/:id" element={<AccessoriesCardPage />} />
@@ -74,7 +121,11 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        <Route path="/admin/*" element={<AdminLayout />}>
+        <Route path="/admin/*" element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }>
           <Route index element={<Dashboard />} />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<ProductAdd />} />

@@ -142,6 +142,16 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                 }
 
                 if (handleClose) handleClose();
+
+                // Проверяем, является ли пользователь админом
+                const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';
+                if (isAdmin) {
+                    // Редиректим админа в админку
+                    navigate('/admin');
+                } else if (returnPath) {
+                    // Если есть путь возврата, переходим туда
+                    navigate(returnPath);
+                }
             } else {
                 console.error("Google login failed:", result.payload);
             }
@@ -164,7 +174,15 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             // console.log("✔ Login successful. Closing modal...");
             if (handleClose) handleClose();
 
-
+            // Проверяем, является ли пользователь админом
+            const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';
+            if (isAdmin) {
+                // Редиректим админа в админку
+                navigate('/admin');
+            } else if (returnPath) {
+                // Если есть путь возврата, переходим туда
+                navigate(returnPath);
+            }
         } else {
             // console.log("✖ Login failed:", result.payload);
         }
@@ -183,23 +201,25 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             return;
         }
 
+        // Создаем объект profile только с заполненными полями
+        const profileData = {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            agree_privacy: agreePrivacy,
+            subscribe_newsletter: subscribeNewsletter,
+        };
+
+        // Убираем пустые строки из profile
+        Object.keys(profileData).forEach(key => {
+            if (profileData[key] === "" || profileData[key] === null || profileData[key] === undefined) {
+                delete profileData[key];
+            }
+        });
+
         const registrationData = {
-            email,
+            email: email.trim(),
             password,
-            profile: {
-                first_name: firstName || "",
-                last_name: lastName || "",
-                company_name: "",
-                country: "",
-                state: "",
-                region: "",
-                street_name: "",
-                apartment_number: "",
-                zip_code: "",
-                phone_number: "",
-                agree_privacy: agreePrivacy || false,
-                subscribe_newsletter: subscribeNewsletter || false,
-            },
+            profile: profileData,
         };
 
         // console.log("DATA SENT TO REGISTER:", registrationData);
@@ -212,7 +232,65 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             // console.log("✔ Registration successful. Closing modal...");
             setSuccessModalOpen(true);
         } else {
-            // console.log("✖ Registration failed:", result.payload);
+            console.log("✖ Registration failed:", result.payload);
+            // Показываем ошибку пользователю
+            const errorPayload = result.payload || {};
+            const newErrors = {};
+            
+            // Функция для форматирования сообщения об ошибке
+            const formatErrorMessage = (message) => {
+                if (!message) return "";
+                let formatted = String(message);
+                // Улучшаем читаемость сообщений об ошибках
+                if (formatted.includes("already exists")) {
+                    formatted = "This email is already registered. Please use a different email or try to log in.";
+                } else if (formatted.includes("Enter your email")) {
+                    formatted = formatted.replace(/user model with this Enter your email/g, "This email");
+                }
+                return formatted;
+            };
+            
+            // Обрабатываем ошибки для каждого поля
+            if (errorPayload.email) {
+                const emailError = Array.isArray(errorPayload.email) 
+                    ? errorPayload.email.join(" ") 
+                    : String(errorPayload.email);
+                newErrors.email = formatErrorMessage(emailError);
+            }
+            
+            if (errorPayload.password) {
+                newErrors.password = Array.isArray(errorPayload.password) 
+                    ? errorPayload.password.join(" ") 
+                    : String(errorPayload.password);
+            }
+            
+            if (errorPayload.profile) {
+                const profileErrors = errorPayload.profile;
+                if (profileErrors.first_name) {
+                    newErrors.firstName = Array.isArray(profileErrors.first_name) 
+                        ? profileErrors.first_name.join(" ") 
+                        : String(profileErrors.first_name);
+                }
+                if (profileErrors.last_name) {
+                    newErrors.lastName = Array.isArray(profileErrors.last_name) 
+                        ? profileErrors.last_name.join(" ") 
+                        : String(profileErrors.last_name);
+                }
+            }
+            
+            // Если есть общее сообщение об ошибке
+            if (errorPayload.message || errorPayload.error) {
+                if (Object.keys(newErrors).length === 0) {
+                    newErrors.submit = errorPayload.message || errorPayload.error || "Registration failed. Please try again.";
+                }
+            }
+            
+            // Если нет конкретных ошибок полей, показываем общее сообщение
+            if (Object.keys(newErrors).length === 0) {
+                newErrors.submit = "Registration failed. Please check your information and try again.";
+            }
+            
+            setErrors(newErrors);
         }
     };
 

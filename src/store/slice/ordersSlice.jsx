@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiWithAuth } from "../api/axios";
 import api from "../api/axios";
-import { clearAuthState } from "./authSlice";
+import { clearAuthState, refreshAccessToken } from "./authSlice";
 
 // import { orders as mockOrdersData } from "../../mockData/orders.jsx";
 
@@ -79,9 +79,8 @@ export const fetchOrders = createAsyncThunk(
         }
 
         if (response.data?.total_items === 0 || response.data?.total_items === undefined) {
-          console.log("▶ No orders in API response (total_items = 0), using mock data for development");
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return { ...mockOrdersData, page, size };
+          // Нет заказов - это нормальная ситуация
+          return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
         }
 
         if (response.data?.total_items > 0 && ordersList.length === 0) {
@@ -91,23 +90,12 @@ export const fetchOrders = createAsyncThunk(
           return { results: [], count: response.data.total_items, page, size };
         }
 
-        // console.warn("⚠️ Unexpected API response structure, using mock data for development");
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { ...mockOrdersData, page, size };
+        // Если не удалось найти заказы, возвращаем пустой массив
+        return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
       } catch (apiError) {
-
-        // console.warn("⚠️ API unavailable, using mock data:", apiError.response?.status || apiError.message);
-        console.log("▶ API Error details:", apiError.response?.data || apiError.message);
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log("✅ Orders fetched successfully (mock):", mockOrdersData);
-        console.log("▶ Mock data structure:", {
-          hasResults: !!mockOrdersData?.results,
-          resultsLength: mockOrdersData?.results?.length,
-          count: mockOrdersData?.count
-        });
-        return { ...mockOrdersData, page, size };
+        console.error("❌ Error fetching orders from API:", apiError.response?.data || apiError.message);
+        // При ошибке API возвращаем пустой массив вместо mock данных
+        return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
       }
     } catch (err) {
       console.error("❌ Error fetching orders:", err.response?.data || err.message);
@@ -115,191 +103,246 @@ export const fetchOrders = createAsyncThunk(
     }
   }
 );
-
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
   async (orderData, { rejectWithValue, getState, dispatch }) => {
     try {
+      // Получаем токен
       const state = getState();
       let token = state.auth?.token || localStorage.getItem("access");
       let apiAuth = apiWithAuth(token);
-      
+
       console.log("📦 Creating order with data:", orderData);
       console.log("🔑 Using token:", token ? "Token present" : "No token");
 
-
-      let basketId = orderData.basket_id;
+      // --- 1️⃣ Синхронизируем товары в корзину на сервере ---
+      // Бэкенд требует, чтобы корзина существовала на сервере перед созданием заказа
+      // Получаем basket_id после синхронизации для передачи в payload
+      let basketId = null;
       
-      if (!basketId && orderData.items && orderData.items.length > 0) {
+      if (orderData.positions && orderData.positions.length > 0) {
+        console.log("🛒 Syncing items to basket on server...");
+        
+        // Получаем или создаем корзину
         try {
-          console.log("🛒 Getting active basket...");
-
-          let basketResponse;
-          try {
-            basketResponse = await apiAuth.get("/basket");
-          } catch (basketError) {
-
-            if (basketError.response?.status === 401) {
-              console.warn("⚠️ Token expired when getting basket, attempting to refresh...");
-              const refreshToken = localStorage.getItem("refresh");
+          const basketResponse = await apiAuth.get("/basket");
+          basketId = basketResponse?.data?.id || null;
+          console.log("✅ Basket exists on server, ID:", basketId);
+        } catch (basketError) {
+          if (basketError.response?.status === 401) {
+            console.warn("⚠️ Token expired when getting basket, attempting to refresh...");
+            
+            const refreshResult = await dispatch(refreshAccessToken());
+            
+            if (refreshAccessToken.fulfilled.match(refreshResult)) {
+              console.log("✅ Token refreshed, retrying basket request...");
+              const newToken = refreshResult.payload.access;
+              apiAuth = apiWithAuth(newToken);
+              token = newToken;
               
-              if (refreshToken) {
-                try {
-                  const refreshResponse = await api.post("/auth/refresh", {
-                    refresh: refreshToken,
-                  });
-                  
-                  const newAccessToken = refreshResponse.data?.access;
-                  if (newAccessToken) {
-                    console.log("✅ Token refreshed successfully");
-                    localStorage.setItem("access", newAccessToken);
-                    token = newAccessToken;
-                    apiAuth = apiWithAuth(newAccessToken);
-
-                    basketResponse = await apiAuth.get("/basket");
-                  } else {
-                    throw new Error("No access token in refresh response");
-                  }
-                } catch (refreshError) {
-                  console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
-                  localStorage.removeItem("access");
-                  localStorage.removeItem("refresh");
-                  dispatch(clearAuthState());
-                  return rejectWithValue({
-                    error: "Your session has expired. Please log in again.",
-                    code: "token_not_valid",
-                    requiresLogin: true,
-                  });
-                }
-              } else {
-                localStorage.removeItem("access");
-                localStorage.removeItem("refresh");
-                dispatch(clearAuthState());
-                return rejectWithValue({
-                  error: "Your session has expired. Please log in again.",
-                  code: "token_not_valid",
-                  requiresLogin: true,
-                });
+              try {
+                const basketResponse = await apiAuth.get("/basket");
+                basketId = basketResponse?.data?.id || null;
+                console.log("✅ Basket exists on server (after refresh), ID:", basketId);
+              } catch (retryError) {
+                console.warn("⚠️ Error getting basket after token refresh:", retryError.response?.data || retryError.message);
               }
             } else {
-              throw basketError;
+              console.warn("⚠️ Failed to refresh token, login required");
+              return rejectWithValue({
+                error: "Your session has expired. Please log in again.",
+                code: "token_not_valid",
+                requiresLogin: true,
+              });
             }
+          } else if (basketError.response?.status === 404) {
+            // Корзина не найдена, создадим её при добавлении товаров
+            console.log("⚠️ No active basket found, will create one when adding items");
+          } else {
+            console.warn("⚠️ Error getting basket:", basketError.response?.data || basketError.message);
+          }
+        }
+
+        // Добавляем товары в корзину на сервере
+        for (const position of orderData.positions) {
+          const basketItem = {
+            quantity: position.quantity || 1,
+          };
+          
+          // Для basket API используем supply_id и accessory_id
+          if (position.accessory_id) {
+            basketItem.accessory_id = position.accessory_id;
+          } else if (position.supply_id) {
+            basketItem.supply_id = position.supply_id;
+          } else {
+            // Пропускаем позиции без supply_id или accessory_id
+            console.warn("⚠️ Item skipped, missing supply_id or accessory_id:", position);
+            continue;
+          }
+
+          try {
+            await apiAuth.post("/basket/add/", basketItem);
+            console.log("✅ Added item to basket:", basketItem);
+          } catch (addError) {
+            // Если ошибка 401, пытаемся обновить токен
+            if (addError.response?.status === 401) {
+              const refreshResult = await dispatch(refreshAccessToken());
+              if (refreshAccessToken.fulfilled.match(refreshResult)) {
+                const newToken = refreshResult.payload.access;
+                apiAuth = apiWithAuth(newToken);
+                token = newToken;
+                try {
+                  await apiAuth.post("/basket/add/", basketItem);
+                  console.log("✅ Added item to basket (after refresh):", basketItem);
+                } catch (retryError) {
+                  console.error("❌ Error adding item to basket after refresh:", retryError.response?.data || retryError.message);
+                }
+              } else {
+                console.error("❌ Error adding item to basket:", addError.response?.data || addError.message);
+              }
+            } else {
+              console.error("❌ Error adding item to basket:", addError.response?.data || addError.message);
+            }
+          }
+        }
+        
+        // Получаем финальный basket_id после синхронизации
+        if (!basketId) {
+          try {
+            const finalBasketResponse = await apiAuth.get("/basket");
+            basketId = finalBasketResponse?.data?.id || null;
+            console.log("✅ Final basket ID after sync:", basketId);
+          } catch (err) {
+            console.error("❌ Error getting final basket ID:", err.response?.data || err.message);
+          }
+        }
+        
+        if (!basketId) {
+          return rejectWithValue({
+            error: "Could not get or create basket. Please try again.",
+            message: "Basket is required to create order, but could not be obtained.",
+          });
+        }
+        
+        console.log("✅ Basket synchronized on server, basket_id:", basketId);
+      }
+
+      // --- 2️⃣ Формируем позиции заказа из orderData.positions ---
+      // ВАЖНО: API ожидает поля supply или accessory (БЕЗ _id)
+      // Последняя ошибка API: "Each position must have either 'supply' or 'accessory'."
+      // ВАЖНО: API принимает ТОЛЬКО ОДНО из этих полей, не несколько одновременно
+      const positions = (orderData.positions || [])
+        .map(position => {
+          const pos = { quantity: position.quantity || 1 };
+          
+          // API требует либо supply, либо accessory (БЕЗ _id)
+          // Передаем ТОЛЬКО ОДНО из полей (приоритет: accessory > supply)
+          if (position.accessory_id) {
+            // Для аксессуаров: передаем accessory (без _id)
+            pos.accessory = position.accessory_id;
+          } else if (position.supply_id) {
+            // Для продуктов: передаем supply (без _id)
+            pos.supply = position.supply_id;
+          } else {
+            // Если нет ни одного из полей - пропускаем
+            console.warn("⚠️ Position skipped: missing supply_id or accessory_id", position);
+            return null;
           }
           
-          if (basketResponse?.data?.id) {
-            basketId = basketResponse.data.id;
-            console.log(`✅ Found active basket ID: ${basketId}`);
-
-            console.log("🛒 Adding items to basket...");
-            for (const item of orderData.items) {
-              try {
-                const basketItem = {
-                  product_id: item.product_id || null,
-                  accessory_id: item.accessory_id || null,
-                  supply_id: item.supply_id || null,
-                  quantity: item.quantity || 1,
-                };
-
-                if (!basketItem.product_id) delete basketItem.product_id;
-                if (!basketItem.accessory_id) delete basketItem.accessory_id;
-                if (!basketItem.supply_id) delete basketItem.supply_id;
-                
-                await apiAuth.post("/basket/add/", basketItem);
-                console.log(`✅ Added item to basket:`, basketItem);
-              } catch (addError) {
-
-                if (addError.response?.status === 401) {
-                  console.warn("⚠️ Token expired when adding item, attempting to refresh...");
-                  const refreshToken = localStorage.getItem("refresh");
-                  
-                  if (refreshToken) {
-                    try {
-                      const refreshResponse = await api.post("/auth/refresh", {
-                        refresh: refreshToken,
-                      });
-                      
-                      const newAccessToken = refreshResponse.data?.access;
-                      if (newAccessToken) {
-                        localStorage.setItem("access", newAccessToken);
-                        token = newAccessToken;
-                        apiAuth = apiWithAuth(newAccessToken);
-
-                        await apiAuth.post("/basket/add/", basketItem);
-                        console.log(`✅ Added item to basket after token refresh:`, basketItem);
-                      }
-                    } catch (refreshError) {
-                      console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
-                    }
-                  }
-                } else {
-                  console.warn("⚠️ Could not add item to basket:", addError.response?.data || addError.message);
-                }
-              }
-            }
-          } else {
-
-            console.log("⚠️ No active basket found. Trying to add items directly...");
-
-            const firstItem = orderData.items[0];
-            const basketItem = {
-              product_id: firstItem.product_id || null,
-              accessory_id: firstItem.accessory_id || null,
-              supply_id: firstItem.supply_id || null,
-              quantity: firstItem.quantity || 1,
-            };
-            
-            if (!basketItem.product_id) delete basketItem.product_id;
-            if (!basketItem.accessory_id) delete basketItem.accessory_id;
-            if (!basketItem.supply_id) delete basketItem.supply_id;
-            
-            try {
-              const addResponse = await apiAuth.post("/basket/add/", basketItem);
-              console.log("✅ Item added to basket:", addResponse.data);
-
-              const basketResponse2 = await apiAuth.get("/basket").catch(() => null);
-              if (basketResponse2?.data?.id) {
-                basketId = basketResponse2.data.id;
-                console.log(`✅ Basket created with ID: ${basketId}`);
-
-                for (let i = 1; i < orderData.items.length; i++) {
-                  const item = orderData.items[i];
-                  const basketItem = {
-                    product_id: item.product_id || null,
-                    accessory_id: item.accessory_id || null,
-                    supply_id: item.supply_id || null,
-                    quantity: item.quantity || 1,
-                  };
-                  
-                  if (!basketItem.product_id) delete basketItem.product_id;
-                  if (!basketItem.accessory_id) delete basketItem.accessory_id;
-                  if (!basketItem.supply_id) delete basketItem.supply_id;
-                  
-                  await apiAuth.post("/basket/add/", basketItem).catch(() => null);
-                }
-              }
-            } catch (e) {
-
-              if (e.response?.status === 401) {
-                console.error("❌ Authentication failed when adding item to basket");
-                localStorage.removeItem("access");
-                localStorage.removeItem("refresh");
-                dispatch(clearAuthState());
-                return rejectWithValue({
-                  error: "Your session has expired. Please log in again.",
-                  code: "token_not_valid",
-                  requiresLogin: true,
-                });
-              }
-              console.error("❌ Error adding item to basket:", e.response?.data || e.message);
-            }
+          // Дополнительная проверка: убеждаемся, что передается только одно поле
+          const fieldCount = [pos.accessory, pos.supply].filter(Boolean).length;
+          if (fieldCount !== 1) {
+            console.error("❌ Position has multiple fields, this should not happen:", pos);
+            return null;
           }
-        } catch (e) {
-          console.error("❌ Error working with basket:", e.response?.data || e.message);
+          
+          return pos;
+        })
+        .filter(Boolean);
 
-          if (e.response?.status === 401) {
-            localStorage.removeItem("access");
-            localStorage.removeItem("refresh");
-            dispatch(clearAuthState());
+      if (positions.length === 0) {
+        return rejectWithValue({
+          message: "Cannot create order: no valid positions found",
+          status: 400,
+        });
+      }
+
+      console.log("📋 Formatted positions for API:", JSON.stringify(positions, null, 2));
+
+      // --- 4️⃣ Формируем payload ---
+      const billingDetails = orderData.billing_details || {};
+      
+      // Удаляем null/undefined/пустые значения из billing_details для optional полей
+      // Required поля (first_name, last_name) всегда включаем
+      const requiredFields = ['first_name', 'last_name'];
+      const cleanBillingDetails = Object.entries(billingDetails).reduce((acc, [key, value]) => {
+        // Всегда включаем required поля, даже если они пустые (валидация должна была их проверить)
+        if (requiredFields.includes(key)) {
+          acc[key] = value;
+        } else if (value !== null && value !== undefined && value !== "") {
+          // Для optional полей включаем только если есть значение
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+      
+      const orderPayload = {
+        billing_details: cleanBillingDetails,
+        positions,
+        basket_id: basketId, // Передаем basket_id, хотя бэкенд использует OneToOne связь
+        // Примечание: бэкенд может требовать basket_id для валидации, даже если связь OneToOne
+      };
+
+      // Не передаем status - сервер устанавливает его автоматически
+      // if (orderData.status) {
+      //   orderPayload.status = orderData.status;
+      // }
+      
+      if (orderData.order_notes) {
+        orderPayload.order_notes = orderData.order_notes;
+      }
+      // Handle customer_data - can be an object with any string keys
+      if (orderData.customer_data) {
+        orderPayload.customer_data = orderData.customer_data;
+      } else if (orderData.email) {
+        // Backward compatibility: if email is passed separately, add it to customer_data
+        orderPayload.customer_data = { email: orderData.email };
+      }
+
+      console.log("📤 Sending order payload:", JSON.stringify(orderPayload, null, 2));
+      console.log("📋 Positions detail:", JSON.stringify(positions, null, 2));
+      console.log("🔍 Positions validation:", positions.map(p => ({
+        quantity: p.quantity,
+        has_accessory: !!p.accessory,
+        has_supply: !!p.supply,
+        fields_count: [p.accessory, p.supply].filter(Boolean).length
+      })));
+
+      // --- 5️⃣ Отправляем заказ ---
+      try {
+        const response = await apiAuth.post("/orders/create", orderPayload);
+        console.log("✅ Order created successfully:", response.data);
+        return response.data;
+      } catch (orderError) {
+        // Если токен истек (401), пытаемся обновить его
+        if (orderError.response?.status === 401) {
+          console.warn("⚠️ Token expired when creating order, attempting to refresh...");
+          
+          const refreshResult = await dispatch(refreshAccessToken());
+          
+          if (refreshAccessToken.fulfilled.match(refreshResult)) {
+            // Токен обновлен, повторяем запрос с новым токеном
+            console.log("✅ Token refreshed, retrying order creation...");
+            const newToken = refreshResult.payload.access;
+            const newApiAuth = apiWithAuth(newToken);
+            
+            // Повторяем запрос с тем же payload (basket_id не требуется)
+            const retryResponse = await newApiAuth.post("/orders/create", orderPayload);
+            console.log("✅ Order created successfully after token refresh:", retryResponse.data);
+            return retryResponse.data;
+          } else {
+            // Не удалось обновить токен - требуем повторный вход
+            console.warn("⚠️ Failed to refresh token, login required");
             return rejectWithValue({
               error: "Your session has expired. Please log in again.",
               code: "token_not_valid",
@@ -307,182 +350,63 @@ export const createOrder = createAsyncThunk(
             });
           }
         }
+        // Если не 401, пробрасываем ошибку дальше
+        throw orderError;
       }
-      
-      if (!basketId) {
-        console.error("❌ Could not get or create basket. Order creation will fail.");
-        return rejectWithValue({
-          error: "Could not get or create basket. Please try again.",
-          message: "Basket is required to create order, but could not be obtained.",
-        });
-      }
-
-
-
-      const billingDetails = {
-        first_name: orderData.first_name,
-        last_name: orderData.last_name,
-        country: orderData.country || "Ukraine", // Country обязателен!
-      };
-
-      if (orderData.phone_number) billingDetails.phone_number = orderData.phone_number;
-      if (orderData.street_name) billingDetails.street_name = orderData.street_name;
-      if (orderData.region) billingDetails.region = orderData.region;
-      if (orderData.state) billingDetails.state = orderData.state;
-      if (orderData.zip_code) billingDetails.zip_code = orderData.zip_code;
-      if (orderData.apartment_number) billingDetails.apartment_number = orderData.apartment_number;
-      if (orderData.company_name) billingDetails.company_name = orderData.company_name;
-
-
-
-
-      const positions = (orderData.items || []).map(item => {
-        const position = {
-          quantity: item.quantity || 1,
-        };
-
-        if (item.supply_id) {
-          position.supply_id = item.supply_id;
-        }
-
-        else if (item.accessory_id) {
-          position.accessory_id = item.accessory_id;
-        }
-
-        else if (item.product_id) {
-          position.product_id = item.product_id;
-        }
-        
-        return position;
-      });
-      
-      const orderPayload = {
-        billing_details: billingDetails,
-        positions: positions,
-        status: orderData.status || "processing",
-      };
-
-      orderPayload.basket_id = basketId;
-      console.log("✅ Adding basket_id to order:", basketId);
-console.log("🛒 Order positions:", orderPayload.positions);
-
-      if (orderData.email) {
-        orderPayload.customer_data = {
-          email: orderData.email,
-        };
-      }
-      if (orderData.order_notes) {
-        orderPayload.order_notes = orderData.order_notes;
-      }
-      
-      console.log("📤 Sending order payload:", JSON.stringify(orderPayload, null, 2));
-      console.log("🛒 Positions count:", orderPayload.positions.length);
-      console.log("📋 Billing details:", JSON.stringify(orderPayload.billing_details, null, 2));
-      console.log("📋 Basket ID:", orderPayload.basket_id || "NOT SET");
-      
-      const response = await apiAuth.post("/orders/create", orderPayload);
-      console.log("✅ Order created successfully:", response.data);
-      console.log("📋 Order ID:", response.data.id);
-      console.log("📋 Order details:", JSON.stringify(response.data, null, 2));
-      return response.data;
     } catch (err) {
-
-      if (err.response?.status === 401) {
-        console.warn("⚠️ Token expired, attempting to refresh...");
-        const refreshToken = localStorage.getItem("refresh");
-        
-        if (refreshToken) {
-          try {
-
-            let refreshResponse;
-            try {
-              console.log("🔄 Trying /auth/token/refresh endpoint...");
-              refreshResponse = await api.post("/auth/token/refresh", {
-                refresh: refreshToken,
-              });
-            } catch (e1) {
-              try {
-                console.log("🔄 Trying /auth/refresh endpoint...");
-                refreshResponse = await api.post("/auth/refresh", {
-                  refresh: refreshToken,
-                });
-              } catch (e2) {
-                console.error("❌ Both refresh endpoints failed");
-                throw e2;
-              }
-            }
-            
-            const newAccessToken = refreshResponse.data?.access || refreshResponse.data?.access_token;
-            if (newAccessToken) {
-              console.log("✅ Token refreshed successfully");
-              localStorage.setItem("access", newAccessToken);
-
-
-              const apiAuth = apiWithAuth(newAccessToken);
-              const retryResponse = await apiAuth.post("/orders/create", orderData);
-              console.log("✅ Order created successfully after token refresh:", retryResponse.data);
-              console.log("📋 Order ID:", retryResponse.data.id);
-              console.log("📋 Order details:", JSON.stringify(retryResponse.data, null, 2));
-              return retryResponse.data;
-            } else {
-              console.error("❌ No access token in refresh response:", refreshResponse.data);
-            }
-          } catch (refreshError) {
-            console.error("❌ Token refresh failed:", refreshError.response?.data || refreshError.message);
-            console.error("❌ Refresh error status:", refreshError.response?.status);
-            console.error("❌ Refresh error details:", refreshError.response?.data);
-          }
-        } else {
-          console.warn("⚠️ No refresh token found in localStorage");
-        }
-
-        console.error("❌ Authentication failed, clearing auth state");
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
-        dispatch(clearAuthState());
-        return rejectWithValue({
-          detail: "Your session has expired. Please log in again.",
-          code: "token_not_valid",
-          requiresLogin: true,
-        });
+      console.error("❌ Error creating order:", err.response?.data || err.message);
+      console.error("❌ Full error response:", JSON.stringify(err.response?.data, null, 2));
+      
+      // Если это уже обработанная ошибка с requiresLogin, возвращаем её как есть
+      if (err.requiresLogin) {
+        return rejectWithValue(err);
       }
       
-      console.error("❌ Error creating order:", err.response?.data || err.message);
-      console.error("❌ Error status:", err.response?.status);
-      console.error("❌ Full error response:", JSON.stringify(err.response?.data, null, 2));
-
-      let errorMessage = err.message;
-      const errorData = err.response?.data;
+      // Формируем понятное сообщение об ошибке
+      let errorMessage = "Failed to create order. Please try again.";
       
-      if (errorData) {
-
-        if (errorData.billing_details) {
-          const billingErrors = Object.entries(errorData.billing_details)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          errorMessage = `Billing details errors: ${billingErrors}`;
-        } else if (errorData.positions) {
-          errorMessage = `Positions errors: ${Array.isArray(errorData.positions) ? errorData.positions.join(', ') : errorData.positions}`;
-        } else if (errorData.error) {
-          errorMessage = Array.isArray(errorData.error) ? errorData.error.join(', ') : errorData.error;
-        } else if (errorData.detail) {
-          errorMessage = Array.isArray(errorData.detail) ? errorData.detail.join(', ') : errorData.detail;
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        
+        // Обрабатываем различные форматы ошибок
+        if (errorData.detail) {
+          errorMessage = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail);
         } else if (errorData.message) {
-          errorMessage = errorData.message;
+          errorMessage = typeof errorData.message === 'string'
+            ? errorData.message
+            : JSON.stringify(errorData.message);
+        } else if (errorData.status && Array.isArray(errorData.status)) {
+          errorMessage = `Status error: ${errorData.status.join(', ')}`;
+        } else if (errorData.positions) {
+          errorMessage = `Positions errors: ${JSON.stringify(errorData.positions)}`;
+        } else if (errorData.billing_details) {
+          errorMessage = `Billing details errors: ${JSON.stringify(errorData.billing_details)}`;
         } else {
-
-          errorMessage = JSON.stringify(errorData);
+          // Показываем все ошибки, если они есть
+          const errorKeys = Object.keys(errorData);
+          if (errorKeys.length > 0) {
+            const errors = errorKeys.map(key => {
+              const value = errorData[key];
+              return `${key}: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`;
+            });
+            errorMessage = errors.join('; ');
+          }
         }
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
       return rejectWithValue({
-        ...errorData,
+        ...err.response?.data,
         message: errorMessage,
         status: err.response?.status,
       });
     }
   }
 );
+
 
 export const fetchOrderDetails = createAsyncThunk(
   "orders/fetchOrderDetails",

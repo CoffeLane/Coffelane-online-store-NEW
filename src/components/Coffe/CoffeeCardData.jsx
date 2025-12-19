@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
 
+
 export default function CoffeeCardData({ products, favorites, onToggleFavorite  }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();

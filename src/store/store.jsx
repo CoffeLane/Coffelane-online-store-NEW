@@ -9,11 +9,12 @@ import ordersReducer from './slice/ordersSlice';
 import accessoriesReducer from './slice/accessoriesSlice';
 import favoritesReducer from "./slice/favoritesSlice";
 import searchReducer from './slice/searchSlice';
+import basketReducer from './slice/basketSlice';
 
 const authPersistConfig = {
     key: 'auth',
     storage,
-    whitelist: ['user', 'token', 'profile'],
+    whitelist: ['user', 'token', 'profile', 'isAdmin'],
 };
 const cartPersistConfig = { key: 'cart', storage };
 const productsPersistConfig = { key: 'products', storage };
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
     cart: persistReducer(cartPersistConfig, cartReducer),
     products: persistReducer(productsPersistConfig, productsReducer),
     search: searchReducer,
+    basket: basketReducer,
 });
 
 export const store = configureStore({

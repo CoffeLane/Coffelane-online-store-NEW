@@ -56,19 +56,25 @@ export const validateProfile = ({ type = "all", ...formData }) => {
             ["city", "City"],
             ["state", "State"],
             ["streetName", "Street name"],
-            ["houseNumber", "House number"],
-            ["aptNumber", "Apt number"],
-            ["zip", "Zip code"],
+            ["houseNumber", "Zip / Postal Code"],
         ];
 
         requiredFields.forEach(([field, label]) => {
             const value = formData[field]?.trim();
             if (!value) {
                 errors[field] = `${label} is required`;
-            } else if (field === "zip" && !patterns.zip.test(value)) {
-                errors[field] = "Invalid zip/postal code format";
             }
         });
+
+        // Validate houseNumber (zip_code) format
+        if (formData.houseNumber?.trim()) {
+            const zipValue = formData.houseNumber.trim();
+            if (!patterns.zip.test(zipValue)) {
+                errors.houseNumber = "Zip code format must be as follows: 12345, 12345-6789, K1A 0B1, SW1A 1AA, 75008, 01001";
+            }
+        }
+
+        // aptNumber is optional, no validation needed
     }
 
     return errors;

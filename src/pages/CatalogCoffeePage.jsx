@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slice/productsSlice.jsx';
 import { toggleFavoriteItem, fetchFavorites } from '../store/slice/favoritesSlice.jsx';
 import { useNavigate, useLocation } from "react-router-dom";
+import LoginModal from '../components/Modal/LoginModal.jsx';
 
 const itemsPerPage = 12;
 
@@ -16,12 +17,13 @@ export default function CatalogCoffeePage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const { items, loading, error } = useSelector((state) => state.products);
   const favorites = useSelector((state) => state.favorites.favorites);
   const token = useSelector((state) => state.auth.token);
 
-  useEffect(() => {
+  useEffect(() => {
     const accessToken = token || localStorage.getItem("access");
     if (accessToken) {
       dispatch(fetchFavorites());
@@ -47,7 +49,7 @@ export default function CatalogCoffeePage() {
   }, [location.search]);
 
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, limit: 1000, filters })); 
+    dispatch(fetchProducts({ page: 1, limit: 1000, filters }));
   }, [dispatch, filters]);
 
   const handlePageChange = (event, value) => {
@@ -56,9 +58,11 @@ export default function CatalogCoffeePage() {
   };
 
   const handleToggleFavorite = (item) => {
-    // console.log("handleToggleFavorite called:", item);
+    if (!token) {
+      setLoginOpen(true);
+      return;
+    }
     const itemType = item.sku ? "product" : "accessory";
-    // console.log("Dispatching toggleFavoriteItem:", { itemType, itemId: item.id, itemData: item });
     dispatch(toggleFavoriteItem({ itemType, itemId: item.id, itemData: item }));
   };
 
@@ -91,11 +95,10 @@ export default function CatalogCoffeePage() {
             <CircularProgress />
           </Box>
         ) : (
-          <CoffeeCardData
-            products={paginatedItems}
-            favorites={favoritesMap}
-            onToggleFavorite={handleToggleFavorite}
-          />
+          <>
+            <CoffeeCardData products={paginatedItems} favorites={favoritesMap} onToggleFavorite={handleToggleFavorite} />
+            <LoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
+          </>
         )}
 
         <PaginationControl page={page} totalPages={totalPages} onPageChange={handlePageChange} />

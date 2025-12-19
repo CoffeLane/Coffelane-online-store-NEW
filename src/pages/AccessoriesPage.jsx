@@ -9,6 +9,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAccessories } from '../store/slice/accessoriesSlice.jsx';
 import { fetchFavorites, toggleFavoriteItem } from "../store/slice/favoritesSlice.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
+import LoginModal from '../components/Modal/LoginModal.jsx';
+
 
 const itemsPerPage = 12;
 
@@ -16,16 +18,17 @@ export default function AccessoriesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const { items, loading, error, totalPages, currentPage } = useSelector(state => state.accessories);
   const favorites = useSelector(state => state.favorites.favorites);
   const token = useSelector(state => state.auth.token);
-  
+
   const favoritesMap = useMemo(() => {
     const map = {};
     favorites.forEach(f => {
       if (f?.id !== undefined && f?.id !== null) {
-        map[String(f.id)] = true;  // всегда используем строку как ключ
+        map[String(f.id)] = true; 
       }
     });
     return map;
@@ -40,13 +43,15 @@ export default function AccessoriesPage() {
     setPage(!isNaN(pageParam) && pageParam > 0 ? pageParam : 1);
   }, [location.search]);
 
-  useEffect(() => {
+  useEffect(() => {
     const tokenFromState = token;
     const tokenFromStorage = localStorage.getItem("access");
-    const currentToken = tokenFromState || tokenFromStorage;
+    const currentToken = tokenFromState || tokenFromStorage;
+
     if (tokenFromState && !tokenFromStorage) {
       localStorage.setItem("access", tokenFromState);
-    }
+    }
+
     if (currentToken) {
       dispatch(fetchFavorites());
     }
@@ -65,7 +70,11 @@ export default function AccessoriesPage() {
     navigate(`?page=${value}`);
   };
 
-  const handleToggleFavorite = (item) => {
+  const handleToggleFavorite = (item) => {
+    if (!token) {
+      setLoginOpen(true);
+      return;
+    }
     dispatch(toggleFavoriteItem({ itemType: "accessory", itemId: item.id, itemData: item }));
   };
 
@@ -90,11 +99,10 @@ export default function AccessoriesPage() {
             <CircularProgress />
           </Box>
         ) : (
-          <AccessoriesCardData
-            products={items}
-            favorites={favoritesMap}
-            onToggleFavorite={handleToggleFavorite} 
-          />
+          <>
+            <AccessoriesCardData products={items} favorites={favoritesMap} onToggleFavorite={handleToggleFavorite}/>
+            <LoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
+          </>
         )}
 
         <PaginationControl page={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />

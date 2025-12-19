@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Collapse, Box, Typography, CircularProgress, Alert } from "@mui/material";
+import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { btnCart, btnInCart } from "../../styles/btnStyles.jsx";
 import { h4, h5, h6 } from "../../styles/typographyStyles.jsx";
 import { fetchOrders } from "../../store/slice/ordersSlice.jsx";
@@ -13,7 +14,8 @@ export default function OrderHistory() {
   const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
 
-  useEffect(() => {
+  useEffect(() => {
+
     // console.log("▶ OrdersHistory - Fetching orders...");
     dispatch(fetchOrders({ page: 1, size: 10 }));
   }, [dispatch]);
@@ -51,13 +53,29 @@ export default function OrderHistory() {
         {typeof error === 'string' ? error : 'Failed to load orders. Please try again later.'}
       </Alert>
     );
-  }
+  }
+
   const ordersList = orders || [];
 
   if (ordersList.length === 0) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}>
-        <Typography sx={{ ...h5, color: "#666" }}>No orders found</Typography>
+      <Box 
+        sx={{ 
+          display: "flex", 
+          flexDirection: "column",
+          justifyContent: "flex-start", 
+          alignItems: "center", 
+          minHeight: 500,
+          gap: 2
+        }}
+      >
+        <ShoppingBagOutlinedIcon sx={{ fontSize: 100, mb: 1, color: "#E0E0E0" }} />
+        <Typography sx={{ ...h4,  textAlign: "center", mb: 1 }}>
+          You haven't placed any orders yet
+        </Typography>
+        <Typography sx={{ ...h6, textAlign: "center", maxWidth: 400 }}>
+          When you make your first purchase, your order history will appear here
+        </Typography>
       </Box>
     );
   }

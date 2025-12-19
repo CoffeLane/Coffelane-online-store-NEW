@@ -18,7 +18,7 @@ import { inputStyles, checkboxStyles, helperTextRed, } from "../styles/inputStyl
 import { btnStyles, btnCart } from "../styles/btnStyles.jsx";
 import { formatPhone, formatCardNumber, formatExpiry } from "../components/utils/formatters.jsx";
 import { CircularProgress } from "@mui/material";
-import api from "../store/api/axios.js";
+import api, { apiWithAuth } from "../store/api/axios.js";
 
 export default function CheckoutPage() {
     const items = useSelector(selectCartItems);
@@ -26,6 +26,8 @@ export default function CheckoutPage() {
     const { creating: isCreatingOrder, currentOrder } = useSelector((state) => state.orders);
     const user = useSelector((state) => state.auth.user);
     const token = useSelector((state) => state.auth.token);
+    const isAdmin = useSelector((state) => state.auth.isAdmin);
+
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
@@ -41,6 +43,8 @@ export default function CheckoutPage() {
     const [state, setState] = useState("");
     const [zip, setZip] = useState("");
     const [country, setCountry] = useState("");
+    const [apartment, setApartment] = useState("");
+
 
     const [cardName, setCardName] = useState("");
     const [cardNumber, setCardNumber] = useState("");
@@ -56,6 +60,24 @@ export default function CheckoutPage() {
     const [errors, setErrors] = useState({});
     const pendingOrderDataRef = useRef(null); // Сохраняем данные заказа для повторной попытки после логина
 
+    // Автозаполнение формы данными пользователя при авторизации
+    // НЕ заполняем форму данными админа - админ не должен использовать checkout page
+    useEffect(() => {
+        if (user && !isAdmin) {
+            // Заполняем поля данными пользователя только если они пустые, чтобы не перезаписывать введенные данные
+            setFirstName(prev => !prev && user.first_name ? user.first_name : prev);
+            setLastName(prev => !prev && user.last_name ? user.last_name : prev);
+            setEmail(prev => !prev && user.email ? user.email : prev);
+            setPhone(prev => !prev && user.phone_number ? formatPhone(user.phone_number) : prev);
+            setCountry(prev => !prev && user.country ? user.country : prev);
+            setRegion(prev => !prev && user.region ? user.region : prev);
+            setState(prev => !prev && user.state ? user.state : prev);
+            setStreet(prev => !prev && user.street_name ? user.street_name : prev);
+            setZip(prev => !prev && user.zip_code ? user.zip_code : prev);
+            setApartment(prev => !prev && user.apartment_number ? user.apartment_number : prev);
+        }
+    }, [user, isAdmin]);
+
     useEffect(() => {
         if (user && token && pendingOrderDataRef.current && openLogin) {
             console.log("✅ User logged in, retrying order creation...");
@@ -70,13 +92,16 @@ export default function CheckoutPage() {
                         const order = result.payload;
                         console.log("✅ Order created successfully after login:", order);
                         dispatch(clearCart());
+                        
+                        // Корзина на бэке автоматически очищается при создании успешного заказа
+                        
                         navigate("/order_successful", {
                             state: {
                                 orderNumber: order.id || order.order_number || order.number || order.order_id,
-                                email: orderData.email || user.email,
-                                firstName: orderData.first_name,
-                                lastName: orderData.last_name,
-                                total: orderData.total,
+                                email: orderData.customer_data?.email || user.email || email,
+                                firstName: orderData.billing_details?.first_name || firstName,
+                                lastName: orderData.billing_details?.last_name || lastName,
+                                total: total - discountAmount,
                                 orderId: order.id,
                             },
                         });
@@ -94,128 +119,310 @@ export default function CheckoutPage() {
         if (Object.keys(contactErrors).length === 0) setStep(2);
     };
 
-    const handleCompletePayment = async () => {
+const handleCompletePayment = async () => {
+  const accessToken = token || localStorage.getItem("access");
 
-        const accessToken = token || localStorage.getItem("access");
-        if (!accessToken || !user) {
-            console.warn("⚠️ User not authenticated, opening login modal");
-            setOpenLogin(true);
-            setErrors({ submit: "Please log in to complete your order." });
-            return;
+  if (!accessToken || !user) {
+    console.warn("⚠️ User not authenticated, opening login modal");
+    setOpenLogin(true);
+    setErrors({ submit: "Please log in to complete your order." });
+    return;
+  }
+
+  // === 1️⃣ Проверка контактных данных ===
+  const contactErrors = validateContact({
+    firstName,
+    lastName,
+    email,
+    phone,
+    street,
+    region,
+    state,
+    zip,
+    country
+  });
+
+  const newErrors = { ...contactErrors };
+
+  if (!cardName.trim()) newErrors.cardName = "Card holder name required";
+  else if (!/^[A-Za-z]+([ '-][A-Za-z]+)*$/.test(cardName))
+    newErrors.cardName = "Invalid card name. Please enter first and last name.";
+
+  if (!cardNumber.trim()) newErrors.cardNumber = "Card number required";
+  else if (!/^\d{16}$/.test(cardNumber.replace(/\s+/g, "")))
+    newErrors.cardNumber = "Must be 16 digits";
+
+  if (!expiry.trim()) newErrors.expiry = "Expire date required";
+  else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry))
+    newErrors.expiry = "Format MM/YY";
+
+  if (!cvv.trim()) newErrors.cvv = "CVV required";
+  else if (!/^\d{3}$/.test(cvv)) newErrors.cvv = "Must be 3 digits";
+
+  if (!agreed) newErrors.agreed = "You must agree to the Privacy Policy and Terms of Use.";
+
+  setErrors(newErrors);
+  if (Object.keys(newErrors).length > 0) return;
+
+  // === 2️⃣ Формирование позиций заказа ===
+  console.log("🔍 [CHECKOUT] Starting to process items");
+  console.log("🔍 [CHECKOUT] Items:", items);
+  console.log("🔍 [CHECKOUT] Items type:", typeof items, "isArray:", Array.isArray(items));
+  console.log("🔍 [CHECKOUT] Items length:", items?.length);
+  
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    console.error("❌ [CHECKOUT] No items to process or items is not an array:", items);
+    setErrors({ submit: "Your cart is empty. Please add items before checkout." });
+    return;
+  }
+  
+  console.log("🔍 [CHECKOUT] About to map items, items count:", items.length);
+ const orderItems = items
+  .map(([key, item], index) => {
+    console.log(`🔍 [CHECKOUT] Processing item ${index}:`, { key, item, product: item?.product });
+    console.log(`🔍 [CHECKOUT] Item structure:`, {
+      key,
+      hasItem: !!item,
+      hasProduct: !!item?.product,
+      productId: item?.product?.id,
+      productKeys: item?.product ? Object.keys(item.product) : [],
+      fullProduct: item?.product
+    });
+    const product = item.product;
+    if (!product) {
+      console.warn("⚠️ [CHECKOUT] Skipping item: no product", { key, item });
+      return null;
+    }
+    
+    // Проверяем разные варианты ID (id, product_id, _id)
+    const productId = product.id || product.product_id || product._id;
+    if (!productId) {
+      console.warn("⚠️ [CHECKOUT] Skipping item: product has no ID field", { 
+        key, 
+        product, 
+        productKeys: Object.keys(product),
+        productId: product.id,
+        product_id: product.product_id,
+        _id: product._id
+      });
+      return null;
+    }
+    
+    // Создаем продукт с правильным ID
+    const productWithId = { ...product, id: productId };
+
+    const position = { quantity: item.quantity || 1 };
+
+    // Определяем, является ли продукт аксессуаром
+    const isAccessory = product.isAccessory || 
+                       product.type === 'accessory' || 
+                       (!product.supplies || product.supplies.length === 0) && !key.includes('-');
+    console.log("🔍 Product info:", { 
+      productId: productId, 
+      isAccessory, 
+      hasSupplies: !!product.supplies, 
+      suppliesLength: product.supplies?.length,
+      key 
+    });
+
+    if (isAccessory) {
+      // Для аксессуаров используем только accessory_id
+      // API требует либо supply_id, либо accessory_id, либо product_id (но не несколько одновременно)
+      position.accessory_id = productId;
+      console.log("✅ Added accessory to order:", productId);
+    } else {
+      // Для продуктов обязательно нужен supply_id
+      // API требует либо supply_id, либо accessory_id
+      
+      let supplyId = product.selectedSupplyId;
+      
+      // Если нет selectedSupplyId, пытаемся извлечь из ключа корзины (формат: "productId-supplyId")
+      if (!supplyId && key.includes('-')) {
+        const parts = key.split('-');
+        if (parts.length === 2 && parts[0] === String(productId)) {
+          const extractedId = parseInt(parts[1]);
+          if (!isNaN(extractedId)) {
+            supplyId = extractedId;
+            console.log("✅ Extracted supply_id from cart key:", supplyId);
+          }
         }
-
-        const contactErrors = validateContact({ firstName, lastName, email, phone, street, region, state, zip, country });
-        const newErrors = { ...contactErrors };
-
-        if (!cardName.trim()) newErrors.cardName = "Card holder name required";
-        else if (!/^[A-Za-z]+([ '-][A-Za-z]+)*$/.test(cardName)) newErrors.cardName = "Invalid card name. Please enter first and last name.";
-
-        if (!cardNumber.trim()) newErrors.cardNumber = "Card number required";
-        else if (!/^\d{16}$/.test(cardNumber.replace(/\s+/g, ""))) newErrors.cardNumber = "Must be 16 digits";
-
-        if (!expiry.trim()) newErrors.expiry = "Expire date required";
-        else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) newErrors.expiry = "Format MM/YY";
-
-        if (!cvv.trim()) newErrors.cvv = "CVV required";
-        else if (!/^\d{3}$/.test(cvv)) newErrors.cvv = "Must be 3 digits";
-
-        if (!agreed) newErrors.agreed = "You must agree to the Privacy Policy and Terms of Use.";
-
-        setErrors(newErrors);
-        if (Object.keys(newErrors).length > 0) return;
-
-        const orderItems = items.map(([key, item]) => {
-            const product = item.product;
-
-            const position = { quantity: item.quantity };
-
-            if (product.id) {
-                // Если это продукт
-                position.product_id = Number(product.id);
-
-                if (product.selectedSupplyId) {
-                    position.supply_id = Number(product.selectedSupplyId);
-                }
-            } else if (product.isAccessory) {
-                // Если это аксессуар
-                position.accessory_id = Number(product.id);
-            }
-
-            return position;
-        });
-
-        const orderData = {
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            phone_number: phone.replace(/\s+/g, ""),
-            street_name: street,
-            region: region,
-            state: state,
-            zip_code: zip,
-            country: country || "Ukraine", // По умолчанию Ukraine, если не указано
-            items: orderItems,
-            total: (total - discountAmount).toFixed(2),
-            discount: discountAmount > 0 ? discountAmount.toFixed(2) : "0.00",
-        };
-
-        console.log("🛒 Starting order creation process...");
-        console.log("📦 Order data:", JSON.stringify(orderData, null, 2));
-        console.log("🛍️ Cart items count:", items.length);
-        console.log("💰 Total amount:", total);
-        console.log("🎫 Discount amount:", discountAmount);
-
-        try {
-
-            pendingOrderDataRef.current = orderData;
-            const result = await dispatch(createOrder(orderData));
-
-            if (result.meta.requestStatus === "fulfilled") {
-                const order = result.payload;
-                console.log("✅ Order successfully created!");
-                console.log("📋 Order ID:", order.id);
-                console.log("📋 Order number:", order.order_number || order.id || order.number);
-                console.log("📋 Order status:", order.status);
-                console.log("📋 Full order response:", JSON.stringify(order, null, 2));
-
-                dispatch(clearCart());
-                console.log("🛒 Cart cleared after successful order");
-
-                pendingOrderDataRef.current = null;
-
-                const orderNumber = order.id || order.order_number || order.number || order.order_id;
-                console.log("📝 Navigating to order success page with order number:", orderNumber);
-
-                navigate("/order_successful", {
-                    state: {
-                        orderNumber: orderNumber,
-                        email: email,
-                        firstName: firstName,
-                        lastName: lastName,
-                        total: (total - discountAmount).toFixed(2),
-                        orderId: order.id,
-                    },
-                });
+      }
+      
+      // Если все еще нет supplyId, пытаемся взять первый supply из массива
+      if (!supplyId) {
+        const supplies = product.supplies || [];
+        if (supplies.length > 0) {
+          // Берем первый supply, но проверяем, что это не 'default'
+          const firstSupply = supplies.find(s => s.id !== 'default' && typeof s.id === 'number') || supplies[0];
+          supplyId = firstSupply?.id;
+          if (supplyId === 'default' || typeof supplyId !== 'number') {
+            console.warn("⚠️ Supply ID is 'default' or not a number, trying to find valid supply");
+            // Пытаемся найти валидный supply
+            const validSupply = supplies.find(s => s.id !== 'default' && typeof s.id === 'number');
+            if (validSupply) {
+              supplyId = validSupply.id;
             } else {
-                console.error("❌ Order creation failed!");
-                console.error("❌ Error details:", result.payload);
-                console.error("❌ Error message:", result.payload?.detail || result.payload?.message || "Unknown error");
-
-                if (result.payload?.requiresLogin) {
-                    setOpenLogin(true);
-                    setErrors({ submit: "Your session has expired. Please log in and try again." });
-                } else {
-
-                    const errorMsg = result.payload?.error || result.payload?.detail || result.payload?.message || "Failed to create order. Please try again.";
-                    console.error("❌ Order creation error details:", result.payload);
-                    setErrors({ submit: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg) });
-                }
+              // Если нет валидного supply, но ключ не содержит дефис - это может быть аксессуар
+              if (!key.includes('-')) {
+                console.log("⚠️ Product has no valid supplies, treating as accessory");
+                position.accessory_id = productId;
+                return position;
+              }
+              console.error("❌ Product has no valid supply_id:", {
+                productId: productId,
+                productName: product.name,
+                key,
+                supplies
+              });
+              return null;
             }
-        } catch (error) {
-            console.error("❌ Unexpected error creating order:", error);
-            setErrors({ submit: "An unexpected error occurred. Please try again." });
+          }
+          console.warn("⚠️ No selectedSupplyId, using first valid supply:", supplyId);
+        } else {
+          // Если нет supplies, но ключ не содержит дефис - это может быть аксессуар
+          if (!key.includes('-')) {
+            console.log("⚠️ Product has no supplies and key has no supply_id, treating as accessory");
+            position.accessory_id = productId;
+            return position;
+          }
+          
+          console.error("❌ Product has no supplies and cannot extract supply_id from key:", {
+            productId: productId,
+            productName: product.name,
+            key,
+            product
+          });
+          return null;
         }
-    };
+      }
+      
+      // Проверяем, что supplyId валидный (не 'default' и число)
+      if (supplyId === 'default' || typeof supplyId !== 'number') {
+        console.error("❌ Invalid supply_id (must be a number, not 'default'):", {
+          supplyId,
+          productId: product.id,
+          productName: product.name
+        });
+        // Если это не аксессуар и нет валидного supply_id, пропускаем товар
+        return null;
+      }
+      
+      if (supplyId) {
+        position.supply_id = supplyId;
+        // Не передаем product_id, если есть supply_id - API требует только одно поле
+      }
+    }
+
+    // Проверяем, что есть либо supply_id, либо accessory_id (обязательно для API)
+    if (!position.supply_id && !position.accessory_id) {
+      console.error("❌ Skipping item with no supply_id or accessory_id:", { key, product });
+      return null;
+    }
+
+    // Важно: убеждаемся, что не передаем оба поля одновременно
+    // API не принимает позиции с и supply_id, и accessory_id
+    if (position.supply_id && position.accessory_id) {
+      console.error("❌ Position has both supply_id and accessory_id, this is invalid. Removing accessory_id:", position);
+      delete position.accessory_id; // Удаляем accessory_id, оставляем supply_id
+    }
+
+    console.log("✅ Final position:", position);
+    return position;
+  })
+  .filter(Boolean);
+
+console.log("▶ orderItems to send:", orderItems);
+console.log("▶ orderItems count:", orderItems.length);
+
+  // === 3️⃣ Формируем orderData для API ===
+  const orderData = {
+    billing_details: {
+      first_name: firstName,
+      last_name: lastName,
+      country: country || null,
+      state: state || null,
+      region: region || null,
+      street_name: street || null,
+      apartment_number: apartment || null,
+      zip_code: zip || null,
+      phone_number: phone.replace(/\s+/g, "") || null
+    },
+    positions: orderItems,
+    // basket_id не нужен - бэкенд автоматически подтягивает корзину для авторизованного пользователя
+    order_notes: "",
+    customer_data: email ? { email: email } : null
+  };
+
+  pendingOrderDataRef.current = orderData;
+
+  console.log("🛒 Starting order creation process...");
+  console.log("📦 Order data:", JSON.stringify(orderData, null, 2));
+  console.log("🛍️ Cart items count:", items.length);
+  console.log("💰 Total amount:", total);
+  console.log("🎫 Discount amount:", discountAmount);
+
+  try {
+    const result = await dispatch(createOrder(orderData));
+
+    if (result.meta.requestStatus === "fulfilled") {
+      const order = result.payload;
+      console.log("✅ Order successfully created!", order);
+
+      // Применяем дисконт-код к заказу, если он был введен
+      if (discountCode && discountCode.code && order.id) {
+        try {
+          console.log("🎫 Applying discount code to order...");
+          // Используем авторизованный API, так как заказ создан авторизованным пользователем
+          const apiAuth = apiWithAuth(token);
+          const discountResponse = await apiAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`);
+          console.log("✅ Discount code applied to order:", discountResponse.data);
+        } catch (discountErr) {
+          console.warn("⚠️ Failed to apply discount code to order:", discountErr.response?.data || discountErr.message);
+          // Не блокируем успешное создание заказа, если применение скидки не удалось
+        }
+      }
+
+      // Очищаем локальную корзину
+      dispatch(clearCart());
+      
+      // Корзина на бэке автоматически очищается при создании успешного заказа
+      // Не нужно делать запрос на очистку
+      
+      pendingOrderDataRef.current = null;
+
+      const orderNumber = order.id || order.order_number || order.number || order.order_id;
+
+      navigate("/order_successful", {
+        state: {
+          orderNumber,
+          email: orderData.customer_data?.email || email,
+          firstName,
+          lastName,
+          total: (total - discountAmount).toFixed(2),
+          orderId: order.id
+        }
+      });
+    } else {
+      // Используем улучшенное сообщение об ошибке из ordersSlice
+      const errorMsg = result.payload?.message || 
+        result.payload?.error ||
+        result.payload?.detail ||
+        "Failed to create order. Please try again.";
+
+      if (result.payload?.requiresLogin) {
+        setOpenLogin(true);
+        setErrors({ submit: "Your session has expired. Please log in and try again." });
+      } else {
+        setErrors({ submit: errorMsg });
+      }
+
+      console.error("❌ Order creation failed:", result.payload);
+    }
+  } catch (error) {
+    console.error("❌ Unexpected error creating order:", error);
+    setErrors({ submit: "An unexpected error occurred. Please try again." });
+  }
+};
 
     const handleQuantityChange = (key, change, cartItem) => {
         const { product, quantity } = cartItem;
@@ -285,6 +492,7 @@ export default function CheckoutPage() {
                         state={state} setState={setState}
                         zip={zip} setZip={setZip}
                         country={country} setCountry={setCountry}
+                        apartment={apartment} setApartment={setApartment}
                         errors={errors}
                         handleContinue={handleContinue}
                         formatPhone={formatPhone}
