@@ -189,137 +189,32 @@ export const refreshAccessToken = createAsyncThunk(
 
 export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
-  async (_, { rejectWithValue, dispatch }) => {
-    const token = localStorage.getItem("access");
-    if (!token) {
-
-      return rejectWithValue("No access token");
-    }
-
+  async (_, { rejectWithValue }) => {
     try {
-      const apiAuth = apiWithAuth();
-
-      const res = await apiAuth.get("/users/info");
-      console.log("▶ fetchProfile - /users/info res.data (FULL):", JSON.stringify(res.data, null, 2));
-      console.log("▶ fetchProfile - res.data.avatar:", res.data?.avatar);
-      console.log("▶ fetchProfile - res.data.profile?.avatar:", res.data?.profile?.avatar);
-
-      let userEmail = res.data.email;
-
-      if (!userEmail) {
-        // console.log("⚠️ Email not found in /users/info, trying /users/autofill_form...");
-        try {
-          const autofillRes = await apiAuth.get("/users/autofill_form");
-          // console.log("▶ fetchProfile - /users/autofill_form res.data:", JSON.stringify(autofillRes.data, null, 2));
-          userEmail = autofillRes.data?.email;
-        } catch (autofillErr) {
-          // console.warn("⚠️ Could not fetch from /users/autofill_form:", autofillErr.response?.data || autofillErr.message);
-        }
-      }
-
-      if (!userEmail) {
-        // console.warn("⚠️ Email not found in any API response!");
-      }
-
-      // Проверяем, является ли пользователь админом по email
+      // ИСПРАВЛЕНО: apiWithAuth БЕЗ скобок, так как это экспорт из axios.js
+      const res = await apiWithAuth.get("/users/info");
+      
+      const userEmail = res.data.email;
       const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail =>
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
 
-      // Включаем аватарку в profile, если она есть в ответе
-      const profileWithEmail = res.data.profile
-        ? {
-          ...res.data.profile,
-          email: userEmail,
-          role: isAdminEmail ? 'admin' : undefined,
-          // Добавляем аватарку, если она есть в ответе
-          avatar: res.data.avatar || res.data.profile?.avatar || res.data.profile?.photo || null
-        }
-        : null;
-
-      // console.log("▶ fetchProfile - returning:", { 
-      //   user: profileWithEmail, 
-      //   profile: profileWithEmail,
-      //   email: userEmail 
-      // });
+      const profileData = res.data.profile ? {
+        ...res.data.profile,
+        email: userEmail,
+        role: isAdminEmail ? 'admin' : undefined,
+        avatar: res.data.avatar || res.data.profile?.avatar || null
+      } : null;
 
       return {
-        user: profileWithEmail,
-        profile: profileWithEmail,
-        email: userEmail, // Сохраняем email отдельно
-        isAdmin: isAdminEmail // Флаг админа
+        user: profileData,
+        profile: profileData,
+        email: userEmail,
+        isAdmin: isAdminEmail
       };
     } catch (err) {
-      const status = err.response?.status;
-      const message = err.response?.data;
-
-      // Если получили 401, пытаемся обновить токен через refresh token
-      if (status === 401) {
-        const refreshToken = localStorage.getItem("refresh");
-
-        if (refreshToken) {
-          try {
-            // Пытаемся обновить токен
-            const refreshResult = await dispatch(refreshAccessToken());
-
-            if (refreshResult.meta.requestStatus === "fulfilled") {
-              // Токен обновлен, повторяем запрос профиля
-              const apiAuth = apiWithAuth();
-              const res = await apiAuth.get("/users/info");
-
-              let userEmail = res.data.email;
-              if (!userEmail) {
-                try {
-                  const autofillRes = await apiAuth.get("/users/autofill_form");
-                  userEmail = autofillRes.data?.email;
-                } catch (autofillErr) {
-                  // Игнорируем ошибку
-                }
-              }
-
-              // Проверяем, является ли пользователь админом по email
-              const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail =>
-                userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
-              ) : false;
-
-              const profileWithEmail = res.data.profile
-                ? { ...res.data.profile, email: userEmail, role: isAdminEmail ? 'admin' : undefined }
-                : null;
-
-              return {
-                user: profileWithEmail,
-                profile: profileWithEmail,
-                email: userEmail,
-                isAdmin: isAdminEmail
-              };
-            }
-          } catch (refreshError) {
-            // Если refresh token тоже невалиден, возвращаем ошибку
-            return rejectWithValue({
-              code: "token_not_valid",
-              message: "Token expired and refresh failed",
-              silent: true
-            });
-          }
-        }
-
-        // Если нет refresh token или обновление не удалось
-        return rejectWithValue({
-          code: "token_not_valid",
-          message: "Token expired or invalid",
-          silent: true
-        });
-      }
-
-      // Для других ошибок
-      if (message?.code === "token_not_valid") {
-        return rejectWithValue({
-          ...message,
-          silent: true
-        });
-      }
-
-      return rejectWithValue(message || err.message);
+      // Если запрос упал даже после попытки интерцептора обновить токен
+      return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
