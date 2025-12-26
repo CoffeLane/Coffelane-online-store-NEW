@@ -1,15 +1,22 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { Box, Typography, Button } from '@mui/material';
 import { titlePage, h5 } from "../styles/typographyStyles.jsx";
 import order from "../assets/images/order/order.png";
 import { useLocation } from "react-router-dom";
 import { btnCart, btnStyles } from "../styles/btnStyles.jsx";
 import { useNavigate } from "react-router-dom";
-
 export default function OrderSuccessfulPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { orderNumber, email } = location.state || {};
+    const { orderNumber, email, orderId } = location.state || {};
+
+    useEffect(() => {
+        if (!orderNumber) {
+            navigate('/coffee', { replace: true });
+        }
+    }, [orderNumber, navigate]);
+
+    if (!orderNumber) return null; 
 
     return (
         <Box sx={{ 
@@ -30,6 +37,7 @@ export default function OrderSuccessfulPage() {
             }}>
                 Thank you! Your order has been placed successfully
             </Typography>
+            
             <Box sx={{ 
                 display: 'flex', 
                 flexDirection: { xs: 'column', sm: 'row' },
@@ -43,23 +51,24 @@ export default function OrderSuccessfulPage() {
                 <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontSize: { xs: '14px', md: '16px' } }}>
                     Order
                 </Typography>
-                <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontWeight: 700, ml: { xs: 0, sm: 2 }, mr: { xs: 0, sm: 2 }, fontSize: { xs: '14px', md: '16px' }}}>
-                    #{orderNumber}
+                <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontWeight: 700, fontSize: { xs: '14px', md: '16px' }}}>
+                    № {orderNumber}
                 </Typography>
                 <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontSize: { xs: '14px', md: '16px' } }}>
                     has been confirmed. We've sent a confirmation email to
                 </Typography>
-                <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontWeight: 700, ml: { xs: 0, sm: 2 }, fontSize: { xs: '14px', md: '16px' }, wordBreak: 'break-word' }}>
+                <Typography sx={{ ...h5, mt: { xs: 1, md: 2 }, fontWeight: 700, fontSize: { xs: '14px', md: '16px' }, wordBreak: 'break-word' }}>
                     {email}.
                 </Typography>
             </Box>
 
             <Box component="img" src={order} alt="order" sx={{ 
-                width: { xs: '280px', sm: '350px', md: '440px' }, 
-                height: { xs: '280px', sm: '350px', md: '440px' }, 
+                width: { xs: '200px', sm: '300px', md: '300px' }, 
+                height: { xs: '200px', sm: '300px', md: '300px' }, 
                 mt: { xs: 3, md: 4 },
                 maxWidth: '100%'
             }} />
+
             <Box sx={{ 
                 display: 'flex', 
                 flexDirection: { xs: 'column', sm: 'row' },
@@ -69,21 +78,28 @@ export default function OrderSuccessfulPage() {
                 maxWidth: { xs: '300px', sm: 'none' },
                 px: { xs: 2, md: 0 }
             }}>
-                <Button sx={{ 
-                    ...btnStyles, 
-                    textTransform: 'none',
-                    width: { xs: '100%', sm: 'auto' },
-                    fontSize: { xs: '12px', md: '14px' },
-                    py: { xs: 1, md: 1.5 }
-                }}>
+                <Button 
+                    onClick={() => navigate('/account/orders-history')} 
+                    sx={{ 
+                        ...btnStyles, 
+                        textTransform: 'none',
+                        width: { xs: '100%', sm: 'auto' },
+                        fontSize: { xs: '12px', md: '14px' },
+                        py: { xs: 1, md: 1.5 }
+                    }}
+                >
                     <Typography sx={{ fontSize: { xs: '12px', md: '14px' } }}>View Order</Typography>
                 </Button>
-                <Button sx={{ 
-                    ...btnCart,
-                    width: { xs: '100%', sm: 'auto' },
-                    fontSize: { xs: '12px', md: '14px' },
-                    py: { xs: 1, md: 1.5 }
-                }} onClick={() => navigate('/coffee')}>
+                
+                <Button 
+                    sx={{ 
+                        ...btnCart,
+                        width: { xs: '100%', sm: 'auto' },
+                        fontSize: { xs: '12px', md: '14px' },
+                        py: { xs: 1, md: 1.5 }
+                    }} 
+                    onClick={() => navigate('/coffee')}
+                >
                     <Typography sx={{ fontSize: { xs: '12px', md: '14px' } }}>Continue Shopping</Typography>
                 </Button>
             </Box>
