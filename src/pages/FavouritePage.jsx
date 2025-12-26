@@ -138,7 +138,7 @@ export default function FavouritePage() {
             Favourite products
           </Typography>
 
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "flex-start", md: "center" }, gap: 1, mb: 4, flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "flex-start", md: "center" }, gap: 1, mb: 4, flexWrap: "nowrap" }}>
               <Tooltip title="Share favorites list">
                 <IconButton
                   onClick={handleShare}
