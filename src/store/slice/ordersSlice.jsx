@@ -1,9 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiWithAuth } from "../api/axios";
-import api from "../api/axios";
-import { clearAuthState, refreshAccessToken } from "./authSlice";
+import { getActiveBasket, addItemToBasket, clearBasketState } from "./basketSlice";
 
-// import { orders as mockOrdersData } from "../../mockData/orders.jsx";
+
 
 export const fetchOrders = createAsyncThunk(
   "orders/fetchOrders",
@@ -54,13 +53,11 @@ export const fetchOrders = createAsyncThunk(
             if (Array.isArray(response.data[field])) {
               ordersList = response.data[field];
               count = response.data.total_items || ordersList.length;
-              console.log(`▶ Found orders in field: ${field}`);
               break;
             }
           }
 
           if (response.data?.total_items === 0 && ordersList.length === 0) {
-            console.log("▶ No orders found (total_items = 0), returning empty array");
             return { results: [], count: 0, page, size };
           }
         }
@@ -79,26 +76,22 @@ export const fetchOrders = createAsyncThunk(
         }
 
         if (response.data?.total_items === 0 || response.data?.total_items === undefined) {
-          // Нет заказов - это нормальная ситуация
           return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
         }
 
         if (response.data?.total_items > 0 && ordersList.length === 0) {
-          console.warn("⚠️ API says there are orders (total_items > 0) but couldn't find them in response");
-          console.warn("⚠️ Full response structure:", JSON.stringify(response.data, null, 2));
+          console.warn("API says there are orders (total_items > 0) but couldn't find them in response");
+          console.warn("Full response structure:", JSON.stringify(response.data, null, 2));
 
           return { results: [], count: response.data.total_items, page, size };
         }
-
-        // Если не удалось найти заказы, возвращаем пустой массив
         return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
       } catch (apiError) {
-        console.error("❌ Error fetching orders from API:", apiError.response?.data || apiError.message);
-        // При ошибке API возвращаем пустой массив вместо mock данных
+        console.error("Error fetching orders from API:", apiError.response?.data || apiError.message);
         return { results: [], count: 0, total_items: 0, total_pages: 0, current_page: page, page, size };
       }
     } catch (err) {
-      console.error("❌ Error fetching orders:", err.response?.data || err.message);
+      console.error("Error fetching orders:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -106,88 +99,84 @@ export const fetchOrders = createAsyncThunk(
 
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
-  async (orderData, { rejectWithValue, getState }) => {
+  async (orderData, { rejectWithValue, getState, dispatch }) => {
     const state = getState();
     const token = state.auth?.token || localStorage.getItem("access");
     const apiAuth = apiWithAuth(token);
 
     try {
-      // 1. Получаем ID корзины
-      let basketId = state.basket?.basketId;
-      if (!basketId) {
-        const bRes = await apiAuth.get("/basket").catch(() => null);
-        basketId = bRes?.data?.id;
+      // 1. Пытаемся синхронизировать товары
+      console.log("🔄 Синхронизация товаров...");
+      
+      for (const item of orderData.positions) {
+        try {
+          // Пытаемся добавить товар
+          const result =await dispatch(addItemToBasket({
+            product_id: item.product_id,
+            supply_id: item.supply_id,
+            accessory_id: item.accessory_id,
+            quantity: item.quantity
+          })).unwrap();
+          if (!result) throw new Error("The server returned an empty response for the product.");
+        } catch (addError) {
+          // Если добавить не удалось (ошибка 400), значит корзина закрыта.
+          // Очищаем стейт и пробуем еще раз — бэкенд создаст НОВУЮ корзину
+          console.log("🚀 Создаем новую сессию корзины...");
+          dispatch(clearBasketState()); 
+          
+          // Повторная попытка добавления (теперь с чистым стейтом)
+          await dispatch(addItemToBasket({
+            product_id: item.product_id,
+            supply_id: item.supply_id,
+            accessory_id: item.accessory_id,
+            quantity: item.quantity
+          })).unwrap();
+        }
       }
 
-      // 2. Подготовка позиций
-      const cleanPositions = orderData.positions.map(p => ({
-        quantity: Number(p.quantity),
-        ...(p.accessory_id ? { accessory_id: Number(p.accessory_id) } : {
-            product_id: Number(p.product_id),
-            supply_id: Number(p.supply_id)
-        })
-      }));
+      // 2. Получаем ID уже точно актуальной корзины
+      const basketRes = await dispatch(getActiveBasket()).unwrap();
+      const basketId = basketRes?.id;
 
-      // 3. ФУНКЦИЯ ФОРМАТИРОВАНИЯ ТЕЛЕФОНА (E.164)
+      if (!basketId) throw new Error("Не удалось получить ID корзины");
+
+      // 3. Форматируем телефон
       const formatPhone = (rawPhone) => {
-        let digits = String(rawPhone).replace(/\D/g, ""); // Только цифры
-        if (digits.startsWith("0") && digits.length === 10) digits = "38" + digits;
-        if (digits.startsWith("80") && digits.length === 11) digits = "3" + digits;
-        return `+${digits}`;
+        const digits = String(rawPhone).replace(/\D/g, "");
+        return digits.startsWith("38") ? `+${digits}` : `+38${digits}`;
       };
 
-      // 4. Формируем финальный Payload
+      // 4. Отправляем заказ
       const payload = {
         billing_details: {
           ...orderData.billing_details,
           phone_number: formatPhone(orderData.billing_details.phone_number)
         },
-        positions: cleanPositions,
+        positions: orderData.positions.map(p => ({
+          quantity: Number(p.quantity),
+          ...(p.accessory_id ? { accessory_id: Number(p.accessory_id) } : {
+              product_id: Number(p.product_id),
+              supply_id: Number(p.supply_id)
+          })
+        })),
         customer_data: orderData.customer_data,
-        basket_id: basketId ? Number(basketId) : null
+        basket_id: Number(basketId)
       };
 
-      console.log("📤 Attempt 1 (with basket_id):", payload);
       const response = await apiAuth.post("/orders/create", payload);
+      
+      // 5. Успех! Чистим всё.
+      dispatch(clearBasketState());
       return response.data;
 
     } catch (err) {
-      const errorData = err.response?.data;
-      console.error("❌ Attempt 1 Error:", errorData);
-
-      if (err.response?.status === 401) return rejectWithValue({ requiresLogin: true });
-      const errorStr = JSON.stringify(errorData);
-      if (errorStr.includes("not found") || errorStr.includes("Basket")) {
-        console.log("🔄 Attempt 2: Retrying without basket_id...");
-        
-        const retryPayload = {
-          billing_details: {
-            ...orderData.billing_details,
-            phone_number: `+${String(orderData.billing_details.phone_number).replace(/\D/g, "")}`
-          },
-          positions: orderData.positions.map(p => ({
-            quantity: Number(p.quantity),
-            ...(p.accessory_id ? { accessory_id: Number(p.accessory_id) } : {
-                product_id: Number(p.product_id),
-                supply_id: Number(p.supply_id)
-            })
-          })),
-          customer_data: orderData.customer_data
-        };
-
-        try {
-          const retryRes = await apiAuth.post("/orders/create", retryPayload);
-          return retryRes.data;
-        } catch (retryErr) {
-          console.error("❌ Attempt 2 Error:", retryErr.response?.data);
-          return rejectWithValue(retryErr.response?.data || "Order failed");
-        }
-      }
-
-      return rejectWithValue(errorData || "Order creation failed");
+      console.error("❌ Ошибка:", err.response?.data || err.message);
+      return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
     }
   }
 );
+
+
 export const fetchOrderDetails = createAsyncThunk(
   "orders/fetchOrderDetails",
   async (orderId, { rejectWithValue }) => {
@@ -238,7 +227,7 @@ const ordersSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("▶ fetchOrders.fulfilled - action.payload:", action.payload);
+       
         console.log("▶ fetchOrders.fulfilled - action.payload.results:", action.payload.results);
 
         state.orders = action.payload.results || [];
@@ -247,7 +236,7 @@ const ordersSlice = createSlice({
         state.size = action.payload.size || 10;
         
         console.log("▶ fetchOrders.fulfilled - state.orders after update:", state.orders);
-        console.log("▶ fetchOrders.fulfilled - state.orders length:", state.orders.length);
+        
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.loading = false;

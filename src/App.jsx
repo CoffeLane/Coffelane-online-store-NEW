@@ -1,8 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
-import { fetchProfile, setAdminMode, refreshAccessToken, tokenRefreshedFromInterceptor } from './store/slice/authSlice.jsx';
 
 // Список админских email (должен совпадать с authSlice)
 const ADMIN_EMAILS = [
@@ -35,54 +34,53 @@ import ProductEdit from './admin/Pages/ProductEdit.jsx';
 import Orders from './admin/Pages/Orders.jsx';
 import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
-
+import { setTokens, fetchProfile, refreshAccessToken, setAdminMode } from "./store/slice/authSlice";
 
 function App() {
   const dispatch = useDispatch();
-  const { user, token, loading, tokenInvalid, isAdmin, email } = useSelector(state => state.auth);
+  const { user, token, loading, isAdmin, email } = useSelector(state => state.auth);
 
-  // Слушаем событие обновления токена из axios interceptor
+  // 1. СЛУШАЕМ AXIOS И ОБНОВЛЯЕМ REDUX
   useEffect(() => {
-    const handleTokenRefreshed = (event) => {
-      const { access } = event.detail;
-      // Обновляем Redux state через action
-      dispatch(tokenRefreshedFromInterceptor({ access }));
+    const handleRefreshed = (e) => {
+      const { access, refresh } = e.detail;
+      // Обновляем Redux, чтобы все компоненты увидели новый токен
+      dispatch(setTokens({ access, refresh }));
+      console.log("✅ Redux updated with new tokens from Axios Interceptor");
     };
 
-    window.addEventListener('tokenRefreshed', handleTokenRefreshed);
-    return () => window.removeEventListener('tokenRefreshed', handleTokenRefreshed);
+    window.addEventListener('tokenRefreshed', handleRefreshed);
+    return () => window.removeEventListener('tokenRefreshed', handleRefreshed);
   }, [dispatch]);
 
+  // 2. СИНХРОНИЗАЦИЯ LOCALSTORAGE (только если токен в сторе изменился)
   useEffect(() => {
-    const tokenFromStorage = localStorage.getItem("access");
-
-    if (token && !tokenFromStorage) {
+    if (token) {
       localStorage.setItem("access", token);
     }
   }, [token]);
 
+  // 3. ЗАГРУЗКА ПРОФИЛЯ
   useEffect(() => {
     const tokenFromStorage = localStorage.getItem("access");
     const currentToken = token || tokenFromStorage;
 
-    // Пытаемся загрузить профиль, даже если токен помечен как невалидный
-    // fetchProfile сам попытается обновить токен через refresh token
     if (currentToken && !user && !loading) {
       dispatch(fetchProfile());
     }
-  }, [dispatch, token, user, loading]);
+  }, [dispatch, user, loading, token]);
 
   // Проверяем и устанавливаем роль админа при загрузке пользователя
   useEffect(() => {
     if (user) {
       const userEmail = email || user.email;
       // Проверяем по email
-      const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail => 
+      const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail =>
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
       // Проверяем по роли в user
       const isAdminRole = user.role === 'admin' || user.role === 'Administrator';
-      
+
       // Если пользователь админ (по email или по роли), но isAdmin еще не установлен
       if ((isAdminEmail || isAdminRole) && !isAdmin) {
         console.log("Setting admin mode - email:", userEmail, "role:", user.role);
@@ -121,7 +119,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/coffee" element={<CoffeePage />} />
           <Route path="/coffee/product/:id" element={<ProductCardPage />} />
-          <Route path="/checkout" element={<CheckoutPage/>} />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order_successful" element={<OrderSuccessfulPage />} />
           <Route path="/accessories" element={<AccessoriesPage />} />
           <Route path="/accessories/product/:id" element={<AccessoriesCardPage />} />

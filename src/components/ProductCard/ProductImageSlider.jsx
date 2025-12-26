@@ -1,94 +1,137 @@
 import { useState } from "react";
-import { Box, IconButton } from "@mui/material";
+import { Box, IconButton, Typography, useMediaQuery, useTheme } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import CoffeeIcon from '@mui/icons-material/Coffee';
+
+
+const ThumbnailItem = ({ img, isSelected, onClick, productName, index }) => {
+  const [thumbError, setThumbError] = useState(false);
+
+  return (
+    <Box sx={{ cursor: "pointer", textAlign: "center" }} onClick={onClick}>
+      <Box sx={{ 
+        width: { xs: 60, md: 80 }, 
+        height: { xs: 60, md: 80 }, 
+        backgroundColor: "#fff", 
+        borderRadius: 1,
+        border: isSelected ? "1px solid #16675C" : "1px solid #eee",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        p: 0.5
+      }}>
+        {thumbError ? (
+          <CoffeeIcon sx={{ color: "#16675C", fontSize: 30, opacity: 0.3 }} />
+        ) : (
+          <Box 
+            component="img" 
+            src={img} 
+            alt={`${productName}-${index}`} 
+            onError={() => setThumbError(true)}
+            sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
+          />
+        )}
+      </Box>
+      <Box sx={{ 
+        width: "100%", 
+        height: { xs: 3, md: 4 }, 
+        borderRadius: 2, 
+        backgroundColor: isSelected ? "#3E3027" : "#ccc", 
+        mt: 0.5 
+      }} />
+    </Box>
+  );
+};
 
 export default function ProductImageSlider({ photos = [], productName }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const handlePrev = () =>
-    setSelectedIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
-  const handleNext = () =>
-    setSelectedIndex((prev) => (prev === photos.length - 1 ? 0 : prev + 1));
-
-  if (!photos.length)
-    return (
-      <Box sx={{ width: "100%", height: { xs: 200, md: 300 }, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f0f0f0", }}>
-        No image
-      </Box>
-    );
+  const [mainError, setMainError] = useState(false);
 
   const photoUrls = photos.filter((photo) => photo.url).map((photo) => photo.url);
-  
+
+  if (photoUrls.length === 0) {
+    return (
+      <Box sx={{ 
+        mt: { xs: 2, md: 4 }, width: "100%", height: { xs: 250, md: 400 }, 
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
+        bgcolor: "#F9F9F9", borderRadius: "24px", gap: 1, border: "1px solid #EEE"
+      }}>
+        <CoffeeIcon sx={{ color: "#16675C", fontSize: isMobile ? 60 : 80, opacity: 0.4 }} />
+        <Typography sx={{ fontSize: '14px', color: '#999', fontWeight: 600 }}>No Image Available</Typography>
+      </Box>
+    );
+  }
+
+  const handleSwitch = (newIndex) => {
+    setMainError(false);
+    setSelectedIndex(newIndex);
+  };
+
   return (
     <Box sx={{ mt: { xs: 2, md: 4 }, maxWidth: { xs: "100%", md: 700 }, mx: "auto", px: { xs: 1, md: 0 } }}>
       <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <IconButton 
-          onClick={handlePrev} 
-          sx={{ 
-            position: "absolute", 
-            left: { xs: -8, md: 0 }, 
-            backgroundColor: "rgba(255,255,255,0.9)", 
-            boxShadow: 1,
-            width: { xs: 32, md: 40 },
-            height: { xs: 32, md: 40 },
-            zIndex: 1
-          }}
-        >
-          <ArrowBackIosIcon sx={{ fontSize: { xs: 16, md: 20 } }} />
-        </IconButton>
+        
+        {photoUrls.length > 1 && (
+          <IconButton 
+            onClick={() => handleSwitch(selectedIndex === 0 ? photoUrls.length - 1 : selectedIndex - 1)} 
+            sx={{ position: "absolute", left: { xs: -8, md: 0 }, backgroundColor: "rgba(255,255,255,0.9)", boxShadow: 1, zIndex: 1 }}
+          >
+            <ArrowBackIosIcon sx={{ fontSize: { xs: 16, md: 20 }, ml: 0.5 }} />
+          </IconButton>
+        )}
 
-        <Box 
-          component="img" 
-          src={photoUrls[selectedIndex]} 
-          alt={productName} 
-          sx={{ 
-            backgroundColor: "#fff", 
-            p: { xs: 1, md: 2 }, 
-            height: { xs: 200, md: 300 }, 
-            width: "100%",
-            maxWidth: { xs: "100%", md: "600px" },
-            objectFit: "contain", 
-            mx: { xs: 4, md: 6 } 
-          }} 
-        />
-
-        <IconButton 
-          onClick={handleNext} 
-          sx={{ 
-            position: "absolute", 
-            right: { xs: -8, md: 0 }, 
-            backgroundColor: "rgba(255,255,255,0.9)", 
-            boxShadow: 1,
-            width: { xs: 32, md: 40 },
-            height: { xs: 32, md: 40 },
-            zIndex: 1
-          }}
-        >
-          <ArrowForwardIosIcon sx={{ fontSize: { xs: 16, md: 20 } }} />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap", px: { xs: 1, md: 0 } }}>
-        {photoUrls.map((img, index) => (
-          <Box key={index} sx={{ cursor: "pointer", textAlign: "center" }} onClick={() => setSelectedIndex(index)}>
+        <Box sx={{ 
+          width: { xs: 200, md: 350 }, height: { xs: 200, md: 350 }, display: "flex", 
+          alignItems: "center", justifyContent: "center", mx: { xs: 4, md: 6 } 
+        }}>
+          {mainError ? (
+            <Box sx={{ 
+              width: "100%", height: "100%", display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", bgcolor: "#F4F1EE", borderRadius: "24px" 
+            }}>
+              <CoffeeIcon sx={{ fontSize: { xs: 60, md: 80 }, color: "#ccc" }} />
+              <Typography sx={{ color: "#999", mt: 1, fontWeight: 500 }}>No image</Typography>
+            </Box>
+          ) : (
             <Box 
               component="img" 
-              src={img} 
-              alt={`${productName}-${index}`} 
-              sx={{ 
-                backgroundColor: "#fff", 
-                p: { xs: 0.5, md: 1 }, 
-                width: { xs: 60, md: 80 }, 
-                height: { xs: 60, md: 80 }, 
-                objectFit: "contain", 
-                borderRadius: 1 
-              }} 
+              src={photoUrls[selectedIndex]} 
+              alt={productName} 
+              onError={() => setMainError(true)}
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
             />
-            <Box sx={{ width: { xs: 60, md: 96 }, height: { xs: 3, md: 4 }, borderRadius: 2, backgroundColor: selectedIndex === index ? "#3E3027" : "#ccc", mt: 0.5 }} />
-          </Box>
-        ))}
+          )}
+        </Box>
+
+        {photoUrls.length > 1 && (
+          <IconButton 
+            onClick={() => handleSwitch(selectedIndex === photoUrls.length - 1 ? 0 : selectedIndex + 1)} 
+            sx={{ position: "absolute", right: { xs: -8, md: 0 }, backgroundColor: "rgba(255,255,255,0.9)", boxShadow: 1, zIndex: 1 }}
+          >
+            <ArrowForwardIosIcon sx={{ fontSize: { xs: 16, md: 20 } }} />
+          </IconButton>
+        )}
       </Box>
+
+      {/* Сетка миниатюр с заглушками */}
+      {photoUrls.length > 1 && (
+        <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap" }}>
+          {photoUrls.map((img, index) => (
+            <ThumbnailItem 
+              key={index}
+              img={img}
+              index={index}
+              productName={productName}
+              isSelected={selectedIndex === index}
+              onClick={() => handleSwitch(index)}
+            />
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }

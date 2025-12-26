@@ -1,13 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../api/axios';
 
+const getCurrency = (thunkAPI) => thunkAPI.getState().settings.currency;
+
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
   async ({ filters = {} } = {}, thunkAPI) => {
     try {
+     const currentCurrency = getCurrency(thunkAPI);
+
       const params = new URLSearchParams();
       params.append("page", 1);
       params.append("size", 12);
+      params.append("currency", currentCurrency);
 
       if (filters.brand && filters.brand !== "Brand") params.append("brand", filters.brand);
       if (filters.priceRange) {
@@ -41,8 +46,9 @@ export const fetchProducts = createAsyncThunk(
         allProducts = allProducts.filter(p => filters.caffeine.includes(p.caffeine_type));
       }
 
-      if (filters.bean && filters.bean.length) {allProducts = allProducts.filter(p => 
-        filters.bean.some(f => p.sort?.toLowerCase().includes(f.toLowerCase())));
+      if (filters.bean && filters.bean.length) {
+        allProducts = allProducts.filter(p =>
+          filters.bean.some(f => p.sort?.toLowerCase().includes(f.toLowerCase())));
       }
 
       if (filters.grind && filters.grind.length) {
@@ -75,7 +81,7 @@ export const fetchProducts = createAsyncThunk(
         currentPage: 1,
       };
     } catch (error) {
-      // console.error("Error fetching products:", error);
+      console.error("Error fetching products:", error);
       return thunkAPI.rejectWithValue(error.response?.data || "Error");
     }
   }
@@ -83,8 +89,9 @@ export const fetchProducts = createAsyncThunk(
 
 export const fetchProductById = createAsyncThunk(
   "products/fetchById",
-  async (id) => {
-    const response = await api.get(`/products/${id}`);
+  async (id, thunkAPI) => {
+    const currentCurrency = getCurrency(thunkAPI); 
+    const response = await api.get(`/products/${id}?currency=${currentCurrency}`);
     return response.data;
   }
 );
@@ -94,9 +101,11 @@ export const searchAndFilterProducts = createAsyncThunk(
   "products/searchAndFilter",
   async ({ searchQuery = '', filters = {} } = {}, thunkAPI) => {
     try {
+      const currentCurrency = getCurrency(thunkAPI);
       const params = new URLSearchParams();
       params.append("page", 1);
       params.append("size", 12);
+      params.append("currency", currentCurrency);
 
       if (searchQuery) {
         params.append("q", searchQuery);
@@ -112,7 +121,7 @@ export const searchAndFilterProducts = createAsyncThunk(
 
       const endpoint = searchQuery ? '/search/items/' : '/products';
       const response = await api.get(`${endpoint}?${params.toString()}`);
-      
+
       let allProducts = response.data.data;
 
       if (filters.roast && filters.roast.length) {
@@ -123,7 +132,7 @@ export const searchAndFilterProducts = createAsyncThunk(
         allProducts = allProducts.filter(p => filters.caffeine.includes(p.caffeine_type));
       }
 
-    
+
 
       return {
         data: allProducts,

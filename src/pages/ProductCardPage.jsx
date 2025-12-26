@@ -41,6 +41,8 @@ console.log("🔍 [PRODUCT] Items:", items);
     const handleIncrement = () => setQuantity((prev) => prev + 1);
     const handleDecrement = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
+   
+
     return (
         <Box sx={{ width: "100%" }}>
             <Grid container sx={{ 

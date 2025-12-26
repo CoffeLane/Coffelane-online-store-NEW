@@ -23,23 +23,25 @@ export const getActiveBasket = createAsyncThunk(
 // Добавить товар в корзину
 export const addItemToBasket = createAsyncThunk(
   "basket/addItem",
-  async ({ product_id, supply_id, accessory_id, quantity = 1 }, { rejectWithValue, getState }) => {
+  async (payload, { rejectWithValue, getState, dispatch }) => {
     try {
+      if (!payload) return rejectWithValue("Empty payload");
       const state = getState();
       const token = state.auth?.token || localStorage.getItem("access");
-      if (!token) {
-        return rejectWithValue("No access token");
-      }
       const apiAuth = apiWithAuth(token);
       
-      const payload = { quantity };
-      if (product_id) payload.product_id = product_id;
-      if (supply_id) payload.supply_id = supply_id;
-      if (accessory_id) payload.accessory_id = accessory_id;
-
       const response = await apiAuth.post("/basket/add/", payload);
+      if (!response.data) {
+          throw new Error("No data received from server");
+      }
       return response.data;
     } catch (err) {
+      // ЕСЛИ БЭКЕНД ВЕРНУЛ 400 (корзина неактивна или ошибка)
+      if (err.response?.status === 400) {
+        console.warn("⚠️ Корзина неактивна, пробуем пересоздать...");
+        // Здесь можно либо вызвать очистку стейта, либо просто вернуть ошибку,
+        // которую мы обработаем в ordersSlice
+      }
       return rejectWithValue(err.response?.data || err.message);
     }
   }

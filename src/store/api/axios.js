@@ -1,58 +1,66 @@
 import axios from 'axios';
 
-// обычный API без авторизации
+const API_URL = 'https://onlinestore-928b.onrender.com/api';
+
+// Базовый экземпляр для запросов без авторизации (и для самого Refresh)
 const api = axios.create({
-  baseURL: 'https://onlinestore-928b.onrender.com/api', 
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
 });
 
-// Глобальные переменные для управления обновлением токена
+// Вспомогательная функция для извлечения чистых токенов из Redux Persist
+const getCleanToken = (key) => {
+  try {
+    const persistData = localStorage.getItem('persist:auth');
+    if (!persistData) return null;
+
+    const authState = JSON.parse(persistData);
+    const token = authState[key]; // Это может быть '"token_string"'
+
+    if (!token || token === 'null') return null;
+
+    // Убираем лишние кавычки (бывает по 2-3 слоя из-за сериализации)
+    return token.replace(/^"+|"+$/g, '');
+  } catch (e) {
+    console.error("Ошибка парсинга токена из localStorage", e);
+    return null;
+  }
+};
+
 let isRefreshing = false;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
-  
   failedQueue = [];
 };
 
-export const apiWithAuth = (tokenFromState = null) => {
-  const tokenFromStorage = localStorage.getItem("access");
-  const rawToken = tokenFromState || tokenFromStorage;
-
-  if (!rawToken) {
-    throw new Error("No access token. User is not authenticated.");
-  }
-
-  const access = rawToken.replace(/^"|"$/g, ""); // убираем двойные кавычки
+export const apiWithAuth = () => {
+  const access = getCleanToken('token');
 
   const instance = axios.create({
-    baseURL: "https://onlinestore-928b.onrender.com/api",
+    baseURL: API_URL,
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${access}`,
+      'Content-Type': 'application/json',
+      ...(access && { Authorization: `Bearer ${access}` }),
     },
   });
 
-  // Добавляем interceptor для автоматического обновления токена
+  // ИНТЕРЦЕПТОР ОТВЕТА
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
 
-      // Если ошибка 401 и это не запрос на обновление токена и не повторный запрос
-      if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh')) {
+      // Если 401 и это не повторный запрос и не сам запрос рефреша
+      if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh')) {
+        
         if (isRefreshing) {
-          // Если токен уже обновляется, добавляем запрос в очередь
           return new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
           })
@@ -60,72 +68,53 @@ export const apiWithAuth = (tokenFromState = null) => {
               originalRequest.headers.Authorization = `Bearer ${token}`;
               return instance(originalRequest);
             })
-            .catch(err => {
-              return Promise.reject(err);
-            });
+            .catch(err => Promise.reject(err));
         }
 
         originalRequest._retry = true;
         isRefreshing = true;
 
         try {
-          const refreshToken = localStorage.getItem("refresh");
-          if (!refreshToken) {
-            // Если нет refresh token, просто возвращаем оригинальную ошибку
-            // Не разлогиниваем пользователя
-            isRefreshing = false;
-            return Promise.reject(error);
-          }
+          const refresh = getCleanToken('refresh'); // Ищем рефреш в персисте
+          if (!refresh) throw new Error("No refresh token");
 
-          // Обновляем токен напрямую через API, без Redux (чтобы избежать циклической зависимости)
-          const refreshResponse = await api.post("/auth/refresh", {
-            refresh: refreshToken.replace(/^"|"$/g, ""),
-          });
-
-          const { access, refresh: newRefresh } = refreshResponse.data;
-
-          if (access) {
-            // Сохраняем новый токен в localStorage
-            localStorage.setItem("access", access);
-            if (newRefresh) {
-              localStorage.setItem("refresh", newRefresh);
-            }
-
-            // Отправляем событие для обновления Redux state (без циклической зависимости)
-            window.dispatchEvent(new CustomEvent('tokenRefreshed', { detail: { access, refresh: newRefresh } }));
-
-            // Обновляем заголовок для оригинального запроса
-            originalRequest.headers.Authorization = `Bearer ${access}`;
-            
-            // Обновляем токен для всех ожидающих запросов
-            processQueue(null, access);
-            isRefreshing = false;
-            
-            // Повторяем оригинальный запрос
-            return instance(originalRequest);
-          } else {
-            throw new Error("No access token in refresh response");
-          }
-        } catch (refreshError) {
-          // Если refresh token истек, не разлогиниваем пользователя
-          // Просто возвращаем оригинальную ошибку 401, которую можно обработать в компоненте
-          console.warn("⚠️ Failed to refresh token:", refreshError.response?.status, refreshError.response?.data || refreshError.message);
-          processQueue(refreshError, null);
-          isRefreshing = false;
+          // ВАЖНО: используем базовый api (без интерцепторов), путь /auth/refresh
+          const response = await api.post('/auth/refresh', { refresh });
           
-          // Возвращаем оригинальную ошибку 401, а не ошибку refresh token
-          // Это позволит компонентам обработать ошибку как обычную 401
-          return Promise.reject(error);
+          const newAccess = response.data.access;
+          const newRefresh = response.data.refresh;
+
+          // Обновляем localStorage вручную, чтобы Redux Persist подхватил при перезагрузке
+          // Но лучше вызвать dispatch(updateTokens) если есть доступ к store
+          // Для простоты обновим через кастомное событие, которое поймает ваш AuthSlice
+          window.dispatchEvent(new CustomEvent('tokenRefreshed', { 
+            detail: { access: newAccess, refresh: newRefresh } 
+          }));
+
+          processQueue(null, newAccess);
+          isRefreshing = false;
+
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          return instance(originalRequest);
+
+        } catch (refreshError) {
+          console.error("❌ Фатальная ошибка обновления токена:", refreshError);
+          isRefreshing = false;
+          processQueue(refreshError, null);
+          
+          // Если рефреш не удался — разлогиниваем (чистим стор)
+          localStorage.removeItem('persist:auth');
+          window.location.href = '/login';
+          
+          return Promise.reject(refreshError);
         }
       }
-
       return Promise.reject(error);
     }
   );
 
   return instance;
 };
-
 
 export default api;
 

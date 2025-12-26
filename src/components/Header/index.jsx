@@ -19,6 +19,7 @@ import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlin
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { searchProducts, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
 import SearchDropdown from "../SearchDropdown/index.jsx";
+// import { CurrencySwitcher } from "../CurrencySwitcher.jsx";
 
 
 function Header() {
@@ -33,7 +34,7 @@ function Header() {
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [messageType, setMessageType] = useState('');
     const [modalParams, setModalParams] = useState({ initialScreen: null, recoveryToken: null });
-    const [returnPath, setReturnPath] = useState(null); 
+    const [returnPath, setReturnPath] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const cartCount = useSelector(selectCartCount);
@@ -124,7 +125,7 @@ function Header() {
                 const [, item] = currentItem;
                 const currentQty = item.quantity;
                 const diff = newQty - currentQty;
-                
+
                 if (diff < 0) {
 
                     for (let i = 0; i < Math.abs(diff); i++) {
@@ -183,7 +184,7 @@ function Header() {
         }
     }, [searchParams, setSearchParams]);
 
-    const favoriteItems = useSelector(state => state.favorites.favorites); 
+    const favoriteItems = useSelector(state => state.favorites.favorites);
     const favoritesCount = favoriteItems ? favoriteItems.length : 0;
     const hasFavorites = favoritesCount > 0;
 
@@ -216,7 +217,7 @@ function Header() {
         <Box sx={{ flexGrow: 1 }}>
             <TopLine />
 
-            {}
+            { }
             {showSuccessMessage && (
                 <Alert severity={messageType}
                     sx={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, minWidth: { xs: '90%', sm: '300px' }, maxWidth: '90vw' }} onClose={() => setShowSuccessMessage(false)} >
@@ -248,6 +249,10 @@ function Header() {
                                 <Box component="img" src={Search} alt="search-icon"
                                     sx={{ width: '20px', height: '20px' }} />
                             </IconButton>
+                            <Box sx={{ px: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                
+                                {/* <CurrencySwitcher /> */}
+                            </Box>
                             <Button onClick={goToFavorites} disableRipple sx={{ minWidth: 0, p: 0.5, position: "relative" }}>
                                 {hasFavorites ? (
                                     <FavoriteIcon sx={{ color: 'red', fontSize: 20 }} />
@@ -300,7 +305,7 @@ function Header() {
                             )}
                         </Box>
                     </Box>
-                    
+
                     {showMobileSearch && (
                         <Box sx={{ mt: 1, mb: 1 }}>
                             <form onSubmit={handleSearchSubmit}>
@@ -373,10 +378,10 @@ function Header() {
                                 component={RouterNavLink}
                                 to="/"
                                 onClick={() => setMobileMenuOpen(false)}
-                                sx={{ 
-                                    color: '#3E3027', 
-                                    justifyContent: 'flex-start', 
-                                    textTransform: 'none', 
+                                sx={{
+                                    color: '#3E3027',
+                                    justifyContent: 'flex-start',
+                                    textTransform: 'none',
                                     fontSize: '16px',
                                     fontFamily: 'Montserrat, sans-serif',
                                     fontWeight: 500,
@@ -393,10 +398,10 @@ function Header() {
                                 component={RouterNavLink}
                                 to="/coffee"
                                 onClick={() => setMobileMenuOpen(false)}
-                                sx={{ 
-                                    color: '#3E3027', 
-                                    justifyContent: 'flex-start', 
-                                    textTransform: 'none', 
+                                sx={{
+                                    color: '#3E3027',
+                                    justifyContent: 'flex-start',
+                                    textTransform: 'none',
                                     fontSize: '16px',
                                     fontFamily: 'Montserrat, sans-serif',
                                     fontWeight: 500,
@@ -413,10 +418,10 @@ function Header() {
                                 component={RouterNavLink}
                                 to="/accessories"
                                 onClick={() => setMobileMenuOpen(false)}
-                                sx={{ 
-                                    color: '#3E3027', 
-                                    justifyContent: 'flex-start', 
-                                    textTransform: 'none', 
+                                sx={{
+                                    color: '#3E3027',
+                                    justifyContent: 'flex-start',
+                                    textTransform: 'none',
                                     fontSize: '16px',
                                     fontFamily: 'Montserrat, sans-serif',
                                     fontWeight: 500,
@@ -433,10 +438,10 @@ function Header() {
                                 component={RouterNavLink}
                                 to="/ourStory"
                                 onClick={() => setMobileMenuOpen(false)}
-                                sx={{ 
-                                    color: '#3E3027', 
-                                    justifyContent: 'flex-start', 
-                                    textTransform: 'none', 
+                                sx={{
+                                    color: '#3E3027',
+                                    justifyContent: 'flex-start',
+                                    textTransform: 'none',
                                     fontSize: '16px',
                                     fontFamily: 'Montserrat, sans-serif',
                                     fontWeight: 500,
@@ -475,6 +480,7 @@ function Header() {
                     <Grid sx={{ display: 'flex', justifyContent: 'center' }}>
                         <Navbar />
                     </Grid>
+
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 4 } }}>
                         <Box sx={{ position: 'relative' }}>
                             <form onSubmit={handleSearchSubmit}>
@@ -527,7 +533,7 @@ function Header() {
                                 />
                             )}
                         </Box>
-
+                        {/* <CurrencySwitcher /> */}
                         <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                             {hasFavorites ? (
                                 <FavoriteIcon sx={{ color: 'red', fontSize: 24 }} />
@@ -555,9 +561,9 @@ function Header() {
                         </IconButton>
 
                         {!orderCompleted && (
-                            <Button 
+                            <Button
                                 onClick={handleOpenCartModal}
-                                disableRipple 
+                                disableRipple
                                 sx={{ minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", "&:hover, &:focus, &:active": { backgroundColor: "#EAD9C9", }, position: "relative", }}
                             >
                                 <Box component="img" src={ShoppingCart} alt="Shopping cart"
