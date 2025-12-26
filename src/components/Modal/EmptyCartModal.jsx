@@ -11,7 +11,7 @@ export default function EmptyCartModal({ open, onClose }) {
   return (
     <Drawer anchor="right" open={open} onClose={onClose} sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 400, md: 480 }, boxSizing: "border-box", borderRadius: { xs: 0, sm: "40px 0 0 0" }, } }}>
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%", p: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", }}>
           <Typography sx={{ ...h3 }}>Shopping cart</Typography>
           {isMobile && (
             <IconButton onClick={onClose} size="small" aria-label="close" sx={{ position: "absolute", top: 8, right: 8, color: "#3E3027", }}>
