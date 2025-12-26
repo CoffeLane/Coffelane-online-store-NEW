@@ -45,39 +45,69 @@ const Carousel1 = () => {
   };
 
   return (
-    <Box sx={{ position: "relative", overflow: "hidden", mx: 4, py: 4,  }}>
-      <IconButton onClick={handlePrev} sx={{ color: "white" ,position: "absolute", borderRadius:'50px',backgroundColor:'#A4795B', top: "50%", left: 0, transform: "translateY(-50%)", zIndex: 1, "&:hover": {backgroundColor: "#B88A6E"} }}>
-        <ArrowBackIosNew />
+    <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
+      <IconButton 
+        onClick={handlePrev} 
+        sx={{ 
+          color: "white",
+          position: "absolute", 
+          borderRadius: '50px',
+          backgroundColor: '#A4795B', 
+          top: "50%", 
+          left: { xs: 4, md: 0 }, 
+          transform: "translateY(-50%)", 
+          zIndex: 1, 
+          "&:hover": {backgroundColor: "#B88A6E"},
+          width: { xs: 32, md: 40 },
+          height: { xs: 32, md: 40 }
+        }}
+      >
+        <ArrowBackIosNew sx={{ fontSize: { xs: 16, md: 20 } }} />
       </IconButton>
 
-      <Box sx={{ display: "flex", transition: "transform 0.6s ease-in-out", transform: `translateX(-${currentIndex * 100}vw)`, width: `${items.length * 100}vw`, }}>
+      <Box sx={{ display: "flex", transition: "transform 0.6s ease-in-out", transform: `translateX(-${currentIndex * 100}%)`, width: "100%" }}>
         {items.map((slide, index) => (
-          <Box key={index} sx={{ width: `${100 / items.length}%`, display: "flex", alignItems: "center", justifyContent: "space-between",  }}>
-            <Box sx={{ width: "40%", margin: '0 176px', }}>
-              <Typography sx={{...h1 }}>
+          <Box key={index} sx={{ width: "100%", display: "flex", flexDirection: { xs: 'column', md: 'row' }, alignItems: "center", justifyContent: "space-between", minWidth: "100%", flexShrink: 0 }}>
+            <Box sx={{ width: { xs: "100%", md: "40%" }, margin: { xs: '0 16px', md: '0 176px' }, order: { xs: 2, md: 1 }, textAlign: { xs: 'center', md: 'left' } }}>
+              <Typography sx={{...h1, fontSize: { xs: '24px', sm: '32px', md: '48px' } }}>
                 {slide.title}
               </Typography>
-              <Typography sx={{...h3, margin: '24px 0 16px 0' }}>
+              <Typography sx={{...h3, margin: { xs: '16px 0 12px 0', md: '24px 0 16px 0' }, fontSize: { xs: '18px', md: '24px' } }}>
                 {slide.description}
               </Typography>
-              <Typography sx={{...h6}}>
+              <Typography sx={{...h6, fontSize: { xs: '12px', sm: '14px', md: '16px' }}}>
                 {slide.text}
               </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
-                <Button variant="contained" onClick={() => navigate('/coffee')} sx={{ ...btnStyles, marginTop: '32px', width: '156px', textTransform: 'none',}}>
+              <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' }, marginTop: { xs: '16px', md: 'auto' } }}>
+                <Button variant="contained" onClick={() => navigate('/coffee')} sx={{ ...btnStyles, marginTop: { xs: '16px', md: '32px' }, width: { xs: '140px', md: '156px' }, textTransform: 'none', fontSize: { xs: '12px', md: '14px' }}}>
                   {slide.buttonText}
                 </Button>
               </Box>
             </Box>
-            <Box sx={{ width: "60%", height: '486px' }}>
-              <Box component="img" src={slide.image} alt={slide.title} />
+            <Box sx={{ width: { xs: "100%", md: "60%" }, height: { xs: '250px', sm: '350px', md: '486px' }, order: { xs: 1, md: 2 }, mb: { xs: 2, md: 0 } }}>
+              <Box component="img" src={slide.image} alt={slide.title} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </Box>
           </Box>
         ))}
       </Box>
 
-      <IconButton onClick={handleNext} sx={{ position: "absolute", top: "50%", right: 0, transform: "translateY(-50%)", zIndex: 1, color: "#fff", borderRadius:'50px',backgroundColor:'#A4795B',"&:hover": {backgroundColor: "#B88A6E"} }}>
-        <ArrowForwardIos />
+      <IconButton 
+        onClick={handleNext} 
+        sx={{ 
+          position: "absolute", 
+          top: "50%", 
+          right: { xs: 4, md: 0 }, 
+          transform: "translateY(-50%)", 
+          zIndex: 1, 
+          color: "#fff", 
+          borderRadius: '50px',
+          backgroundColor: '#A4795B',
+          "&:hover": {backgroundColor: "#B88A6E"},
+          width: { xs: 32, md: 40 },
+          height: { xs: 32, md: 40 }
+        }}
+      >
+        <ArrowForwardIos sx={{ fontSize: { xs: 16, md: 20 } }} />
       </IconButton>
     </Box>
   );

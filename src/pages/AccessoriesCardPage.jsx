@@ -12,7 +12,8 @@ export default function AccessoriesCardPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
 
-  const { items, selectedAccessory, loading } = useSelector((state) => state.accessories );
+  const { items, selectedAccessory, loading } = useSelector((state) => state.accessories );
+
 
   const [quantity, setQuantity] = useState(1);
 
@@ -30,18 +31,29 @@ export default function AccessoriesCardPage() {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Grid container sx={{ px: 4, py: 4, display: "flex", justifyContent: "space-evenly", gap: 3, mt: 4,}}>
-        <Box>
+      <Grid 
+        container 
+        sx={{ 
+          px: { xs: 1, md: 4 }, 
+          py: { xs: 2, md: 4 }, 
+          display: "flex", 
+          flexDirection: { xs: "column", md: "row" },
+          justifyContent: "space-evenly", 
+          gap: { xs: 2, md: 3 }, 
+          mt: { xs: 2, md: 4 }
+        }}
+      >
+        <Box sx={{ width: { xs: "100%", md: "auto" } }}>
           <AccessoriesImageSlider photos={selectedAccessory.photos_url} productName={selectedAccessory.name}/>
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", flex: 1, maxWidth: 600 }} >
+        <Box sx={{ display: "flex", flexDirection: "column", flex: 1, maxWidth: { xs: "100%", md: 600 }, width: { xs: "100%", md: "auto" } }} >
           <AccessoriesInfo product={selectedAccessory} quantity={quantity} onIncrement={handleIncrement} onDecrement={handleDecrement}/>
           <AddToCartButtons product={selectedAccessory} quantity={quantity}/>
         </Box>
       </Grid>
 
-      <Box sx={{ px: 4, py: 4 }}>
+      <Box sx={{ px: { xs: 1, md: 4 }, py: { xs: 2, md: 4 } }}>
         <RecommendedAccessories products={recommended} />
       </Box>
     </Box>

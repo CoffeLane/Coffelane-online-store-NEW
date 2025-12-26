@@ -256,9 +256,9 @@ export default function PersonalInfoForm({ user }) {
   };
 
   return (
-    <Box sx={{ px: 2, py: 0 }}>
-      <Grid container spacing={4}>
-        <Grid size={6}>
+    <Box sx={{ px: { xs: 1, md: 2 }, py: 0 }}>
+      <Grid container spacing={{ xs: 2, md: 4 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Typography>Full Name</Typography>
           <TextField
             fullWidth
@@ -308,7 +308,7 @@ export default function PersonalInfoForm({ user }) {
           {leftErrors.submit && <Alert severity="error" sx={{ mt: 2 }}>{leftErrors.submit}</Alert>}
         </Grid>
 
-        <Grid size={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Typography>Country</Typography>
           <TextField
             fullWidth

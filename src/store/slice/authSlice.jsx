@@ -5,17 +5,20 @@ import { clearFavorites } from './favoritesSlice';
 import { clearCart } from './cartSlice';
 import { clearBasket } from './basketSlice';
 
-
+// Список админских email (можно расширить)
 const ADMIN_EMAILS = [
   'admin@coffeelane.com',
   'admin@example.com',
-  
+  // Добавьте сюда другие админские email
 ];
 
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (data, { rejectWithValue }) => {
     try {
+      // Логируем данные для отладки
+      console.log("Registration data being sent:", JSON.stringify(data, null, 2));
+      
       const res = await api.post("/users/registration", data);
       return res.data;
     } catch (err) {
@@ -24,6 +27,7 @@ export const registerUser = createAsyncThunk(
       console.error("Error status:", err.response?.status);
       console.error("Full error response:", JSON.stringify(err.response?.data, null, 2));
       
+      // Если ошибка в формате {email: Array(1)}, преобразуем её в более читаемый формат
       if (errorData && typeof errorData === 'object') {
         const formattedError = {};
         Object.keys(errorData).forEach(key => {
@@ -66,6 +70,10 @@ export const loginUser = createAsyncThunk(
       // console.log("▶ loginUser - email from login param:", email);
 
       const userEmail = profileData.email || email;
+
+      // console.log("▶ loginUser - final userEmail:", userEmail);
+
+      // Проверяем, является ли пользователь админом по email
       const isAdminEmail = ADMIN_EMAILS.some(adminEmail => 
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       );
@@ -144,6 +152,7 @@ export const loginWithGoogle = createAsyncThunk(
 );
 
 
+// Обновление access token через refresh token
 export const refreshAccessToken = createAsyncThunk(
   "auth/refreshToken",
   async (_, { rejectWithValue }) => {
@@ -198,28 +207,32 @@ export const fetchProfile = createAsyncThunk(
       let userEmail = res.data.email;
 
       if (!userEmail) {
+        // console.log("⚠️ Email not found in /users/info, trying /users/autofill_form...");
         try {
           const autofillRes = await apiAuth.get("/users/autofill_form");
           // console.log("▶ fetchProfile - /users/autofill_form res.data:", JSON.stringify(autofillRes.data, null, 2));
           userEmail = autofillRes.data?.email;
         } catch (autofillErr) {
-          console.warn("Could not fetch from /users/autofill_form:", autofillErr.response?.data || autofillErr.message);
+          // console.warn("⚠️ Could not fetch from /users/autofill_form:", autofillErr.response?.data || autofillErr.message);
         }
       }
 
       if (!userEmail) {
-        console.warn("Email not found in any API response!");
+        // console.warn("⚠️ Email not found in any API response!");
       }
 
+      // Проверяем, является ли пользователь админом по email
       const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail => 
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
 
+      // Включаем аватарку в profile, если она есть в ответе
       const profileWithEmail = res.data.profile
         ? { 
             ...res.data.profile, 
             email: userEmail, 
             role: isAdminEmail ? 'admin' : undefined,
+            // Добавляем аватарку, если она есть в ответе
             avatar: res.data.avatar || res.data.profile?.avatar || res.data.profile?.photo || null
           }
         : null;
@@ -233,21 +246,24 @@ export const fetchProfile = createAsyncThunk(
       return {
         user: profileWithEmail,
         profile: profileWithEmail,
-        email: userEmail, 
-        isAdmin: isAdminEmail 
+        email: userEmail, // Сохраняем email отдельно
+        isAdmin: isAdminEmail // Флаг админа
       };
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data;
       
+      // Если получили 401, пытаемся обновить токен через refresh token
       if (status === 401) {
         const refreshToken = localStorage.getItem("refresh");
         
         if (refreshToken) {
           try {
+            // Пытаемся обновить токен
             const refreshResult = await dispatch(refreshAccessToken());
             
             if (refreshResult.meta.requestStatus === "fulfilled") {
+              // Токен обновлен, повторяем запрос профиля
               const apiAuth = apiWithAuth();
               const res = await apiAuth.get("/users/info");
               
@@ -257,9 +273,11 @@ export const fetchProfile = createAsyncThunk(
                   const autofillRes = await apiAuth.get("/users/autofill_form");
                   userEmail = autofillRes.data?.email;
                 } catch (autofillErr) {
+                  // Игнорируем ошибку
                 }
               }
 
+              // Проверяем, является ли пользователь админом по email
               const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail => 
                 userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
               ) : false;
@@ -276,6 +294,7 @@ export const fetchProfile = createAsyncThunk(
               };
             }
           } catch (refreshError) {
+            // Если refresh token тоже невалиден, возвращаем ошибку
             return rejectWithValue({
               code: "token_not_valid",
               message: "Token expired and refresh failed",
@@ -284,6 +303,7 @@ export const fetchProfile = createAsyncThunk(
           }
         }
         
+        // Если нет refresh token или обновление не удалось
         return rejectWithValue({
           code: "token_not_valid",
           message: "Token expired or invalid",
@@ -291,6 +311,7 @@ export const fetchProfile = createAsyncThunk(
         });
       }
       
+      // Для других ошибок
       if (message?.code === "token_not_valid") {
         return rejectWithValue({
           ...message,
@@ -315,6 +336,7 @@ export const logoutUser = createAsyncThunk(
         });
       }
 
+      // Очищаем корзину при разлогинивании
       dispatch(clearCart());
       try {
         await dispatch(clearBasket());
@@ -330,6 +352,7 @@ export const logoutUser = createAsyncThunk(
 
       return {};
     } catch (err) {
+      // Очищаем корзину даже при ошибке logout
       dispatch(clearCart());
       try {
         await dispatch(clearBasket());
@@ -374,18 +397,19 @@ const authSlice = createSlice({
     token: localStorage.getItem("access") || null,
     user: null,
     profile: null,
-    email: null,
+    email: null, // Сохраняем email отдельно
     loading: false,
     error: null,
-    tokenInvalid: false, 
+    tokenInvalid: false, // Флаг для отслеживания невалидного токена
     changePasswordLoading: false,
     changePasswordError: null,
     changePasswordSuccess: false,
-  
+    // Проверяем isAdmin из localStorage, но также проверяем роль пользователя из persist
     isAdmin: (() => {
       const storedIsAdmin = localStorage.getItem("isAdmin");
       if (storedIsAdmin === "true") return true;
       if (storedIsAdmin === "false") return false;
+      // Если в localStorage нет значения, проверяем persist:auth
       try {
         const persistAuth = localStorage.getItem("persist:auth");
         if (persistAuth) {
@@ -429,7 +453,7 @@ const authSlice = createSlice({
       state.isAdmin = action.payload;
       if (action.payload) {
         localStorage.setItem("isAdmin", "true");
-        
+        // Устанавливаем роль в user объекте для совместимости
         if (state.user) {
           state.user.role = "admin";
         }
@@ -451,7 +475,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.profile = action.payload.profile;
-        state.tokenInvalid = false; 
+        state.tokenInvalid = false; // Сбрасываем флаг при успешной регистрации
       })
       .addCase(registerAndLoginUser.rejected, (state, action) => {
         state.loading = false;
@@ -464,11 +488,11 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;    
-        state.profile = action.payload.profile; 
-        state.token = action.payload.token || null; 
-        state.tokenInvalid = false; 
-       
+        state.user = action.payload.user;      // user для Header
+        state.profile = action.payload.profile; // если тебе нужен profile отдельно
+        state.token = action.payload.token || null; // если есть токен
+        state.tokenInvalid = false; // Сбрасываем флаг при успешном логине
+        // Устанавливаем флаг админа из payload
         if (action.payload.isAdmin) {
           state.isAdmin = true;
           localStorage.setItem("isAdmin", "true");
@@ -491,8 +515,8 @@ const authSlice = createSlice({
         state.profile = action.payload.profile;
         state.token = action.payload.access || null;
         state.email = action.payload.user?.email || null;
-        state.tokenInvalid = false; 
-        
+        state.tokenInvalid = false; // Сбрасываем флаг при успешном логине
+        // Устанавливаем флаг админа из payload
         if (action.payload.isAdmin) {
           state.isAdmin = true;
           localStorage.setItem("isAdmin", "true");
@@ -530,8 +554,8 @@ const authSlice = createSlice({
         state.profile = action.payload.profile;
         state.email = action.payload.email || null; 
         state.loading = false;
-        state.tokenInvalid = false; 
-       
+        state.tokenInvalid = false; // Сбрасываем флаг при успешной загрузке
+        // Устанавливаем флаг админа из payload
         if (action.payload.isAdmin) {
           state.isAdmin = true;
           localStorage.setItem("isAdmin", "true");
@@ -542,9 +566,11 @@ const authSlice = createSlice({
       })
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.token = action.payload.access;
-        state.tokenInvalid = false;
+        state.tokenInvalid = false; // Сбрасываем флаг при успешном обновлении
       })
       .addCase(refreshAccessToken.rejected, (state) => {
+        // Если refresh token истек, помечаем токен как невалидный
+        // Но НЕ очищаем данные пользователя - пользователь остается залогиненным
         state.tokenInvalid = true;
         // Не очищаем токены из localStorage, чтобы можно было попробовать обновить позже
         // localStorage.removeItem("access");
@@ -556,11 +582,20 @@ const authSlice = createSlice({
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.loading = false;
+        
+        // Если токен невалиден (401), помечаем токен как невалидный
+        // Но НЕ очищаем данные пользователя - пользователь остается залогиненным
+        // Токен будет автоматически обновляться при следующем запросе через refresh token
         if (action.payload?.code === "token_not_valid" || action.payload?.silent) {
+          // Помечаем токен как невалидный, но сохраняем данные пользователя
           state.tokenInvalid = true;
+          // НЕ очищаем user, profile, email - пользователь остается залогиненным
+          // НЕ очищаем isAdmin - флаг админа сохраняется
+          // Не сохраняем ошибку, если это тихая ошибка (истекший токен)
         } else {
+          // Для других ошибок сохраняем сообщение об ошибке
           state.error = action.payload;
-          state.tokenInvalid = false; 
+          state.tokenInvalid = false; // Сбрасываем флаг для других ошибок
         }
       },
       )

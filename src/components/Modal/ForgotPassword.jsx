@@ -1,13 +1,16 @@
-import { Dialog, Box, TextField, Button, Typography } from "@mui/material";
+import { Dialog, Box, TextField, Button, Typography, IconButton, useMediaQuery, useTheme } from "@mui/material";
 import { useState } from "react";
 import { btnStyles } from "../../styles/btnStyles.jsx";
 import { h3, h5, h6 } from "../../styles/typographyStyles.jsx";
 import passwordReset from "../../assets/images/sign-up/password-reset.png";
 import { inputStyles } from "../../styles/inputStyles.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import api from "../../store/api/axios.js";
 
 export default function ForgotPasswordModal({ open, handleClose, backToLogin, setToken, openIntermediate }) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [email, setEmail] = useState("");
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -46,7 +49,12 @@ export default function ForgotPasswordModal({ open, handleClose, backToLogin, se
     return (
         <Dialog open={open} onClose={handleClose}
             PaperProps={{ sx: { position: "fixed", top: 0, right: 0, width: { xs: "100%", sm: 450 }, borderRadius: { xs: 0, sm: "40px 0 0 0" }, backgroundColor: "#fff", m: 0, height: "100vh", maxHeight: "100vh" } }}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 4, p: 3 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 4, p: 3, position: "relative" }}>
+                {isMobile && (
+                    <IconButton onClick={handleClose} sx={{ position: "absolute", top: 8, right: 8, color: "#3E3027", zIndex: 1 }}>
+                        <CloseIcon />
+                    </IconButton>
+                )}
                 <Box component="img" src={passwordReset} alt="passwordReset" sx={{ margin: '32px 0', width: '100%' }} />
                 <Typography sx={{ ...h3, textAlign: 'center' }}>Forgot your password?</Typography>
                 <Typography sx={{ ...h5, textAlign: 'center' }}>Enter your email to receive a password reset link.</Typography>

@@ -3,6 +3,14 @@ import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
 import { fetchProfile, setAdminMode, refreshAccessToken, tokenRefreshedFromInterceptor } from './store/slice/authSlice.jsx';
+
+// Список админских email (должен совпадать с authSlice)
+const ADMIN_EMAILS = [
+  'admin@coffeelane.com',
+  'admin@example.com',
+  // Добавьте сюда другие админские email
+];
+
 import HomePage from './pages/HomePage.jsx'
 import NotFoundPage from './pages/NotFoundPage';
 import Header from './components/Header/index.jsx';
@@ -29,19 +37,15 @@ import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
 
 
-const ADMIN_EMAILS = [
-  'admin@coffeelane.com',
-  'admin@example.com',
-];
-
-
 function App() {
   const dispatch = useDispatch();
   const { user, token, loading, tokenInvalid, isAdmin, email } = useSelector(state => state.auth);
 
+  // Слушаем событие обновления токена из axios interceptor
   useEffect(() => {
     const handleTokenRefreshed = (event) => {
       const { access } = event.detail;
+      // Обновляем Redux state через action
       dispatch(tokenRefreshedFromInterceptor({ access }));
     };
 
@@ -60,35 +64,44 @@ function App() {
   useEffect(() => {
     const tokenFromStorage = localStorage.getItem("access");
     const currentToken = token || tokenFromStorage;
+
+    // Пытаемся загрузить профиль, даже если токен помечен как невалидный
+    // fetchProfile сам попытается обновить токен через refresh token
     if (currentToken && !user && !loading) {
       dispatch(fetchProfile());
     }
   }, [dispatch, token, user, loading]);
 
- 
+  // Проверяем и устанавливаем роль админа при загрузке пользователя
   useEffect(() => {
     if (user) {
       const userEmail = email || user.email;
+      // Проверяем по email
       const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail => 
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
+      // Проверяем по роли в user
       const isAdminRole = user.role === 'admin' || user.role === 'Administrator';
       
+      // Если пользователь админ (по email или по роли), но isAdmin еще не установлен
       if ((isAdminEmail || isAdminRole) && !isAdmin) {
+        console.log("Setting admin mode - email:", userEmail, "role:", user.role);
         dispatch(setAdminMode(true));
       }
     }
   }, [user, email, isAdmin, dispatch]);
 
+  // Периодическое обновление токена перед истечением (каждые 10 минут)
   useEffect(() => {
     if (!user || !token) return;
 
     const refreshInterval = setInterval(() => {
       const refreshToken = localStorage.getItem("refresh");
       if (refreshToken) {
+        console.log("🔄 Auto-refreshing token...");
         dispatch(refreshAccessToken());
       }
-    }, 10 * 60 * 1000);
+    }, 10 * 60 * 1000); // 10 минут
 
     return () => clearInterval(refreshInterval);
   }, [user, token, dispatch]);

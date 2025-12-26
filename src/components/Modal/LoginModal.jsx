@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import RegistrationSuccessful from "../Modal/RegistrationSuccessful.jsx";
-import { Dialog, Box, Tabs, Tab, TextField, Button, Typography, Divider, CircularProgress, Alert, FormControlLabel, Checkbox, IconButton, InputAdornment } from "@mui/material";
+import { Dialog, Box, Tabs, Tab, TextField, Button, Typography, Divider, CircularProgress, Alert, FormControlLabel, Checkbox, IconButton, InputAdornment, useMediaQuery, useTheme } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import CloseIcon from "@mui/icons-material/Close";
 import { h3, h7 } from "../../styles/typographyStyles.jsx";
 import { btnStyles } from "../../styles/btnStyles.jsx";
 import { inputStyles, checkboxStyles } from "../../styles/inputStyles.jsx";
@@ -21,6 +22,8 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
     const dispatch = useDispatch();
     const { loading } = useSelector((state) => state.auth);
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [tab, setTab] = useState(0);
     const [email, setEmail] = useState("");
@@ -142,14 +145,10 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                 }
 
                 if (handleClose) handleClose();
-
-                // Проверяем, является ли пользователь админом
                 const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';
                 if (isAdmin) {
-                    // Редиректим админа в админку
                     navigate('/admin');
                 } else if (returnPath) {
-                    // Если есть путь возврата, переходим туда
                     navigate(returnPath);
                 }
             } else {
@@ -174,13 +173,10 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             // console.log("✔ Login successful. Closing modal...");
             if (handleClose) handleClose();
 
-            // Проверяем, является ли пользователь админом
             const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';
             if (isAdmin) {
-                // Редиректим админа в админку
                 navigate('/admin');
             } else if (returnPath) {
-                // Если есть путь возврата, переходим туда
                 navigate(returnPath);
             }
         } else {
@@ -196,12 +192,11 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
         // console.log("Repeat:", repeatPassword);
 
         if (password !== repeatPassword) {
-            // console.log("❌ Passwords do not match!");
+            // console.log(" Passwords do not match!");
             alert("Passwords do not match!");
             return;
         }
 
-        // Создаем объект profile только с заполненными полями
         const profileData = {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
@@ -209,7 +204,6 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             subscribe_newsletter: subscribeNewsletter,
         };
 
-        // Убираем пустые строки из profile
         Object.keys(profileData).forEach(key => {
             if (profileData[key] === "" || profileData[key] === null || profileData[key] === undefined) {
                 delete profileData[key];
@@ -232,16 +226,14 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             // console.log("✔ Registration successful. Closing modal...");
             setSuccessModalOpen(true);
         } else {
-            console.log("✖ Registration failed:", result.payload);
-            // Показываем ошибку пользователю
+            console.log("Registration failed:", result.payload);
+
             const errorPayload = result.payload || {};
             const newErrors = {};
             
-            // Функция для форматирования сообщения об ошибке
             const formatErrorMessage = (message) => {
                 if (!message) return "";
                 let formatted = String(message);
-                // Улучшаем читаемость сообщений об ошибках
                 if (formatted.includes("already exists")) {
                     formatted = "This email is already registered. Please use a different email or try to log in.";
                 } else if (formatted.includes("Enter your email")) {
@@ -250,7 +242,6 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                 return formatted;
             };
             
-            // Обрабатываем ошибки для каждого поля
             if (errorPayload.email) {
                 const emailError = Array.isArray(errorPayload.email) 
                     ? errorPayload.email.join(" ") 
@@ -278,14 +269,12 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                 }
             }
             
-            // Если есть общее сообщение об ошибке
             if (errorPayload.message || errorPayload.error) {
                 if (Object.keys(newErrors).length === 0) {
                     newErrors.submit = errorPayload.message || errorPayload.error || "Registration failed. Please try again.";
                 }
             }
             
-            // Если нет конкретных ошибок полей, показываем общее сообщение
             if (Object.keys(newErrors).length === 0) {
                 newErrors.submit = "Registration failed. Please check your information and try again.";
             }
@@ -297,7 +286,21 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
     return (
         <Dialog open={open} onClose={handleClose}
             PaperProps={{ sx: { position: "fixed", top: 0, right: 0, width: { xs: "100%", sm: 450 }, borderRadius: { xs: 0, sm: "40px 0 0 0" }, backgroundColor: "#fff", m: 0, height: "100vh", maxHeight: "100vh" } }}>
-            <Box sx={{ display: "flex", flexDirection: "column", p: 3, gap: 3 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", p: 3, gap: 3, position: "relative" }}>
+                {isMobile && (
+                    <IconButton
+                        onClick={handleClose}
+                        sx={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            color: "#3E3027",
+                            zIndex: 1
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                )}
 
                 {successModalOpen ? (
                     <RegistrationSuccessful onLoginClick={() => { setSuccessModalOpen(false); setTab(0); }} />) : (

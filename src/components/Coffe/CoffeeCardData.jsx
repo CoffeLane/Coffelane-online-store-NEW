@@ -36,7 +36,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
   if (!products || products.length === 0) return <Typography>No products found</Typography>;
 
   return (
-    <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+    <Box sx={{ display: "flex", gap: { xs: 2, md: 3 }, flexWrap: "wrap", justifyContent: { xs: 'stretch', md: 'flex-start' }, px: { xs: 2, md: 0 } }}>
       {products.map((item) => {
         const itemId = String(item.id);
         const selectedSupply = item.supplies?.[0] || { id: "default", price: item.price || 0 };
@@ -48,9 +48,19 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
         return (
           <Card
             key={cartKey}
-            sx={{ width: 300, height: 480, display: "flex", flexDirection: "column", borderRadius: "24px", p: 2, boxShadow: 2 }}
+            sx={{ 
+              width: { xs: '100%', sm: '240px', md: 300 }, 
+              height: { xs: 'auto', md: 480 }, 
+              minHeight: { xs: 380, md: 480 },
+              display: "flex", 
+              flexDirection: "column", 
+              borderRadius: "24px", 
+              p: { xs: 1.5, md: 2 }, 
+              boxShadow: 2,
+              mx: { xs: 'auto', md: 0 }
+            }}
           >
-            <Box sx={{ position: "relative", width: "100%", height: 250, mb: 2 }}>
+            <Box sx={{ position: "relative", width: "100%", height: { xs: 200, sm: 180, md: 250 }, mb: { xs: 1, md: 2 } }}>
               {item.photos_url?.[0]?.url ? (
                 <CardMedia
                   component="img"
@@ -59,7 +69,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
                   sx={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
               ) : (
-                <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#f0f0f0", color: "#888" }}>
+                <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#f0f0f0", color: "#888", fontSize: { xs: '10px', md: '14px' } }}>
                   No image
                 </Box>
               )}
@@ -67,34 +77,41 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite  
                 component="img"
                 src={isFavorite ? favoriteActive : favorite}
                 alt="favorite"
-                sx={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, cursor: "pointer" }}
+                sx={{ position: "absolute", top: { xs: 8, md: 16 }, right: { xs: 8, md: 16 }, width: { xs: 24, md: 32 }, height: { xs: 24, md: 32 }, cursor: "pointer" }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleFavorite(item);
                 }}
               />
             </Box>
-            <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <Box sx={{ height: 88, overflow: "hidden" }}>
+            <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: { xs: '8px !important', md: '16px' } }}>
+              <Box sx={{ height: { xs: 60, md: 88 }, overflow: "hidden", mb: { xs: 0.5, md: 1 } }}>
                 <Typography
-                  sx={{ ...h4, mb: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer" }}
+                  sx={{ ...h4, mb: { xs: 0.5, md: 1 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", fontSize: { xs: '14px', md: '18px' } }}
                   onClick={() => navigate(`/coffee/product/${item.id}`)}
                 >
                   {item.name || "No name"}
                 </Typography>
-                <ClampText lines={2} sx={{ ...h7, mb: 1, wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                <ClampText lines={2} sx={{ ...h7, mb: 1, wordBreak: "break-word", overflowWrap: "anywhere", fontSize: { xs: '10px', md: '12px' } }}>
                   {item.description || "No description"}
                 </ClampText>
               </Box>
-              <Typography sx={{ mt: 1, color: "#16675C", fontSize: 14, fontWeight: 700, textAlign: "right", mb: 1 }}>
+              <Typography sx={{ mt: { xs: 0.5, md: 1 }, color: "#16675C", fontSize: { xs: 12, md: 14 }, fontWeight: 700, textAlign: "right", mb: { xs: 0.5, md: 1 } }}>
                 ${price.toFixed(2)}
               </Typography>
               <Button
                 variant="contained"
                 onClick={() => handleAddToCart(item)}
-                sx={isInCart ? btnInCart : btnCart}
+                sx={{ 
+                  ...(isInCart ? btnInCart : btnCart), 
+                  fontSize: { xs: '10px', md: '14px' },
+                  py: { xs: 0.5, md: 1 },
+                  '& .MuiButton-endIcon': {
+                    marginLeft: { xs: 0.5, md: 1 }
+                  }
+                }}
                 endIcon={
-                  <Box component="img" src={isInCart ? incart : shopping} alt="" sx={{ width: 24, height: 24, ml: 1 }} />
+                  <Box component="img" src={isInCart ? incart : shopping} alt="" sx={{ width: { xs: 18, md: 24 }, height: { xs: 18, md: 24 } }} />
                 }
               >
                 {isInCart ? "In cart" : "Add to bag"}

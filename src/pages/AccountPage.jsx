@@ -115,41 +115,53 @@ export default function AccountPage() {
   return (
     <Grid
       size={12}
-      sx={{ px: 4, py: 4, display: "flex", flexDirection: "column", alignItems: "center" }}
+      sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 }, display: "flex", flexDirection: "column", alignItems: "center" }}
     >
-      <Typography sx={{ ...h3, textAlign: "center", mb: 3, width: "100%" }}>
+      <Typography sx={{ ...h3, textAlign: "center", mb: { xs: 2, md: 3 }, width: "100%", fontSize: { xs: '24px', md: '32px' } }}>
         My Account
       </Typography>
-      <Paper elevation={1} sx={{ borderRadius: 3, p: 2, width: "100%", maxWidth: "1400px" }}>
-        <Grid container spacing={6}>
-          <Grid size={{ xs: 12, md: 4 }} sx={{ mt: 2 }}>
+      <Paper elevation={1} sx={{ borderRadius: 3, p: { xs: 1, md: 2 }, width: "100%", maxWidth: "1400px" }}>
+        <Grid container spacing={{ xs: 2, md: 6 }}>
+          <Grid size={{ xs: 12, md: 4 }} sx={{ mt: { xs: 0, md: 2 }, display: "flex", flexDirection: "column" }}>
             <Tabs
-              orientation="vertical"
+              orientation={{ xs: "horizontal", md: "vertical" }}
               value={tab}
               onChange={handleChange}
-              variant="scrollable"
+              variant={{ xs: "scrollable", md: "standard" }}
+              scrollButtons={{ xs: "auto", md: false }}
               TabIndicatorProps={{ style: { display: "none" } }}
               sx={{
+                borderRight: { xs: "none", md: "1px solid #E0E0E0" },
+                width: { xs: "100%", md: "100%" },
+                "& .MuiTabs-flexContainer": {
+                  flexDirection: { xs: "row", md: "column" },
+                },
                 "& .MuiTab-root": {
                   ...h5,
                   textTransform: "none",
-                  alignItems: "flex-start",
-                  justifyContent: "flex-start",
-                  py: 2,
+                  alignItems: { xs: "center", md: "flex-start" },
+                  justifyContent: { xs: "center", md: "flex-start" },
+                  py: { xs: 1, md: 2 },
+                  fontSize: { xs: '12px', md: '16px' },
+                  minHeight: { xs: 48, md: 72 },
+                  width: { xs: "auto", md: "100%" },
+                  maxWidth: { xs: "none", md: "100%" },
                 },
                 "& .Mui-selected": { color: "#A4795B !important" },
+                borderBottom: { xs: "1px solid #E0E0E0", md: "none" },
+                mb: { xs: 2, md: 0 },
               }}
             >
-              <Tab icon={<PersonOutlineIcon />} iconPosition="start" label="Profile" />
-              <Tab icon={<SettingsOutlinedIcon />} iconPosition="start" label="Settings" />
+              <Tab icon={<PersonOutlineIcon sx={{ fontSize: { xs: 18, md: 24 } }} />} iconPosition="start" label="Profile" />
+              <Tab icon={<SettingsOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />} iconPosition="start" label="Settings" />
               <Tab
-                icon={<ShoppingBagOutlinedIcon />}
+                icon={<ShoppingBagOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />}
                 iconPosition="start"
                 label="Orders"
-                sx={{ borderBottom: "1px solid #E0E0E0", mb: 1 }}
+                sx={{ borderBottom: { xs: "none", md: "1px solid #E0E0E0" }, mb: { xs: 0, md: 1 } }}
               />
               <Tab
-                icon={<LogoutOutlinedIcon />}
+                icon={<LogoutOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />}
                 iconPosition="start"
                 label="Log out"
                 sx={{

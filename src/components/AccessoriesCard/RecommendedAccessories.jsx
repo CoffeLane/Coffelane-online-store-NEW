@@ -10,14 +10,17 @@ export default function RecommendedAccessories({ products }) {
   const favorites = useSelector((state) => state.favorites.favorites);
   const token = useSelector((state) => state.auth.token);
 
-  useEffect(() => {
+  useEffect(() => {
+
+
     const accessToken = token || localStorage.getItem("access");
     if (accessToken) {
       dispatch(fetchFavorites());
     }
   }, [dispatch, token]);
 
-  const handleToggleFavorite = (item) => {
+  const handleToggleFavorite = (item) => {
+
     dispatch(toggleFavoriteItem({ itemType: "accessory", itemId: item.id, itemData: item }));
   };
 
@@ -29,11 +32,22 @@ export default function RecommendedAccessories({ products }) {
   if (!products || products.length === 0) return null;
 
   return (
-    <Box>
-      <Typography sx={{ ...h3, textAlign: 'center', mb: 4 }}>
+    <Box sx={{ px: { xs: 1, md: 0 } }}>
+      <Typography sx={{ 
+        ...h3, 
+        textAlign: 'center', 
+        mb: { xs: 2, md: 4 },
+        fontSize: { xs: '24px', md: '32px' }
+      }}>
         You also might like
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 3, mb: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        flexWrap: 'wrap', 
+        gap: { xs: 2, md: 3 }, 
+        mb: { xs: 2, md: 4 }
+      }}>
         <AccessoriesCardData 
           products={products} 
           favorites={favoritesMap}

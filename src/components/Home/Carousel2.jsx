@@ -78,30 +78,54 @@ const Carousel2 = () => {
     };
 
     return (
-        <Box sx={{ position: "relative", overflow: "hidden", mx: 4, py: 6 }}>
+        <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 3, md: 6 } }}>
 
-            <Typography sx={{ ...h3, color: "#000", textAlign: 'center', mb: 4 }} >
+            <Typography sx={{ ...h3, color: "#000", textAlign: 'center', mb: { xs: 2, md: 4 }, fontSize: { xs: '24px', md: '32px' } }} >
                 Shop Our Collections
             </Typography>
-            <IconButton onClick={handlePrev} sx={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", backgroundColor: "#16675C", color: "#fff", borderRadius: "50px", zIndex: 1, "&:hover": { backgroundColor: "#02715C" }, }}>
-                <ArrowBackIosNew />
+            <IconButton 
+                onClick={handlePrev} 
+                sx={{ 
+                    position: "absolute", 
+                    left: { xs: 4, md: 0 }, 
+                    top: "50%", 
+                    transform: "translateY(-50%)", 
+                    backgroundColor: "#16675C", 
+                    color: "#fff", 
+                    borderRadius: "50px", 
+                    zIndex: 1, 
+                    "&:hover": { backgroundColor: "#02715C" },
+                    width: { xs: 32, md: 40 },
+                    height: { xs: 32, md: 40 }
+                }}
+            >
+                <ArrowBackIosNew sx={{ fontSize: { xs: 16, md: 20 } }} />
             </IconButton>
 
-            <Box sx={{ display: "flex", justifyContent:'space-evenly', transition: "transform 0.6s ease-in-out" }}>
+            <Box sx={{ display: "flex", justifyContent: { xs: 'center', md: 'space-evenly' }, gap: { xs: 2, md: 0 }, transition: "transform 0.6s ease-in-out", overflow: { xs: 'hidden', md: 'visible' } }}>
                 {items.slice(currentIndex, currentIndex + visibleCards).map((slide, index) => (
-                    <Box key={index} sx={{ width: "340px", height: "560px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", }}>
+                    <Box key={index} sx={{ 
+                        width: { xs: "280px", sm: "300px", md: "340px" }, 
+                        height: { xs: "auto", md: "560px" }, 
+                        minWidth: { xs: "280px", sm: "300px", md: "340px" },
+                        display: "flex", 
+                        flexDirection: "column", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        mb: { xs: 2, md: 0 }
+                    }}>
 
-                        <Box component="img" src={slide.image} alt={slide.title} sx={{ mb: 2, maxWidth: "100%", height: "auto", objectFit: "cover",}} />
+                        <Box component="img" src={slide.image} alt={slide.title} sx={{ mb: 2, maxWidth: "100%", height: "auto", objectFit: "cover", width: { xs: "200px", md: "100%" } }} />
                         
-                        <Typography sx={{...h4, color: "#000", mb: 1 }}>
+                        <Typography sx={{...h4, color: "#000", mb: 1, fontSize: { xs: '18px', md: '20px' }, textAlign: 'center' }}>
                             {slide.title}
                         </Typography>
 
-                        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center",}}>
-                        <Typography sx={{...h6, color: "#000", mb: 2 }}>
+                        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <Typography sx={{...h6, color: "#000", mb: 2, fontSize: { xs: '12px', md: '14px' }, textAlign: 'center', px: { xs: 1, md: 0 } }}>
                             {slide.text}
                         </Typography>
-                        <Button variant="contained" onClick={() => navigate('/coffee')} sx={{ ...btnCart, width: '177px', mt: "auto",}}>
+                        <Button variant="contained" onClick={() => navigate('/coffee')} sx={{ ...btnCart, width: { xs: '150px', md: '177px' }, mt: "auto", fontSize: { xs: '12px', md: '14px' }}}>
                             {slide.buttonText}
                         </Button>
                           </Box>
@@ -109,8 +133,23 @@ const Carousel2 = () => {
                 ))}
             </Box>
 
-            <IconButton onClick={handleNext} sx={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", backgroundColor: "#16675C", color: "#fff", borderRadius: "50px", zIndex: 1, "&:hover": { backgroundColor: "#02715C" }, }}>
-                <ArrowForwardIos />
+            <IconButton 
+                onClick={handleNext} 
+                sx={{ 
+                    position: "absolute", 
+                    right: { xs: 4, md: 0 }, 
+                    top: "50%", 
+                    transform: "translateY(-50%)", 
+                    backgroundColor: "#16675C", 
+                    color: "#fff", 
+                    borderRadius: "50px", 
+                    zIndex: 1, 
+                    "&:hover": { backgroundColor: "#02715C" },
+                    width: { xs: 32, md: 40 },
+                    height: { xs: 32, md: 40 }
+                }}
+            >
+                <ArrowForwardIos sx={{ fontSize: { xs: 16, md: 20 } }} />
             </IconButton>
         </Box>
     );

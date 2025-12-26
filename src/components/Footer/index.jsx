@@ -74,7 +74,7 @@ export default function Footer() {
                 throw apiError;
             }
         } catch (err) {
-            // console.error("❌ Newsletter subscription error:", err.response?.data || err.message);
+            console.error("Newsletter subscription error:", err.response?.data || err.message);
             setError(
                 err.response?.data?.email?.[0] || 
                 err.response?.data?.message || 
@@ -86,39 +86,62 @@ export default function Footer() {
 
     return (
 
-        <Box component="footer" sx={{ flexGrow: 1, gap: 3, flex: 1, backgroundImage: `url(${footerImg})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', display: 'flex', px: 6, py: 6, justifyContent: 'center'}}>
-            <Box sx={{display: 'flex', flexDirection: 'column', flex: 1, pr: 6}}>
+        <Box component="footer" sx={{ 
+            flexGrow: 1, 
+            gap: 3, 
+            flex: 1, 
+            backgroundImage: `url(${footerImg})`, 
+            backgroundSize: 'cover', 
+            backgroundRepeat: 'no-repeat', 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            px: { xs: 3, sm: 4, md: 6 }, 
+            py: { xs: 4, md: 6 }, 
+            justifyContent: 'center'
+        }}>
+            <Box sx={{
+                display: 'flex', 
+                flexDirection: 'column', 
+                flex: 1, 
+                pr: { xs: 0, md: 6 },
+                mb: { xs: 4, md: 0 }
+            }}>
                <Link to='/'>
                     <Box component='img' src={logo} alt='logo'
-                         sx={{width: '144px', height: '35px', cursor: 'pointer'}}/>
+                         sx={{width: { xs: '120px', md: '144px' }, height: 'auto', cursor: 'pointer'}}/>
                 </Link>
-                <Typography sx={{...h7, mt: 3}}>
+                <Typography sx={{...h7, mt: 3, fontSize: { xs: '12px', md: '14px' }}}>
                     Ethically Sourced, Delicious Coffee Roasted with Purpose by Blind Dog Coffee Roasters.
                     Enjoy Premium 100% Organic Dark Roast, Medium Roast, Light Roast, Low Acid Decaf,
                     & Half-Caff Coffee Bean Roasts Delivered Fresh To Your Doorstep!
                 </Typography>
-                  <Typography sx={{...h5, fontFamily: 'Work Sans', mt: 3}}>
+                  <Typography sx={{...h5, fontFamily: 'Work Sans', mt: 3, fontSize: { xs: '14px', md: '16px' }}}>
                     Contact us:
                 </Typography>
-                <Typography sx={{...h6, fontFamily: 'Work Sans', mt: 2}}>
+                <Typography sx={{...h6, fontFamily: 'Work Sans', mt: 2, fontSize: { xs: '12px', md: '14px' }}}>
                     012-345-6789
                 </Typography>
-                <Typography sx={{...h6, fontFamily: 'Work Sans', mt: 2}}>
+                <Typography sx={{...h6, fontFamily: 'Work Sans', mt: 2, fontSize: { xs: '12px', md: '14px' }}}>
                     hello@coffelane.com
                 </Typography>
-                <Box sx={{display: 'flex', gap: 2, mb: 4}}>
+                <Box sx={{display: 'flex', gap: 2, mb: { xs: 2, md: 4 }, mt: 2}}>
                     <Box component='img' src={instagram} alt='instagram'  onClick={() => window.open("https://www.instagram.com", "_blank")}
-                         sx={{mt: 2, width: '24px', height: '24px', cursor: 'pointer'}}/>
+                         sx={{width: { xs: '20px', md: '24px' }, height: { xs: '20px', md: '24px' }, cursor: 'pointer'}}/>
                     <Box component='img' src={facebook} alt='facebook'   onClick={() => window.open("https://www.facebook.com", "_blank")}
-                         sx={{mt: 2, width: '24px', height: '24px', cursor: 'pointer'}}/>   
+                         sx={{width: { xs: '20px', md: '24px' }, height: { xs: '20px', md: '24px' }, cursor: 'pointer'}}/>   
                 </Box>
-                <Typography sx={{...h7}}>
+                <Typography sx={{...h7, fontSize: { xs: '12px', md: '14px' }}}>
                     © 2025 Coffee Lane
                 </Typography>
             </Box>
 
-            <Box sx={{display: 'flex', flexDirection: 'column',  px: 2}}>
-                <Typography sx={{...h4, mb: 3}}>
+            <Box sx={{
+                display: 'flex', 
+                flexDirection: 'column',  
+                px: { xs: 0, md: 2 },
+                mb: { xs: 4, md: 0 }
+            }}>
+                <Typography sx={{...h4, mb: 3, fontSize: { xs: '16px', md: '18px' }}}>
                     Quick links
                 </Typography>
                 {[
@@ -128,17 +151,22 @@ export default function Footer() {
                     {to: '/ourStory', label: 'Our Story'},
                     {to: '/ourNewsletter', label: 'Subscribe to Our Newsletter'}
                 ].map((link) => (
-                    <Typography key={link.to + link.label} component={RouterNavLink} to={link.to} sx={navLinkStyles}>
+                    <Typography key={link.to + link.label} component={RouterNavLink} to={link.to} sx={{...navLinkStyles, fontSize: { xs: '14px', md: '16px' }}}>
                         {link.label}
                     </Typography>
                 ))}
             </Box>
 
-            <Box sx={{display: 'flex', flexDirection: 'column', flex: 1, pl: 6}}>
-                <Typography sx={{...h4, mb: 3}}>
+            <Box sx={{
+                display: 'flex', 
+                flexDirection: 'column', 
+                flex: 1, 
+                pl: { xs: 0, md: 6 }
+            }}>
+                <Typography sx={{...h4, mb: 3, fontSize: { xs: '16px', md: '18px' }}}>
                     Stay in touch
                 </Typography>
-                <Typography sx={{...h6, mb: 2}}>
+                <Typography sx={{...h6, mb: 2, fontSize: { xs: '12px', md: '14px' }}}>
                     Sign up for exclusive offers, original stories, events and more.
                 </Typography>
 
@@ -166,9 +194,14 @@ export default function Footer() {
                     {success && <Typography sx={{ color: "#16675C", fontWeight: 700, mt: 1 }}>Subscribed!</Typography>}
                 </Box>
 
-                <Box sx={{display: 'flex', alignItems: 'center', marginTop: '120px', justifyContent: "flex-end"}}>
-                    <Box component='img' src={visa} alt='visa' sx={{width: '32px', height: '32px', mr: 2, cursor: 'pointer'}}/>
-                    <Box component='img' src={mastercard} alt='mastercard' sx={{width: '32px', height: '32px', mr: 2, cursor: 'pointer'}}/>
+                <Box sx={{
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    marginTop: { xs: 4, md: '120px' }, 
+                    justifyContent: { xs: 'flex-start', md: "flex-end" }
+                }}>
+                    <Box component='img' src={visa} alt='visa' sx={{width: { xs: '28px', md: '32px' }, height: { xs: '28px', md: '32px' }, mr: 2, cursor: 'pointer'}}/>
+                    <Box component='img' src={mastercard} alt='mastercard' sx={{width: { xs: '28px', md: '32px' }, height: { xs: '28px', md: '32px' }, mr: 2, cursor: 'pointer'}}/>
                 </Box>
             </Box>
         </Box>

@@ -1,6 +1,6 @@
 import React from "react";
-import { Drawer, IconButton, Button, Box, Typography, Divider} from "@mui/material";
-// import CloseIcon from "@mui/icons-material/Close";
+import { Drawer, IconButton, Button, Box, Typography, Divider, useMediaQuery, useTheme} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import deleteIcon from "../../assets/icons/delete-icon.svg";
@@ -16,37 +16,36 @@ export default function BasketModal({
   onCheckout = () => {},
   discount = 0, 
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
   const total = subtotal - discount;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 400, md: 480 }, boxSizing: "border-box", borderTopLeftRadius: "20px", }}} >
+    <Drawer anchor="right" open={open} onClose={onClose} sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 400, md: 480 }, boxSizing: "border-box", borderTopLeftRadius: { xs: 0, sm: "40px" }, }}} >
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", p: 3, position: "relative" }}>
-          <Typography sx={{...h3 }}>Shopping cart</Typography>
-          {/* <IconButton 
-            onClick={onClose} 
-            size="small" 
-            aria-label="close"
-            sx={{ position: "absolute", right: 16 }}
-          >
-            <CloseIcon />
-          </IconButton> */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", p: { xs: 2, md: 3 }, position: "relative" }}>
+          <Typography sx={{...h3, fontSize: { xs: '20px', md: '24px' } }}>Shopping cart</Typography>
+          {isMobile && (
+            <IconButton onClick={onClose} sx={{position: "absolute", top: 8, right: 8, color: "#3E3027"}}>
+              <CloseIcon />
+            </IconButton>
+          )}
         </Box>
 
-        <Box sx={{ flex: 1, overflow: "auto", px: 2 }}>
+        <Box sx={{ flex: 1, overflow: "auto", px: { xs: 1, md: 2 } }}>
           <Box>
             {items.map((item, index) => (
               <Box key={item.id}>
-                <Box sx={{ display: "flex", gap: 2, py: 3, position: "relative" }}>
-                  <Box component="img" src={item.img} alt={item.name} sx={{ width: 120, height: 120, objectFit: "contain", borderRadius: 1, }}/>
+                <Box sx={{ display: "flex", gap: { xs: 1, md: 2 }, py: { xs: 2, md: 3 }, position: "relative" }}>
+                  <Box component="img" src={item.img} alt={item.name} sx={{ width: { xs: 80, md: 120 }, height: { xs: 80, md: 120 }, objectFit: "contain", borderRadius: 1, }}/>
                   <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <Typography sx={{...h5, pr: 2 }}>
+                      <Typography sx={{...h5, pr: 2, fontSize: { xs: '14px', md: '16px' } }}>
                         {item.name}
                       </Typography>
                       <IconButton onClick={() => onRemove(item.id)} aria-label="remove" size="small" sx={{  padding: 0.5,"&:hover": { opacity: 0.7 }, }} >
-                        <Box component="img" src={deleteIcon} alt="delete" sx={{ width: 20, height: 20 }} />
+                        <Box component="img" src={deleteIcon} alt="delete" sx={{ width: { xs: 16, md: 20 }, height: { xs: 16, md: 20 } }} />
                       </IconButton>
                     </Box>
 
@@ -59,15 +58,15 @@ export default function BasketModal({
                             backgroundColor: "#3E3027",
                             color: "#fff",
                             "&:hover": { backgroundColor: "#3E3027", opacity: 0.9 },
-                            width: 24,
-                            height: 24,
+                            width: { xs: 20, md: 24 },
+                            height: { xs: 20, md: 24 },
                             padding: 0,
                           }}
                         >
-                          <RemoveIcon sx={{ fontSize: 16 }} />
+                          <RemoveIcon sx={{ fontSize: { xs: 14, md: 16 } }} />
                         </IconButton>
 
-                        <Typography  sx={{...h5, minWidth: 24, textAlign: "center" }}>
+                        <Typography  sx={{...h5, minWidth: { xs: 20, md: 24 }, textAlign: "center", fontSize: { xs: '14px', md: '16px' } }}>
                           {item.qty}
                         </Typography>
 
@@ -78,16 +77,16 @@ export default function BasketModal({
                             backgroundColor: "#3E3027",
                             color: "#fff",
                             "&:hover": { backgroundColor: "#3E3027", opacity: 0.9 },
-                            width: 24,
-                            height: 24,
+                            width: { xs: 20, md: 24 },
+                            height: { xs: 20, md: 24 },
                             padding: 0,
                           }}
                         >
-                          <AddIcon sx={{ fontSize: 16 }} />
+                          <AddIcon sx={{ fontSize: { xs: 14, md: 16 } }} />
                         </IconButton>
                       </Box>
 
-                      <Typography sx={{...h5 }}>${(item.price * item.qty).toFixed(2)}</Typography>
+                      <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' } }}>${(item.price * item.qty).toFixed(2)}</Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -97,23 +96,23 @@ export default function BasketModal({
           </Box>
         </Box>
 
-        <Box sx={{ borderTop: 1, borderColor: "divider", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ borderTop: 1, borderColor: "divider", p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography sx={{...h5}}>Subtotal</Typography>
-              <Typography sx={{...h5}}>${subtotal.toFixed(2)}</Typography>
+              <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>Subtotal</Typography>
+              <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>${subtotal.toFixed(2)}</Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography sx={{...h5}}>Discount</Typography>
-              <Typography sx={{...h5}}>-${discount.toFixed(2)}</Typography>
+              <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>Discount</Typography>
+              <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>-${discount.toFixed(2)}</Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography sx={{...h5}}>Total</Typography>
-             <Typography sx={{...h5}}>${total.toFixed(2)}</Typography>
+              <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>Total</Typography>
+             <Typography sx={{...h5, fontSize: { xs: '14px', md: '16px' }}}>${total.toFixed(2)}</Typography>
             </Box>
           </Box>
 
-          <Button fullWidth onClick={() => { onCheckout(); onClose(); }} disabled={items.length === 0} sx={btnCart}>
+          <Button fullWidth onClick={() => { onCheckout(); onClose(); }} disabled={items.length === 0} sx={{...btnCart, fontSize: { xs: '12px', md: '14px' }, py: { xs: 1, md: 1.5 }}}>
             PLACE ON ORDER
           </Button>
         </Box>

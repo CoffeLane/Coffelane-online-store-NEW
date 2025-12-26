@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Grid, Box, Typography, CircularProgress, Card, CardContent, CardMedia, Button, IconButton, Snackbar, Tooltip } from "@mui/material";
+import { Box, Typography, CircularProgress, Card, CardContent, CardMedia, Button, IconButton, Snackbar, Tooltip } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -131,15 +131,14 @@ export default function FavouritePage() {
   }
 
     return (
-    <Grid container sx={{ p: 4 }}>
-      <Grid size={12}>
-        {user && (
-          <Box sx={{ textAlign: "center" }}>
-            <Typography sx={{ color: "#3E3027", fontFamily: "Kefa", fontWeight: 400, fontSize: "40px", mb: 1 }}>
-              Favourite products
-            </Typography>
+    <Box sx={{ p: { xs: 2, md: 4 }, pt: { xs: 4, md: 4 } }}>
+      {user && (
+        <Box>
+          <Typography sx={{ color: "#3E3027", fontFamily: "Kefa", fontWeight: 400, fontSize: { xs: "24px", sm: "32px", md: "40px" }, mb: 1, textAlign: "center" }}>
+            Favourite products
+          </Typography>
 
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 4 }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "flex-start", md: "center" }, gap: 1, mb: 4, flexWrap: "wrap" }}>
               <Tooltip title="Share favorites list">
                 <IconButton
                   onClick={handleShare}
@@ -149,7 +148,7 @@ export default function FavouritePage() {
                 </IconButton>
               </Tooltip>
 
-              <Typography sx={{ ...h5 }}>
+              <Typography sx={{ ...h5, fontSize: { xs: "14px", md: "18px" } }}>
                 Share a link to the list of your favorite products with friends!
               </Typography>
             </Box>
@@ -157,7 +156,7 @@ export default function FavouritePage() {
         )}
 
         {user && allFavorites.length > 0 && (
-          <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "center" }}>
+          <Box sx={{ display: "flex", gap: { xs: 2, md: 3 }, flexWrap: "wrap", justifyContent: { xs: "center", md: "center" } }}>
             {allFavorites.map((item) => {
               const itemId = String(item.id);
               const isFavorite = favoritesMap[itemId];
@@ -175,8 +174,8 @@ export default function FavouritePage() {
                 : `/accessories/product/${item.id}`;
 
               return (
-                <Card key={cartKey} sx={{ width: 300, height: 480, display: "flex", flexDirection: "column", borderRadius: "24px", p: 2, boxShadow: 2}}>
-                  <Box sx={{ position: "relative", width: "100%", height: 250, mb: 2 }}>
+                <Card key={cartKey} sx={{ width: { xs: "100%", sm: 280, md: 300 }, maxWidth: { xs: "100%", sm: 280, md: 300 }, height: { xs: "auto", md: 480 }, minHeight: { xs: 420, md: 480 }, display: "flex", flexDirection: "column", borderRadius: { xs: "16px", md: "24px" }, p: { xs: 1.5, md: 2 }, boxShadow: 2}}>
+                  <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 250 }, mb: { xs: 1.5, md: 2 } }}>
                     {item.photos_url?.[0]?.url ? (
                       <CardMedia component="img" image={item.photos_url[0].url} alt={item.name} sx={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     ) : (
@@ -186,7 +185,7 @@ export default function FavouritePage() {
                     )}
 
                     <Box component="img" src={isFavorite ? favoriteActive : favorite} alt="favorite"
-                      sx={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, cursor: "pointer"}}
+                      sx={{ position: "absolute", top: { xs: 8, md: 16 }, right: { xs: 8, md: 16 }, width: { xs: 24, md: 32 }, height: { xs: 24, md: 32 }, cursor: "pointer"}}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleFavorite(item);
@@ -194,25 +193,25 @@ export default function FavouritePage() {
                     />
                   </Box>
 
-                  <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                    <Box sx={{ height: 88, overflow: "hidden" }}>
-                      <Typography sx={{ ...h4, mb: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer"}}
+                  <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: { xs: "8px !important", md: "16px !important" }, "&:last-child": { pb: { xs: 1, md: 2 } } }}>
+                    <Box sx={{ height: { xs: 70, md: 88 }, overflow: "hidden", mb: { xs: 0.5, md: 1 } }}>
+                      <Typography sx={{ ...h4, mb: { xs: 0.5, md: 1 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", fontSize: { xs: "16px", md: "20px" }}}
                         onClick={() => navigate(productPath)}
                       >
                         {item.name || "No name"}
                       </Typography>
 
-                      <ClampText lines={2} sx={{ ...h7, mb: 1, wordBreak: "break-word" }}>
+                      <ClampText lines={2} sx={{ ...h7, mb: { xs: 0.5, md: 1 }, wordBreak: "break-word", fontSize: { xs: "12px", md: "14px" } }}>
                         {item.description || "No description"}
                       </ClampText>
                     </Box>
 
-                    <Typography sx={{ mt: 1, color: "#16675C", fontSize: 14, fontWeight: 700, textAlign: "right", mb: 1 }}>
+                    <Typography sx={{ mt: { xs: 0.5, md: 1 }, color: "#16675C", fontSize: { xs: 16, md: 18 }, fontWeight: 700, textAlign: "right", mb: { xs: 0.5, md: 1 } }}>
                       ${price.toFixed(2)}
                     </Typography>
 
-                    <Button variant="contained" onClick={() => handleAddToCart(item)} sx={isInCart ? btnInCart : btnCart}
-                      endIcon={<Box component="img" src={isInCart ? incart : shopping} alt="" sx={{ width: 24, height: 24 }} />}>
+                    <Button variant="contained" onClick={() => handleAddToCart(item)} sx={{ ...(isInCart ? btnInCart : btnCart), fontSize: { xs: "12px", md: "14px" }, py: { xs: 1, md: 1.25 }, mt: "auto" }}
+                      endIcon={<Box component="img" src={isInCart ? incart : shopping} alt="" sx={{ width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 }, ml: { xs: 0.5, md: 1 } }} />}>
                       {isInCart ? "In cart" : "Add to bag"}
                     </Button>
                   </CardContent>
@@ -225,7 +224,6 @@ export default function FavouritePage() {
         {user && allFavorites.length === 0 && (
           <Typography sx={{ textAlign: "center", mt: 4 }}>No favorites found</Typography>
         )}
-      </Grid>
       <LoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
       <Snackbar
         open={snackbarOpen}
@@ -234,6 +232,6 @@ export default function FavouritePage() {
         message={snackbarMessage}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
-    </Grid>
+    </Box>
   );
 }

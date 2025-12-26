@@ -43,22 +43,30 @@ console.log("🔍 [PRODUCT] Items:", items);
 
     return (
         <Box sx={{ width: "100%" }}>
-            <Grid container sx={{ px: 4, py: 4, display: 'flex', justifyContent: 'space-evenly', gap: 3, mt: 4 }}>
-                <Box>
+            <Grid container sx={{ 
+                px: { xs: 1, sm: 2, md: 4 }, 
+                py: { xs: 2, md: 4 }, 
+                display: 'flex', 
+                flexDirection: { xs: 'column', md: 'row' },
+                justifyContent: 'space-evenly', 
+                gap: { xs: 2, md: 3 }, 
+                mt: { xs: 2, md: 4 } 
+            }}>
+                <Box sx={{ width: { xs: '100%', md: 'auto' }, order: { xs: 1, md: 0 } }}>
                     <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
                 </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "column", flex: 1, maxWidth: 600, }}>
+                <Box sx={{ display: "flex", flexDirection: "column", flex: 1, maxWidth: { xs: '100%', md: 600 }, order: { xs: 2, md: 0 } }}>
                     <ProductInfo product={selectedProduct} quantity={quantity} onIncrement={handleIncrement} onDecrement={handleDecrement} selectedSupplyId={selectedSupplyId} setSelectedSupplyId={setSelectedSupplyId} />
                     <AddToCartButtons product={selectedProduct} quantity={quantity} selectedSupplyId={selectedSupplyId} />
                 </Box>
             </Grid>
 
-            <Box sx={{ px: 4, py: 4 }}>
+            <Box sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
                 <ProductAccordion product={selectedProduct} />
             </Box>
 
-            <Box sx={{ px: 4, py: 4 }}>
+            <Box sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
                 <RecommendedProducts products={recommended} />
             </Box>
         </Box>
