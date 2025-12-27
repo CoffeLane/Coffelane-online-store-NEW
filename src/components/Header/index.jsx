@@ -480,7 +480,7 @@ function Header() {
                     <Grid sx={{ display: 'flex', justifyContent: 'center' }}>
                         <Navbar />
                     </Grid>
-
+{/* <CurrencySwitcher /> */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 4 } }}>
                         <Box sx={{ position: 'relative' }}>
                             <form onSubmit={handleSearchSubmit}>
@@ -533,7 +533,7 @@ function Header() {
                                 />
                             )}
                         </Box>
-                        {/* <CurrencySwitcher /> */}
+                        
                         <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                             {hasFavorites ? (
                                 <FavoriteIcon sx={{ color: 'red', fontSize: 24 }} />

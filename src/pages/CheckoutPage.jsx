@@ -60,6 +60,20 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState({});
   const pendingOrderDataRef = useRef(null);
 
+  useEffect(() => {
+    if (discountCode) {
+      let newDiscount = 0;
+      if (discountCode.discount_percent) {
+        newDiscount = total * (discountCode.discount_percent / 100);
+      } else if (discountCode.discount_amount) {
+        newDiscount = Math.min(discountCode.discount_amount, total);
+      }
+      setDiscountAmount(newDiscount);
+    } else {
+      setDiscountAmount(0);
+    }
+  }, [total, discountCode]);
+
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -89,6 +103,19 @@ export default function CheckoutPage() {
           if (result.meta.requestStatus === "fulfilled") {
             const order = result.payload;
             console.log("✅ Order created successfully after login:", order);
+
+            const orderId = order.id || order.order_id || order.order_number;
+
+            // === ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ СКИДКИ ===
+            if (discountCode?.code && orderId) {
+              try {
+                await apiWithAuth.get(`/discount-codes/${discountCode.code}/${orderId}/`);
+                console.log("✅ Discount applied after auto-retry");
+              } catch (e) {
+                console.error("❌ Discount retry failed", e);
+              }
+            }
+
             dispatch(clearCart());
             navigate("/order_successful", {
               state: {
@@ -106,7 +133,7 @@ export default function CheckoutPage() {
         }
       }, 500);
     }
-  }, [user, token, openLogin, dispatch, navigate]);
+  }, [user, token, openLogin, dispatch, navigate, discountCode, discountAmount]);
 
   const handleContinue = () => {
     const contactErrors = validateContact({ firstName, lastName, email, phone, street, region, state, zip, country });
@@ -235,12 +262,26 @@ export default function CheckoutPage() {
 
       if (result.meta.requestStatus === "fulfilled") {
         const order = result.payload;
+        const orderId = order.id || order.order_number || order.number || order.order_id;
 
-        // Скидка (опционально)
-        if (discountCode?.code && order.id) {
-          const apiAuth = apiWithAuth(accessToken);
-          await apiAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`).catch(e => console.warn("Discount fail", e));
+        // Если у нас есть примененный (через заглушку) промокод
+        if (discountCode && orderId) {
+          try {
+            console.log(`🔗 Привязываем скидку ${discountCode.code} к заказу ${orderId}`);
+
+            // Используем apiWithAuth, так как это GET запрос по вашей документации
+            await apiWithAuth.get(`/discount-codes/${discountCode.code}/${orderId}/`);
+
+            console.log("✅ Скидка успешно применена на бэкенде");
+          } catch (discountError) {
+            console.error("❌ Не удалось применить скидку на сервере:", discountError);
+          }
         }
+        // Скидка (опционально)
+        // if (discountCode?.code && order.id) {
+
+        //   await apiWithAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`).catch(e => console.warn("Discount fail", e));
+        // }
 
         dispatch(clearCart());
         navigate("/order_successful", {
@@ -269,6 +310,43 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleApplyDiscount = async () => {
+    if (!discount.trim()) {
+      setDiscountError("Please enter a discount code");
+      return;
+    }
+
+    setDiscountLoading(true);
+    setDiscountError("");
+
+    // Имитируем задержку ответа от сервера (1 секунда)
+    setTimeout(() => {
+      // ПРОВЕРКА: Если ты ввел Sun10, мы "притворяемся", что сервер ответил успехом
+      if (discount.trim().toLowerCase() === "sun10") {
+        const mockData = {
+          code: "Sun10",
+          discount_percent: "10.00", // Скидка 10%
+          is_valid: "true"
+        };
+
+        console.log("✅ Mock Discount applied:", mockData);
+
+        const percent = parseFloat(mockData.discount_percent);
+        setDiscountAmount(total * (percent / 100));
+        setDiscountCode(mockData);
+        setDiscountError("");
+      } else {
+        // Для любого другого слова — имитируем ошибку 404
+        setDiscountError("Invalid or expired discount code (Mock)");
+        setDiscountAmount(0);
+        setDiscountCode(null);
+      }
+      setDiscountLoading(false);
+    }, 1000);
+  };
+
+
+
   const handleQuantityChange = (key, change, cartItem) => {
     const { product, quantity } = cartItem;
     const supplyId = product.selectedSupplyId;
@@ -278,48 +356,48 @@ export default function CheckoutPage() {
 
   const handleRemove = (key) => dispatch(removeFromCart(key));
 
-  const handleApplyDiscount = async () => {
-    if (!discount.trim()) {
-      setDiscountError("Please enter a discount code");
-      return;
-    }
+  // const handleApplyDiscount = async () => {
+  //   if (!discount.trim()) {
+  //     setDiscountError("Please enter a discount code");
+  //     return;
+  //   }
 
-    setDiscountLoading(true);
-    setDiscountError("");
-    setDiscountAmount(0);
-    setDiscountCode(null);
+  //   setDiscountLoading(true);
+  //   setDiscountError("");
+  //   setDiscountAmount(0);
+  //   setDiscountCode(null);
 
-    try {
-      const response = await api.get(`/discount-codes/${discount.trim()}/`);
-      const discountData = response.data;
+  //   try {
+  //     const response = await api.get(`/discount-codes/${discount.trim()}/`);
+  //     const discountData = response.data;
 
-      console.log(" Discount code fetched:", discountData);
+  //     console.log(" Discount code fetched:", discountData);
 
-      let calculatedDiscount = 0;
+  //     let calculatedDiscount = 0;
 
-      if (discountData.discount_percent) {
+  //     if (discountData.discount_percent) {
 
-        calculatedDiscount = total * (discountData.discount_percent / 100);
-      } else if (discountData.discount_amount) {
+  //       calculatedDiscount = total * (discountData.discount_percent / 100);
+  //     } else if (discountData.discount_amount) {
 
-        calculatedDiscount = Math.min(discountData.discount_amount, total);
-      }
+  //       calculatedDiscount = Math.min(discountData.discount_amount, total);
+  //     }
 
-      setDiscountAmount(calculatedDiscount);
-      setDiscountCode(discountData);
-      setDiscountError("");
-    } catch (err) {
-      console.error(" Discount code error:", err.response?.data || err.message);
-      const errorMsg = err.response?.data?.detail ||
-        err.response?.data?.message ||
-        "Invalid or expired discount code";
-      setDiscountError(errorMsg);
-      setDiscountAmount(0);
-      setDiscountCode(null);
-    } finally {
-      setDiscountLoading(false);
-    }
-  };
+  //     setDiscountAmount(calculatedDiscount);
+  //     setDiscountCode(discountData);
+  //     setDiscountError("");
+  //   } catch (err) {
+  //     console.error(" Discount code error:", err.response?.data || err.message);
+  //     const errorMsg = err.response?.data?.detail ||
+  //       err.response?.data?.message ||
+  //       "Invalid or expired discount code";
+  //     setDiscountError(errorMsg);
+  //     setDiscountAmount(0);
+  //     setDiscountCode(null);
+  //   } finally {
+  //     setDiscountLoading(false);
+  //   }
+  // };
 
   return (
     <Grid sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
@@ -392,11 +470,30 @@ export default function CheckoutPage() {
                 {discountError}
               </Typography>
             )}
-            {discountCode && (
+            {/* {discountCode && (
               <Typography sx={{ color: "#16675C", mb: 1, fontSize: { xs: "12px", md: "14px" }, fontWeight: 600 }}>
                 Discount code "{discountCode.code}" applied!
               </Typography>
+            )} */}
+            {discountCode && (
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                <Typography sx={{ color: "#09d05fff", fontSize: "14px", fontWeight: 600 }}>
+                  Discount code "{discountCode.code}" applied!
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setDiscountCode(null);
+                    setDiscountAmount(0);
+                    setDiscount("");
+                  }}
+                  sx={{ color: "red", textTransform: "none", minWidth: "auto" }}
+                >
+                  Remove
+                </Button>
+              </Box>
             )}
+
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Subtotal:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{total.toFixed(2)}$</Typography></Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Discount:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-{discountAmount.toFixed(2)}$</Typography></Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{(total - discountAmount).toFixed(2)}$</Typography></Box>

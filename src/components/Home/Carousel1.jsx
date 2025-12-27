@@ -45,7 +45,7 @@ const Carousel1 = () => {
   };
 
   return (
-    <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
+    <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 }, my: { xs: 5, sm: 2, md: 3 }  }}>
       <IconButton 
         onClick={handlePrev} 
         sx={{ 

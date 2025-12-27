@@ -4,7 +4,7 @@ import {
   CardMedia, Button, IconButton, Snackbar, Tooltip, useMediaQuery, useTheme 
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
-import CoffeeIcon from '@mui/icons-material/Coffee'; 
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { h5, h4, h7 } from "../styles/typographyStyles.jsx";
@@ -180,7 +180,7 @@ export default function FavouritePage() {
                 display: "flex", flexDirection: "column", 
                 borderRadius: "24px", p: { xs: 1.5, md: 2 }, boxShadow: 2 
               }}>
-                {/* Изображение */}
+          
                 <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 250 }, mb: { xs: 1.5, md: 2 } }}>
                   <FavoriteProductImage item={item} isMobile={isMobile} />
                   
@@ -233,14 +233,14 @@ export default function FavouritePage() {
         </Box>
       ) : (
         !loading && user && (
-          <Box sx={{ textAlign: "center", mt: 8 }}>
-            <CoffeeIcon sx={{ fontSize: 80, color: "#EEE", mb: 2 }} />
-            <Typography sx={{ color: "#999", fontSize: "18px" }}>Your favorites list is empty</Typography>
+          <Box sx={{ textAlign: "center",}}>
+            <FavoriteBorderIcon sx={{ fontSize: 80, color: "#a4795b", mb: 4 }} />
+            <Typography sx={{ color: "#3E3027", fontSize: "18px", mb: 4 }}>Your favorites list is empty</Typography>
           </Box>
         )
       )}
 
-      {/* Модалки и уведомления */}
+      
       <LoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
       
       <Snackbar

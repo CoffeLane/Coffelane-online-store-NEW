@@ -83,7 +83,7 @@ export default function CatalogCoffeePage() {
   const filterContent = <Filter filters={filters} setFilters={setFilters} />;
 
   return (
-    <Grid container sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
+    <Grid container sx={{ px: { xs: 2, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
       {isMobile ? (
         <>
           <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

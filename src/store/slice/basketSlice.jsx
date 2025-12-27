@@ -11,8 +11,8 @@ export const getActiveBasket = createAsyncThunk(
       if (!token) {
         return rejectWithValue("No access token");
       }
-      const apiAuth = apiWithAuth(token);
-      const response = await apiAuth.get("/basket");
+    
+      const response = await apiWithAuth.get("/basket");
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -28,9 +28,8 @@ export const addItemToBasket = createAsyncThunk(
       if (!payload) return rejectWithValue("Empty payload");
       const state = getState();
       const token = state.auth?.token || localStorage.getItem("access");
-      const apiAuth = apiWithAuth(token);
-      
-      const response = await apiAuth.post("/basket/add/", payload);
+
+      const response = await apiWithAuth.post("/basket/add/", payload);
       if (!response.data) {
           throw new Error("No data received from server");
       }
@@ -57,8 +56,8 @@ export const updateBasketItem = createAsyncThunk(
       if (!token) {
         return rejectWithValue("No access token");
       }
-      const apiAuth = apiWithAuth(token);
-      const response = await apiAuth.patch(`/basket/update/${id}/`, { quantity });
+   
+      const response = await apiWithAuth.patch(`/basket/update/${id}/`, { quantity });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -76,8 +75,8 @@ export const deleteBasketItem = createAsyncThunk(
       if (!token) {
         return rejectWithValue("No access token");
       }
-      const apiAuth = apiWithAuth(token);
-      await apiAuth.delete(`/basket/delete/${id}/`);
+     
+      await apiWithAuth.delete(`/basket/delete/${id}/`);
       return id;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -95,8 +94,8 @@ export const clearBasket = createAsyncThunk(
       if (!token) {
         return rejectWithValue("No access token");
       }
-      const apiAuth = apiWithAuth(token);
-      await apiAuth.delete("/basket/clear/");
+
+      await apiWithAuth.delete("/basket/clear/");
       return true;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);

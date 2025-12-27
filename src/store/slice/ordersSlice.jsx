@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-// Убедитесь, что путь до axios.js верный (обычно ../../api/axios)
 import { apiWithAuth } from "../api/axios"; 
 import { addItemToBasket, getActiveBasket, clearBasketState } from "./basketSlice";
 

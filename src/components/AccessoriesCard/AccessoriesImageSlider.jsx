@@ -17,20 +17,17 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
   if (!photoUrls.length) {
     return (
       <Box sx={{ 
-        width: { xs: 200, md: 300 }, 
-        height: { xs: 200, md: 300 }, 
+        width: { xs: 250, md: 300 }, 
+        height: { xs: 250, md: 300 }, 
         display: "flex", 
         flexDirection: "column",
         alignItems: "center", 
         justifyContent: "center", 
-        backgroundColor: "#F4F1EE", 
+        backgroundColor: "#eee", 
         borderRadius: 2,
         mt: { xs: 2, md: 4 }
       }}>
         <CoffeeIcon sx={{ fontSize: { xs: 60, md: 80 }, color: "#ccc" }} />
-        <Typography sx={{ color: "#999", mt: 1, fontWeight: 500 }}>
-          No image
-        </Typography>
       </Box>
     );
   }

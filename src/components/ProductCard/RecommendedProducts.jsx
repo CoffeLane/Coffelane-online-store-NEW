@@ -45,7 +45,7 @@ export default function RecommendedProducts({ products }) {
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'center', 
-        flexWrap: 'wrap', 
+        flexWrap: 'wrap',
         gap: { xs: 2, md: 3 }, 
         mb: { xs: 2, md: 4 }
       }}>

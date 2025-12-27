@@ -78,7 +78,7 @@ const Carousel2 = () => {
     };
 
     return (
-        <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 3, md: 6 } }}>
+        <Box sx={{ position: "relative", overflow: "hidden", mx: { xs: 1, sm: 2, md: 4 }, py: { xs: 3, md: 6 }, my: { xs: 5, sm: 2, md: 3 }  }}>
 
             <Typography sx={{ ...h3, color: "#000", textAlign: 'center', mb: { xs: 2, md: 4 }, fontSize: { xs: '24px', md: '32px' } }} >
                 Shop Our Collections

@@ -1,6 +1,6 @@
-import React from "react";
-import { Card, CardContent, CardMedia, Typography, Button, Box, useMediaQuery, useTheme } from "@mui/material"; 
-import CoffeeIcon from '@mui/icons-material/Coffee'; 
+import React, { useState } from "react";
+import { Card, CardContent, CardMedia, Typography, Button, Box } from "@mui/material";
+import CoffeeIcon from '@mui/icons-material/Coffee';
 import { h4, h7 } from "../../styles/typographyStyles.jsx";
 import { btnCart, btnInCart } from "../../styles/btnStyles.jsx";
 import favorite from "../../assets/icons/favorite.svg";
@@ -12,21 +12,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
 
-const ProductImage = ({ item, isMobile }) => {
-  const [hasError, setHasError] = React.useState(false);
-  const imageUrl = item.photos_url?.[0]?.url;
 
-  if (!imageUrl || hasError) {
+const ProductImage = ({ src, alt }) => {
+  const [error, setError] = useState(false);
+
+  if (!src || error) {
     return (
       <Box sx={{ 
-        width: "100%", height: "100%", 
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", 
-        bgcolor: "#F9F9F9", borderRadius: "16px", gap: 1,
-        border: "1px solid #EEE"
+        width: "100%", 
+        height: "100%", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        bgcolor: "#f5f5f5",
+        borderRadius: "12px"
       }}>
-        <CoffeeIcon sx={{ color: "#16675C", fontSize: isMobile ? 40 : 60, opacity: 0.4 }} />
-        <Typography sx={{ fontSize: '12px', color: '#999', fontWeight: 600 }}>No Image</Typography>
+        <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
       </Box>
     );
   }
@@ -34,104 +35,102 @@ const ProductImage = ({ item, isMobile }) => {
   return (
     <CardMedia
       component="img"
-      image={imageUrl}
-      alt={item.name}
-      onError={() => setHasError(true)}
+      image={src}
+      alt={alt}
+      onError={() => setError(true)}
       sx={{ width: "100%", height: "100%", objectFit: "contain" }}
     />
   );
 };
 
-export default function CoffeeCardData({ products, favorites, onToggleFavorite }) {
+export default function CoffeeCardData({ products, favorites, onToggleFavorite, isRecommended = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const cartEntries = useSelector(selectCartItems);
 
-  const handleAddToCart = (item, supply) => {
-    dispatch(
-      addToCart({
-        product: { 
-            ...item, 
-            price: Number(supply.price || 0), 
-            selectedSupplyId: supply.id 
-        },
-        quantity: 1,
-      })
-    );
-  };
-
-  if (!products || products.length === 0) return <Typography>No products found</Typography>;
-
   return (
-    <Box sx={{ display: "flex", gap: { xs: 2, md: 3 }, flexWrap: "wrap", justifyContent: { xs: 'stretch', md: 'flex-start' }, px: { xs: 2, md: 0 } }}>
+    <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 2, md: 3 }, justifyContent: "center", width: "100%",}}>
       {products.map((item) => {
         const itemId = String(item.id);
         const supply = item.supplies?.[0] || null;
         const isOutOfStock = !supply || Number(supply.quantity) <= 0;
         const cartKey = supply ? `${item.id}-${supply.id}` : `${item.id}-default`;
         const isInCart = cartEntries.some(([key]) => key === cartKey);
-        const price = supply ? Number(supply.price) : 0;
-        const isFavorite = favorites?.[itemId];
+        const mainPhoto = item.photos_url?.[0]?.url;
 
         return (
-          <Card
-            key={cartKey}
-            sx={{ 
-              width: { xs: '100%', sm: '240px', md: 300 }, 
-              height: { xs: 'auto', md: 480 }, 
-              display: "flex", flexDirection: "column", 
-              borderRadius: "24px", p: { xs: 1.5, md: 2 }, boxShadow: 2,
-              opacity: isOutOfStock ? 0.7 : 1,
-              filter: isOutOfStock ? 'grayscale(0.6)' : 'none'
-            }}
-          >
-            <Box sx={{ position: "relative", width: "100%", height: { xs: 200, sm: 180, md: 250 }, mb: { xs: 1, md: 2 } }}>
-              <ProductImage item={item} isMobile={isMobile} />
-              <Box
-                component="img"
-                src={isFavorite ? favoriteActive : favorite}
-                alt="favorite"
-                sx={{ position: "absolute", top: 10, right: 10, width: 30, height: 30, cursor: "pointer", zIndex: 10 }}
-                onClick={() => onToggleFavorite(item)}
+          <Card key={cartKey} sx={{
+            width: isRecommended ? { xs: "100%", sm: "280px", md: "300px" } : { xs: "100%", sm: "280px", md: "300px" },
+            maxWidth: isRecommended ? "360px" : "none",
+            minHeight: { xs: '360px', md: '480px' },
+            display: "flex", 
+            flexDirection: "column", 
+            borderRadius: "24px", 
+            p: 2, 
+            boxShadow: 2,
+            opacity: isOutOfStock ? 0.7 : 1,
+          }}>
+            {/* ИЗОБРАЖЕНИЕ С ОБРАБОТКОЙ ОШИБКИ */}
+            <Box sx={{ position: "relative", width: "100%", height: { xs: 160, md: 250 }, mb: 1 }}>
+              <ProductImage src={mainPhoto} alt={item.name} />
+              
+              <Box 
+                component="img" 
+                src={favorites?.[itemId] ? favoriteActive : favorite}
+                sx={{ 
+                  position: "absolute", 
+                  top: 0, 
+                  right: 0, 
+                  width: 28, 
+                  height: 28, 
+                  cursor: "pointer", 
+                  zIndex: 5,
+                  p: 0.5
+                }}
+                onClick={(e) => {
+                  e.stopPropagation(); // Чтобы не срабатывал переход на товар
+                  onToggleFavorite(item);
+                }} 
               />
             </Box>
 
-            <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '8px !important' }}>
-              <Box sx={{ height: { xs: 60, md: 88 }, overflow: "hidden" }}>
-                <Typography
-                  sx={{ ...h4, mb: 1, cursor: "pointer", fontSize: { xs: '14px', md: '18px' } }}
-                  onClick={() => navigate(`/coffee/product/${item.id}`)}
-                >
-                  {item.name || "Unnamed Coffee"}
-                </Typography>
-                <ClampText lines={1} sx={{ ...h7, fontSize: { xs: '10px', md: '12px' } }}>
-                  {item.description}
-                </ClampText>
-              </Box>
-
-              <Typography sx={{ mt: 'auto', color: isOutOfStock ? "#999" : "#16675C", fontSize: 16, fontWeight: 700, textAlign: "right", mb: 1 }}>
-                {isOutOfStock ? "SOLD OUT" : `$${price.toFixed(2)}`}
-              </Typography>
-
-              <Button
-                variant="contained"
-                disabled={isOutOfStock}
-                onClick={() => !isOutOfStock && handleAddToCart(item, supply)}
+            <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '0 !important' }}>
+              <Typography 
+                onClick={() => navigate(`/coffee/product/${item.id}`)} 
                 sx={{ 
-                  ...(isInCart ? btnInCart : btnCart),
-                  "&.Mui-disabled": {
-                    bgcolor: "#e0e0e0 !important",
-                    color: "#999 !important"
-                  }
+                  ...h4, 
+                  cursor: "pointer", 
+                  fontSize: { xs: '15px', md: '18px' }, 
+                  mb: 1,
+                  '&:hover': { color: '#16675C' }
                 }}
-                endIcon={!isOutOfStock && (
-                  <Box component="img" src={isInCart ? incart : shopping} sx={{ width: 24, height: 24 }} />
-                )}
               >
-                {isOutOfStock ? "Out of Stock" : (isInCart ? "In cart" : "Add to bag")}
-              </Button>
+                {item.name}
+              </Typography>
+              
+              <ClampText lines={2} sx={{ ...h7, opacity: 0.7, mb: 2 }}>
+                {item.description}
+              </ClampText>
+              
+              <Box sx={{ mt: 'auto' }}>
+                <Typography sx={{ color: "#16675C", fontWeight: 700, textAlign: "right", mb: 1 }}>
+                  ${supply ? Number(supply.price).toFixed(2) : "0.00"}
+                </Typography>
+                
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  disabled={isOutOfStock}
+                  onClick={() => dispatch(addToCart({ 
+                    product: { ...item, price: supply?.price, selectedSupplyId: supply?.id }, 
+                    quantity: 1 
+                  }))}
+                  sx={{ ...(isInCart ? btnInCart : btnCart), py: 1 }}
+                  endIcon={<Box component="img" src={isInCart ? incart : shopping} sx={{ width: 20 }} />}
+                >
+                  {isOutOfStock ? "Sold Out" : (isInCart ? "In cart" : "Add to bag")}
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         );

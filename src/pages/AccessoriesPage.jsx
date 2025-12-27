@@ -81,7 +81,7 @@ export default function AccessoriesPage() {
   if (error) return <p>{error?.detail || error || "Error"}</p>;
 
   return (
-    <Grid container sx={{ p: { xs: 1, sm: 2, md: 4 } }}>
+    <Grid container sx={{ p: { xs: 2, sm: 2, md: 4 } }}>
       <Grid size={12}>
         <Box sx={{ textAlign: "center" }}>
           <Typography sx={{ color: "#3E3027", fontFamily: "Kefa", fontWeight: 400, fontSize: { xs: "24px", sm: "32px", md: "40px" }, mb: 1 }}>

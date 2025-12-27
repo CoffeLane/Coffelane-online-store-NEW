@@ -16,7 +16,7 @@ export default function Filter({ filters, setFilters }) {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: '#fff', borderRadius: { xs: '8px', md: '16px' }, boxShadow: 2, height: '100%' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: '#fff', borderRadius: { xs: '8px', md: '16px' }, boxShadow: 2, height: 'auto', mb:{ xs: 4, md: 0 } }}>
       <Typography sx={{ ...h3, mb: { xs: 0.5, md: 1 }, fontSize: { xs: '18px', md: '24px' } }}>Sort By</Typography>
       <FormControl fullWidth sx={{ ...h6, ...inputDropdown, my: { xs: 0.5, md: 1 }, mb: { xs: 2, md: 3 } }}>
         <Select value={filters.sort} onChange={e => setFilters(prev => ({ ...prev, sort: e.target.value }))} MenuProps={selectMenuProps}>

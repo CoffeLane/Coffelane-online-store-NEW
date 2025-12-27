@@ -10,12 +10,12 @@ const ThumbnailItem = ({ img, isSelected, onClick, productName, index }) => {
 
   return (
     <Box sx={{ cursor: "pointer", textAlign: "center" }} onClick={onClick}>
-      <Box sx={{ 
-        width: { xs: 60, md: 80 }, 
-        height: { xs: 60, md: 80 }, 
-        backgroundColor: "#fff", 
+      <Box sx={{
+        width: { xs: 60, md: 80 },
+        height: { xs: 60, md: 80 },
+        backgroundColor: "#fff",
         borderRadius: 1,
-        border: isSelected ? "1px solid #16675C" : "1px solid #eee",
+        border: isSelected ? "1px solid #3E3027" : "1px solid #eee",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -23,23 +23,23 @@ const ThumbnailItem = ({ img, isSelected, onClick, productName, index }) => {
         p: 0.5
       }}>
         {thumbError ? (
-          <CoffeeIcon sx={{ color: "#16675C", fontSize: 30, opacity: 0.3 }} />
+          <CoffeeIcon sx={{ color: "#ccc", fontSize: 30, }} />
         ) : (
-          <Box 
-            component="img" 
-            src={img} 
-            alt={`${productName}-${index}`} 
+          <Box
+            component="img"
+            src={img}
+            alt={`${productName}-${index}`}
             onError={() => setThumbError(true)}
-            sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
+            sx={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         )}
       </Box>
-      <Box sx={{ 
-        width: "100%", 
-        height: { xs: 3, md: 4 }, 
-        borderRadius: 2, 
-        backgroundColor: isSelected ? "#3E3027" : "#ccc", 
-        mt: 0.5 
+      <Box sx={{
+        width: "100%",
+        height: { xs: 3, md: 4 },
+        borderRadius: 2,
+        backgroundColor: isSelected ? "#3E3027" : "#ccc",
+        mt: 0.5
       }} />
     </Box>
   );
@@ -55,13 +55,8 @@ export default function ProductImageSlider({ photos = [], productName }) {
 
   if (photoUrls.length === 0) {
     return (
-      <Box sx={{ 
-        mt: { xs: 2, md: 4 }, width: "100%", height: { xs: 250, md: 400 }, 
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
-        bgcolor: "#F9F9F9", borderRadius: "24px", gap: 1, border: "1px solid #EEE"
-      }}>
-        <CoffeeIcon sx={{ color: "#16675C", fontSize: isMobile ? 60 : 80, opacity: 0.4 }} />
-        <Typography sx={{ fontSize: '14px', color: '#999', fontWeight: 600 }}>No Image Available</Typography>
+      <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#eee", borderRadius: "12px" }}>
+        <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
       </Box>
     );
   }
@@ -74,42 +69,38 @@ export default function ProductImageSlider({ photos = [], productName }) {
   return (
     <Box sx={{ mt: { xs: 2, md: 4 }, maxWidth: { xs: "100%", md: 700 }, mx: "auto", px: { xs: 1, md: 0 } }}>
       <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        
+
         {photoUrls.length > 1 && (
-          <IconButton 
-            onClick={() => handleSwitch(selectedIndex === 0 ? photoUrls.length - 1 : selectedIndex - 1)} 
+          <IconButton
+            onClick={() => handleSwitch(selectedIndex === 0 ? photoUrls.length - 1 : selectedIndex - 1)}
             sx={{ position: "absolute", left: { xs: -8, md: 0 }, backgroundColor: "rgba(255,255,255,0.9)", boxShadow: 1, zIndex: 1 }}
           >
             <ArrowBackIosIcon sx={{ fontSize: { xs: 16, md: 20 }, ml: 0.5 }} />
           </IconButton>
         )}
 
-        <Box sx={{ 
-          width: { xs: 200, md: 350 }, height: { xs: 200, md: 350 }, display: "flex", 
-          alignItems: "center", justifyContent: "center", mx: { xs: 4, md: 6 } 
+        <Box sx={{
+          width: { xs: 200, md: 350 }, height: { xs: 200, md: 350 }, display: "flex",
+          alignItems: "center", justifyContent: "center", mx: { xs: 4, md: 6 }
         }}>
           {mainError ? (
-            <Box sx={{ 
-              width: "100%", height: "100%", display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", bgcolor: "#F4F1EE", borderRadius: "24px" 
-            }}>
-              <CoffeeIcon sx={{ fontSize: { xs: 60, md: 80 }, color: "#ccc" }} />
-              <Typography sx={{ color: "#999", mt: 1, fontWeight: 500 }}>No image</Typography>
+            <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#eee", borderRadius: "12px" }}>
+              <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
             </Box>
           ) : (
-            <Box 
-              component="img" 
-              src={photoUrls[selectedIndex]} 
-              alt={productName} 
+            <Box
+              component="img"
+              src={photoUrls[selectedIndex]}
+              alt={productName}
               onError={() => setMainError(true)}
-              sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           )}
         </Box>
 
         {photoUrls.length > 1 && (
-          <IconButton 
-            onClick={() => handleSwitch(selectedIndex === photoUrls.length - 1 ? 0 : selectedIndex + 1)} 
+          <IconButton
+            onClick={() => handleSwitch(selectedIndex === photoUrls.length - 1 ? 0 : selectedIndex + 1)}
             sx={{ position: "absolute", right: { xs: -8, md: 0 }, backgroundColor: "rgba(255,255,255,0.9)", boxShadow: 1, zIndex: 1 }}
           >
             <ArrowForwardIosIcon sx={{ fontSize: { xs: 16, md: 20 } }} />
@@ -121,7 +112,7 @@ export default function ProductImageSlider({ photos = [], productName }) {
       {photoUrls.length > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap" }}>
           {photoUrls.map((img, index) => (
-            <ThumbnailItem 
+            <ThumbnailItem
               key={index}
               img={img}
               index={index}

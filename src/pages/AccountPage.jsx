@@ -21,7 +21,6 @@ import { h3, h5 } from "../styles/typographyStyles";
 
 const tabPaths = ["personal-info", "account-settings", "orders-history", "logout"];
 
-// Список админских email (должен совпадать с authSlice и App.jsx)
 const ADMIN_EMAILS = [
   'admin@coffeelane.com',
   'admin@example.com',
@@ -45,23 +44,20 @@ export default function AccountPage() {
     userEmail = auth.email;
   }
 
-  // Проверяем, является ли пользователь админом
   const isAdminUser = auth.isAdmin || 
     (userEmail && ADMIN_EMAILS.some(adminEmail => 
       userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
     )) ||
     (auth.user?.role === 'admin' || auth.user?.role === 'Administrator');
 
-  // Если пользователь админ, перенаправляем на админскую страницу аккаунта
   useEffect(() => {
     if (isAdminUser) {
       navigate('/admin/account');
     }
   }, [isAdminUser, navigate]);
 
-  // Если пользователь админ, не рендерим обычную страницу аккаунта
   if (isAdminUser) {
-    return null; // или можно показать загрузку
+    return null; 
   }
 
   const userData = auth.user
@@ -97,13 +93,12 @@ export default function AccountPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("access");
-    // Всегда обновляем профиль при монтировании компонента, чтобы получить актуальные данные
-    // Это важно, чтобы разделить данные обычного пользователя и админа
+
     if (token && !auth.tokenInvalid && !auth.loading) {
       // console.log("▶ AccountPage - Fetching profile to ensure we have current user data...");
       dispatch(fetchProfile());
     }
-  }, [dispatch]); // Вызываем только при монтировании компонента
+  }, [dispatch]);
 
   const handleLogout = async () => {
     // console.log("▶ LOGOUT CLICK");
@@ -113,10 +108,7 @@ export default function AccountPage() {
   };
 
   return (
-    <Grid
-      size={12}
-      sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 }, display: "flex", flexDirection: "column", alignItems: "center" }}
-    >
+    <Grid size={12} sx={{ px: { xs: 2, sm: 2, md: 4 }, py: { xs: 2, md: 4 }, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <Typography sx={{ ...h3, textAlign: "center", mb: { xs: 2, md: 3 }, width: "100%", fontSize: { xs: '24px', md: '32px' } }}>
         My Account
       </Typography>
@@ -135,6 +127,8 @@ export default function AccountPage() {
                 width: { xs: "100%", md: "100%" },
                 "& .MuiTabs-flexContainer": {
                   flexDirection: { xs: "row", md: "column" },
+                  justifyContent: { xs: "center", md: "flex-start" },
+                  alignItems: { xs: "center", md: "flex-start" },
                 },
                 "& .MuiTab-root": {
                   ...h5,
@@ -152,16 +146,16 @@ export default function AccountPage() {
                 mb: { xs: 2, md: 0 },
               }}
             >
-              <Tab icon={<PersonOutlineIcon sx={{ fontSize: { xs: 18, md: 24 } }} />} iconPosition="start" label="Profile" />
-              <Tab icon={<SettingsOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />} iconPosition="start" label="Settings" />
+              <Tab icon={<PersonOutlineIcon sx={{ fontSize: { xs: 16, md: 24 } }} />} iconPosition="start" label="Profile" />
+              <Tab icon={<SettingsOutlinedIcon sx={{ fontSize: { xs: 16, md: 24 } }} />} iconPosition="start" label="Settings" />
               <Tab
-                icon={<ShoppingBagOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />}
+                icon={<ShoppingBagOutlinedIcon sx={{ fontSize: { xs: 16, md: 24 } }} />}
                 iconPosition="start"
                 label="Orders"
                 sx={{ borderBottom: { xs: "none", md: "1px solid #E0E0E0" }, mb: { xs: 0, md: 1 } }}
               />
               <Tab
-                icon={<LogoutOutlinedIcon sx={{ fontSize: { xs: 18, md: 24 } }} />}
+                icon={<LogoutOutlinedIcon sx={{ fontSize: { xs: 16, md: 24 } }} />}
                 iconPosition="start"
                 label="Log out"
                 sx={{
@@ -173,9 +167,9 @@ export default function AccountPage() {
             </Tabs>
           </Grid>
 
-          <Grid sx={{ flexGrow: 1 }} size={{ xs: 12, md: 8 }}>
+          <Grid sx={{ flexGrow: 1 }} size={{ xs: 12, md: 8, }}>
             <TabPanel value={tab} index={0}>
-              <PersonalInfoForm user={userData} />;
+              <PersonalInfoForm user={userData} />
             </TabPanel>
             <TabPanel value={tab} index={1}>
               <AccountSettingsForm />

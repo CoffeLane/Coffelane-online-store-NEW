@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { Box, Grid } from "@mui/material";
+import { Box, Grid, CircularProgress } from "@mui/material";
 import { fetchProductById } from "../store/slice/productsSlice.jsx";
 import ProductInfo from "../components/ProductCard/ProductInfo.jsx";
 import AddToCartButtons from "../components/ProductCard/AddToCartButtons.jsx";
@@ -10,68 +10,64 @@ import ProductAccordion from "../components/ProductCard/ProductAccordion.jsx";
 import RecommendedProducts from "../components/ProductCard/RecommendedProducts.jsx";
 
 export default function ProductCardPage() {
-    const { id } = useParams();
-    const dispatch = useDispatch();
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const { items, selectedProduct, loading } = useSelector((state) => state.products);
+  
+  const [quantity, setQuantity] = useState(1);
+  const [selectedSupplyId, setSelectedSupplyId] = useState(null);
 
-    const { items, selectedProduct, loading } = useSelector(
-        (state) => state.products
-    );
-console.log("🔍 [PRODUCT] Items:", items);
+  useEffect(() => {
+    dispatch(fetchProductById(id));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id, dispatch]);
 
-    const [quantity, setQuantity] = useState(1);
-    const [selectedSupplyId, setSelectedSupplyId] = useState(null);
+  useEffect(() => {
+    if (selectedProduct) {
+      setQuantity(1);
+      setSelectedSupplyId(selectedProduct.supplies?.[0]?.id || null);
+    }
+  }, [selectedProduct]);
 
-    useEffect(() => {
-        dispatch(fetchProductById(id));
-    }, [id, dispatch]);
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+  if (!selectedProduct) return <Box sx={{ py: 10, textAlign: 'center' }}>Product not found</Box>;
 
-    useEffect(() => {
-        if (selectedProduct) {
-            setQuantity(1);
-            setSelectedSupplyId(selectedProduct.supplies?.[0]?.id || null);
-        }
-    }, [selectedProduct]);
+  const recommended = items.filter((p) => String(p.id) !== String(id)).slice(0, 3);
 
-    if (loading) return <div>Loading...</div>;
-    if (!selectedProduct) return <div>Product not found</div>;
-
-    const recommended = items
-        .filter((p) => p.id !== selectedProduct.id)
-        .slice(0, 3);
-    const handleIncrement = () => setQuantity((prev) => prev + 1);
-    const handleDecrement = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
-
-   
-
-    return (
-        <Box sx={{ width: "100%" }}>
-            <Grid container sx={{ 
-                px: { xs: 1, sm: 2, md: 4 }, 
-                py: { xs: 2, md: 4 }, 
-                display: 'flex', 
-                flexDirection: { xs: 'column', md: 'row' },
-                justifyContent: 'space-evenly', 
-                gap: { xs: 2, md: 3 }, 
-                mt: { xs: 2, md: 4 } 
-            }}>
-                <Box sx={{ width: { xs: '100%', md: 'auto' }, order: { xs: 1, md: 0 } }}>
-                    <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
-                </Box>
-
-                <Box sx={{ display: "flex", flexDirection: "column", flex: 1, maxWidth: { xs: '100%', md: 600 }, order: { xs: 2, md: 0 } }}>
-                    <ProductInfo product={selectedProduct} quantity={quantity} onIncrement={handleIncrement} onDecrement={handleDecrement} selectedSupplyId={selectedSupplyId} setSelectedSupplyId={setSelectedSupplyId} />
-                    <AddToCartButtons product={selectedProduct} quantity={quantity} selectedSupplyId={selectedSupplyId} />
-                </Box>
-            </Grid>
-
-            <Box sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
-                <ProductAccordion product={selectedProduct} />
-            </Box>
-
-            <Box sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
-                <RecommendedProducts products={recommended} />
-            </Box>
+  return (
+    <Box sx={{ width: "100%", pb: 8 }}>
+      <Grid container sx={{ 
+        px: { xs: 2, md: 6 }, py: { xs: 2, md: 6 },
+        flexDirection: { xs: "column", md: "row" },
+        alignItems: { xs: "center", md: "flex-start" },
+        justifyContent: "center",
+        gap: { xs: 4, md: 8 }
+      }}>
+        {/* СЛАЙДЕР СТРОГО ПО ЦЕНТРУ */}
+        <Box sx={{ width: { xs: "100%", md: "450px" }, display: 'flex', justifyContent: 'center' }}>
+          <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
         </Box>
-    );
-}
 
+        {/* ИНФОРМАЦИЯ */}
+        <Box sx={{ flex: 1, maxWidth: { xs: "100%", md: 550 }, width: "100%" }}>
+          <ProductInfo 
+            product={selectedProduct} 
+            quantity={quantity} 
+            onIncrement={() => setQuantity(q => q + 1)} 
+            onDecrement={() => setQuantity(q => q > 1 ? q - 1 : 1)} 
+            selectedSupplyId={selectedSupplyId} 
+            setSelectedSupplyId={setSelectedSupplyId} 
+          />
+          <Box sx={{ mt: 3 }}>
+            <AddToCartButtons product={selectedProduct} quantity={quantity} selectedSupplyId={selectedSupplyId} />
+          </Box>
+        </Box>
+      </Grid>
+
+      <Box sx={{ px: { xs: 2, md: 6 }, mt: 4 }}>
+        <ProductAccordion product={selectedProduct} />
+        <RecommendedProducts products={recommended} />
+      </Box>
+    </Box>
+  );
+}
