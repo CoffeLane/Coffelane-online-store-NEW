@@ -608,7 +608,6 @@ export default function MyAccountAdmin() {
             userProfileAvatar: profileResult.payload?.user?.profile?.avatar,
             profileAvatar: profileResult.payload?.profile?.avatar,
             payloadAvatar: profileResult.payload?.avatar,
-            profileAvatar
           });
           
           if (profileAvatar && profileAvatar !== avatarUrl) {

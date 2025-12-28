@@ -17,6 +17,8 @@ import { fetchFavorites, toggleFavoriteItem } from "../store/slice/favoritesSlic
 import { selectCartItems, addToCart } from "../store/slice/cartSlice.jsx";
 import ClampText from "../components/ClampText.jsx";
 import LoginModal from "../components/Modal/LoginModal.jsx";
+import { formatPrice, getPrice, getProductPrice } from "../components/utils/priceUtils.jsx";
+import CoffeeIcon from '@mui/icons-material/Coffee';
 
 // Вспомогательный компонент для изображений с обработкой ошибок (как в CoffeeCardData)
 const FavoriteProductImage = ({ item, isMobile }) => {
@@ -59,6 +61,7 @@ export default function FavouritePage() {
   const token = useSelector(state => state.auth.token);
   const user = useSelector(state => state.auth.user);
   const cartEntries = useSelector(selectCartItems);
+  const currency = useSelector((state) => state.settings?.selectedCurrency || 'USD');
   
   const [loginOpen, setLoginOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);

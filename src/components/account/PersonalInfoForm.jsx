@@ -59,7 +59,7 @@ export default function PersonalInfoForm({ user }) {
     }
   };
 
-  const handleSaveLeft = async () => {
+ const handleSaveLeft = async () => {
     const errors = validateProfile({ type: "personal", ...formData });
     setLeftErrors(errors);
 
@@ -70,78 +70,54 @@ export default function PersonalInfoForm({ user }) {
       try {
         const token = localStorage.getItem("access");
         if (!token) {
-          setLeftErrors({ submit: "You are not logged in. Please log in first." });
+          setLeftErrors({ submit: "You are not logged in." });
           setLeftLoading(false);
           return;
         }
 
         const nameParts = formData.fullName.trim().split(/\s+/);
-        const firstName = nameParts[0] || "";
-        const lastName = nameParts.slice(1).join(" ") || "";
-
         const updateData = {
           profile: {
-            first_name: firstName,
-            last_name: lastName,
-            phone_number: normalizePhone(formData.phone), // убирает пробелы, скобки, дефисы
+            first_name: nameParts[0] || "",
+            last_name: nameParts.slice(1).join(" ") || "",
+            phone_number: normalizePhone(formData.phone),
           },
           email: formData.email,
         };
-
-        let apiAuth = apiWithAuth(token);
         
         try {
-          await apiAuth.patch("/users/update", updateData);
-
+          await apiWithAuth.patch("/users/update", updateData);
           setLeftSuccess("Personal info saved!");
           setTimeout(() => setLeftSuccess(""), 3000);
-
           dispatch(fetchProfile());
         } catch (error) {
-          // Если токен истек (401), пытаемся обновить его
           if (error.response?.status === 401) {
-            console.warn("⚠️ Token expired when saving personal info, attempting to refresh...");
-            
             const refreshResult = await dispatch(refreshAccessToken());
-            
             if (refreshAccessToken.fulfilled.match(refreshResult)) {
-              // Токен обновлен, повторяем запрос с новым токеном
-              console.log("✅ Token refreshed, retrying save...");
               const newToken = refreshResult.payload.access;
-              apiAuth = apiWithAuth(newToken);
+              // ИСПРАВЛЕНО: используем новый экземпляр с новым токеном
+              const retryApi = apiWithAuth(newToken);
+              await retryApi.patch("/users/update", updateData);
               
-              await apiAuth.patch("/users/update", updateData);
-
               setLeftSuccess("Personal info saved!");
-              setTimeout(() => setLeftSuccess(""), 3000);
-
               dispatch(fetchProfile());
             } else {
-              // Не удалось обновить токен
               setLeftErrors({ submit: "Your session has expired. Please log in again." });
             }
           } else {
-            // Другие ошибки
             const data = error.response?.data;
-
             if (data?.profile?.phone_number) {
-              // если массив
-              const msg = Array.isArray(data.profile.phone_number)
-                ? data.profile.phone_number.join(" ")
-                : data.profile.phone_number;
-
-              setLeftErrors(prev => ({ ...prev, phone: msg }));
+              setLeftErrors(prev => ({ ...prev, phone: Array.isArray(data.profile.phone_number) ? data.profile.phone_number.join(" ") : data.profile.phone_number }));
             } else if (data?.email) {
-              const msg = Array.isArray(data.email) ? data.email.join(" ") : data.email;
-              setLeftErrors(prev => ({ ...prev, email: msg }));
+              setLeftErrors(prev => ({ ...prev, email: Array.isArray(data.email) ? data.email.join(" ") : data.email }));
             } else {
-              setLeftErrors(prev => ({ ...prev, submit: data?.message || "Failed to save personal info" }));
+              setLeftErrors(prev => ({ ...prev, submit: data?.message || "Failed to save data" }));
             }
           }
         }
       } catch (error) {
-        console.error("Error saving personal info:", error);
-        setLeftErrors({ submit: "An unexpected error occurred. Please try again." });
+        console.error("Error:", error);
+        setLeftErrors({ submit: "An unexpected error occurred." });
       } finally {
         setLeftLoading(false);
       }
@@ -149,106 +125,55 @@ export default function PersonalInfoForm({ user }) {
   };
 
   const handleSaveRight = async () => {
-    console.log("▶ handleSaveRight called");
     const errors = validateProfile({ type: "address", ...formData });
-    console.log("▶ Validation errors:", errors);
     setRightErrors(errors);
 
     if (Object.keys(errors).length === 0) {
-      console.log("▶ No validation errors, proceeding with save");
       setRightLoading(true);
       setRightSuccess("");
 
       try {
         const token = localStorage.getItem("access");
         if (!token) {
-          setRightErrors({ submit: "You are not logged in. Please log in first." });
+          setRightErrors({ submit: "Log in first." });
           setRightLoading(false);
           return;
         }
 
-        // Собираем данные профиля, исключая пустые значения
-        const profileData = {};
-        if (formData.country?.trim()) profileData.country = formData.country.trim();
-        if (formData.city?.trim()) profileData.region = formData.city.trim();
-        if (formData.state?.trim()) profileData.state = formData.state.trim();
-        if (formData.streetName?.trim()) profileData.street_name = formData.streetName.trim();
-        if (formData.houseNumber?.trim()) profileData.zip_code = formData.houseNumber.trim();
-        if (formData.aptNumber?.trim()) profileData.apartment_number = formData.aptNumber.trim();
-
         const updateData = {
-          profile: profileData,
+          profile: {
+            country: formData.country?.trim(),
+            region: formData.city?.trim(),
+            state: formData.state?.trim(),
+            street_name: formData.streetName?.trim(),
+            zip_code: formData.houseNumber?.trim(),
+            apartment_number: formData.aptNumber?.trim(),
+          },
         };
-
-        console.log("▶ Saving address:", updateData);
-        console.log("▶ Profile data keys:", Object.keys(profileData));
-
-        let apiAuth = apiWithAuth(token);
         
         try {
-          await apiAuth.patch("/users/update", updateData);
-
-          console.log("✅ Address saved");
+          await apiWithAuth.patch("/users/update", updateData);
           setRightSuccess("Address saved!");
           setTimeout(() => setRightSuccess(""), 3000);
-
           dispatch(fetchProfile());
         } catch (error) {
-          // Если токен истек (401), пытаемся обновить его
           if (error.response?.status === 401) {
-            console.warn("⚠️ Token expired when saving address, attempting to refresh...");
-            
             const refreshResult = await dispatch(refreshAccessToken());
-            
             if (refreshAccessToken.fulfilled.match(refreshResult)) {
-              // Токен обновлен, повторяем запрос с новым токеном
-              console.log("✅ Token refreshed, retrying save...");
               const newToken = refreshResult.payload.access;
-              apiAuth = apiWithAuth(newToken);
-              
-              await apiAuth.patch("/users/update", updateData);
-
+              const retryApi = apiWithAuth(newToken);
+              await retryApi.patch("/users/update", updateData);
               setRightSuccess("Address saved!");
-              setTimeout(() => setRightSuccess(""), 3000);
-
               dispatch(fetchProfile());
             } else {
-              // Не удалось обновить токен
-              setRightErrors({ submit: "Your session has expired. Please log in again." });
+              setRightErrors({ submit: "Session expired." });
             }
           } else {
-            // Другие ошибки
-            console.error("❌ Error saving address:", error);
-            console.error("❌ Error response:", error.response?.data);
-            console.error("❌ Error status:", error.response?.status);
-            
-            const data = error.response?.data;
-            let errorMessage = "Failed to save address";
-            
-            if (data) {
-              // Проверяем ошибки валидации от сервера
-              if (data.profile) {
-                // Если есть ошибки в profile, собираем их
-                const profileErrors = Object.entries(data.profile)
-                  .map(([key, value]) => {
-                    const msg = Array.isArray(value) ? value.join(" ") : value;
-                    return `${key}: ${msg}`;
-                  })
-                  .join("; ");
-                errorMessage = profileErrors || data.message || errorMessage;
-              } else if (data.message) {
-                errorMessage = data.message;
-              } else if (typeof data === 'string') {
-                errorMessage = data;
-              }
-            }
-            
-            setRightErrors({ submit: errorMessage });
+            setRightErrors({ submit: error.response?.data?.message || "Failed to save address" });
           }
         }
       } catch (error) {
-        console.error("Error saving address:", error);
-        setRightErrors({ submit: "An unexpected error occurred. Please try again." });
+        setRightErrors({ submit: "Unexpected error." });
       } finally {
         setRightLoading(false);
       }
