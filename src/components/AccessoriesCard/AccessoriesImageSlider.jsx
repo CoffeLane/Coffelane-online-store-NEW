@@ -25,7 +25,8 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
         justifyContent: "center", 
         backgroundColor: "#eee", 
         borderRadius: 2,
-        mt: { xs: 2, md: 4 }
+        mt: { xs: 2, md: 4 },
+        mx: "auto"
       }}>
         <CoffeeIcon sx={{ fontSize: { xs: 60, md: 80 }, color: "#ccc" }} />
       </Box>
@@ -34,7 +35,7 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
 
   return (
     <Box sx={{ mt: { xs: 2, md: 4 }, maxWidth: { xs: "100%", md: 700 }, mx: "auto", px: { xs: 1, md: 0 } }}>
-      <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
         {/* Кнопки навигации показываем только если фото больше одного */}
         {photoUrls.length > 1 && (
           <IconButton 
@@ -62,10 +63,11 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
             backgroundColor: "#fff", 
             p: { xs: 1, md: 2 }, 
             height: { xs: 200, md: 300 }, 
-            width: "100%",
+            width: { xs: "auto", md: "100%" },
             maxWidth: { xs: "100%", md: "600px" },
             objectFit: "contain", 
-            mx: { xs: 2, md: 6 },
+            mx: { xs: "auto", md: 6 },
+            display: "block",
             borderRadius: 2
           }} 
         />

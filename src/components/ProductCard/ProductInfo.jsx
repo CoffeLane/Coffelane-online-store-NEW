@@ -4,15 +4,17 @@ import WeightSelector from "./WeightSelector";
 import QuantitySelector from "./QuantitySelector";
 import { h3, h6 } from "../../styles/typographyStyles.jsx";
 import { useSelector } from "react-redux";
+import { getPrice, getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
 
 export default function ProductInfo({ quantity, onIncrement, onDecrement, selectedSupplyId, setSelectedSupplyId, }) {
 
     const product = useSelector((state) => state.products.selectedProduct);
+    const currency = useSelector((state) => state.settings.currency);
 
     if (!product) return null;
 
     const selectedSupply = product.supplies?.find((s) => s.id === selectedSupplyId);
-    const price = selectedSupply ? Number(selectedSupply.price) : Number(product.price);
+    const price = selectedSupply ? getPrice(selectedSupply, currency) : getProductPrice(product, currency);
     const total = price * quantity;
 
     return (
@@ -40,7 +42,7 @@ export default function ProductInfo({ quantity, onIncrement, onDecrement, select
                                 onDecrement={onDecrement}
                             />
                             <Typography sx={{ ...h3, color: "#A4795B", fontSize: { xs: '24px', md: '32px' } }}>
-                                ${total.toFixed(2)}
+                                {formatPrice(total, currency)}
                             </Typography>
                         </Box>
                     </>

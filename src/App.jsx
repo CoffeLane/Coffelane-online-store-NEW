@@ -3,11 +3,9 @@ import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
 
-// Список админских email (должен совпадать с authSlice)
 const ADMIN_EMAILS = [
   'admin@coffeelane.com',
   'admin@example.com',
-  // Добавьте сюда другие админские email
 ];
 
 import HomePage from './pages/HomePage.jsx'
@@ -54,7 +52,8 @@ function App() {
     const tokenFromStorage = localStorage.getItem("access"); // или логика через getCleanToken
     const currentToken = token || tokenFromStorage;
 
-    // ИСПРАВЛЕНО: Добавлено условие !error
+    // Вызываем fetchProfile только если есть токен, но нет пользователя
+    // Не вызываем повторно, если пользователь уже загружен (чтобы избежать 429 ошибок)
     if (currentToken && !user && !loading && !error) {
       dispatch(fetchProfile());
     }

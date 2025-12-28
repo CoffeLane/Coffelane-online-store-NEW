@@ -2,12 +2,16 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import QuantitySelector from "./QuantitySelector";
 import { h3, h6 } from "../../styles/typographyStyles.jsx";
+import { useSelector } from "react-redux";
+import { getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
 
 export default function AccessoriesInfo({ product, quantity, onIncrement, onDecrement, }) {
 
+  const currency = useSelector((state) => state.settings.currency);
+
   if (!product) return null;
 
-  const price = Number(product.price || 0);
+  const price = getProductPrice(product, currency);
   const total = price * quantity;
 
   return (
@@ -21,7 +25,7 @@ export default function AccessoriesInfo({ product, quantity, onIncrement, onDecr
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: { xs: 2, md: 3 }, flexWrap: { xs: "wrap", md: "nowrap" }, gap: { xs: 2, md: 0 } }}>
         <QuantitySelector quantity={quantity} onIncrement={onIncrement} onDecrement={onDecrement} />
         <Typography sx={{ ...h3, color: "#A4795B", fontSize: { xs: '24px', md: '32px' } }}>
-          ${total.toFixed(2)}
+          {formatPrice(total, currency)}
         </Typography>
       </Box>
     </Box>

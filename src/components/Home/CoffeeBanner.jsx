@@ -6,6 +6,7 @@ import { btnCart } from '../../styles/btnStyles.jsx';
 import { headTitle } from '../../styles/typographyStyles.jsx';
 import tornbottombg from '../../assets/images/home/tornbottombg.svg';
 import api from '../../store/api/axios';
+import { getPrice, getProductPrice, formatPrice } from '../utils/priceUtils.jsx';
 
 // Конфигурация: ID акционного товара (fallback, если в API нет поля is_special)
 // Приоритет: 1) is_special из API, 2) SPECIAL_PRODUCT_ID
@@ -16,6 +17,7 @@ const CoffeeBanner = () => {
   const dispatch = useDispatch();
   const videoRef = useRef(null);
   const { items: products, loading } = useSelector((state) => state.products);
+  const currency = useSelector((state) => state.settings?.currency || 'USD');
   const [specialProduct, setSpecialProduct] = useState(null);
   const [loadingSpecial, setLoadingSpecial] = useState(false);
 
@@ -37,7 +39,30 @@ const CoffeeBanner = () => {
           );
         }
 
-        // ПРИОРИТЕТ 2: Fallback - загружаем по ID (если is_special еще не добавлено в API)
+        // ПРИОРИТЕТ 2: Если не нашли в загруженных, запрашиваем API с фильтром is_special=true
+        if (!foundProduct) {
+          try {
+            const response = await api.get('/products', {
+              params: {
+                is_special: true,
+                page: 1,
+                size: 1
+              }
+            });
+            
+            // API может вернуть объект с data или массив
+            const responseData = response.data?.data || response.data;
+            if (Array.isArray(responseData) && responseData.length > 0) {
+              foundProduct = responseData[0];
+            } else if (responseData && !Array.isArray(responseData)) {
+              foundProduct = responseData;
+            }
+          } catch (error) {
+            console.warn("Failed to load special product from API:", error);
+          }
+        }
+
+        // ПРИОРИТЕТ 3: Fallback - загружаем по ID (если is_special еще не работает)
         if (!foundProduct && SPECIAL_PRODUCT_ID) {
           try {
             const response = await api.get(`/products/${SPECIAL_PRODUCT_ID}`);
@@ -170,21 +195,29 @@ const CoffeeBanner = () => {
         }}>
           {specialProduct.photos_url?.[0]?.url && (
             <Box
-              component="img"
-              src={specialProduct.photos_url[0].url}
-              alt={specialProduct.name || 'Weekly Special Product'}
               sx={{
+                position: 'relative',
                 width: { xs: 200, sm: 300, md: 400 },
                 height: { xs: 200, sm: 300, md: 400 },
                 mr: { xs: 0, md: 8 },
                 mb: { xs: 2, md: 0 },
-                objectFit: 'contain',
-                backgroundColor: 'transparent',
                 padding: { xs: 1, md: 2 },
-                mixBlendMode: 'multiply',
-                filter: 'contrast(1.1) brightness(1.05)'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={specialProduct.photos_url[0].url}
+                alt={specialProduct.name || 'Weekly Special Product'}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
+            </Box>
           )}
 
           <Box sx={{ 
@@ -205,11 +238,11 @@ const CoffeeBanner = () => {
 
             <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, mb: 2 }}>
               <Typography sx={{ fontWeight: 700, fontSize: { xs: 32, sm: 40, md: 48 }, color: '#fff' }}>
-                ${((Number(specialProduct.supplies?.[0]?.price) || Number(specialProduct.price) || 0) * 0.85).toFixed(2)}
+                {formatPrice(((specialProduct.supplies?.[0] ? getPrice(specialProduct.supplies[0], currency) : getProductPrice(specialProduct, currency)) * 0.85), currency)}
               </Typography>
 
               <Typography sx={{ fontWeight: 600, fontSize: { xs: 20, sm: 24, md: 32 }, color: '#999', ml: 1, textDecoration: 'line-through'}}>
-                ${(Number(specialProduct.supplies?.[0]?.price) || Number(specialProduct.price) || 0).toFixed(2)}
+                {formatPrice((specialProduct.supplies?.[0] ? getPrice(specialProduct.supplies[0], currency) : getProductPrice(specialProduct, currency)), currency)}
               </Typography>
             </Box>
             <Button

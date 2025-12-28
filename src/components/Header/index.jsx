@@ -19,7 +19,7 @@ import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlin
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { searchProducts, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
 import SearchDropdown from "../SearchDropdown/index.jsx";
-// import { CurrencySwitcher } from "../CurrencySwitcher.jsx";
+import { CurrencySwitcher } from "../CurrencySwitcher.jsx";
 
 
 function Header() {
@@ -241,19 +241,18 @@ function Header() {
                             <Box component="img" src={logo} alt="Coffee Lane logo"
                                 sx={{ width: { xs: '100px', sm: '120px' }, height: 'auto', cursor: 'pointer' }} />
                         </Link>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
                             <IconButton
                                 onClick={() => setShowMobileSearch(!showMobileSearch)}
-                                sx={{ color: '#3E3027', p: 1 }}
+                                sx={{ color: '#3E3027', p: { xs: 0.5, sm: 1 } }}
                             >
                                 <Box component="img" src={Search} alt="search-icon"
                                     sx={{ width: '20px', height: '20px' }} />
                             </IconButton>
-                            <Box sx={{ px: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                
-                                {/* <CurrencySwitcher /> */}
+                            <Box sx={{ px: { xs: 0, sm: 1 }, py: { xs: 0.5, sm: 1 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <CurrencySwitcher />
                             </Box>
-                            <Button onClick={goToFavorites} disableRipple sx={{ minWidth: 0, p: 0.5, position: "relative" }}>
+                            <Button onClick={goToFavorites} disableRipple sx={{ minWidth: 0, p: { xs: 0.25, sm: 0.5 }, position: "relative" }}>
                                 {hasFavorites ? (
                                     <FavoriteIcon sx={{ color: 'red', fontSize: 20 }} />
                                 ) : (
@@ -271,14 +270,14 @@ function Header() {
                                     e.stopPropagation();
                                     handleAccountClick();
                                 }}
-                                sx={{ color: '#3E3027', p: 0.5, zIndex: 1 }}
+                                sx={{ color: '#3E3027', p: { xs: 0.25, sm: 0.5 }, zIndex: 1 }}
                                 aria-label="Account"
                             >
                                 <Box component="img" src={account} alt="User account"
                                     sx={{ width: '20px', height: '20px', pointerEvents: 'none' }} />
                             </IconButton>
                             {!orderCompleted && (
-                                <Button onClick={handleOpenCartModal} disableRipple sx={{ minWidth: 0, p: 0.5, position: "relative" }}>
+                                <Button onClick={handleOpenCartModal} disableRipple sx={{ minWidth: 0, p: { xs: 0.25, sm: 0.5 }, position: "relative" }}>
                                     <Box component="img" src={ShoppingCart} alt="Shopping cart"
                                         sx={{ width: '20px', height: '20px' }} />
                                     {cartCount > 0 && (
@@ -296,7 +295,7 @@ function Header() {
                                         aria-label="Admin panel"
                                         sx={{
                                             color: '#16675C',
-                                            p: 0.5,
+                                            p: { xs: 0.25, sm: 0.5 },
                                         }}
                                     >
                                         <SettingsIcon sx={{ fontSize: 20 }} />
@@ -480,8 +479,7 @@ function Header() {
                     <Grid sx={{ display: 'flex', justifyContent: 'center' }}>
                         <Navbar />
                     </Grid>
-{/* <CurrencySwitcher /> */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 4 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 2 } }}>
                         <Box sx={{ position: 'relative' }}>
                             <form onSubmit={handleSearchSubmit}>
                                 <Box
@@ -533,7 +531,7 @@ function Header() {
                                 />
                             )}
                         </Box>
-                        
+                        <CurrencySwitcher />
                         <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                             {hasFavorites ? (
                                 <FavoriteIcon sx={{ color: 'red', fontSize: 24 }} />

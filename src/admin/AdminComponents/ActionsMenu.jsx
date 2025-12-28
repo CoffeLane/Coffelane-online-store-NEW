@@ -47,20 +47,10 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
     const handleDeleteConfirm = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("access");
-            if (!token) {
-                alert("You must be logged in to delete items!");
-                setLoading(false);
-                setDeleteDialogOpen(false);
-                return;
-            }
-
-            const apiAuth = apiWithAuth(token);
-            
             if (type === 'product') {
-                await apiAuth.delete(`/products/${id}/deletion`);
+                await apiWithAuth.delete(`/products/${id}/deletion`);
             } else if (type === 'order') {
-                await apiAuth.delete(`/orders/${id}/deletion`);
+                await apiWithAuth.delete(`/orders/${id}/deletion`);
             }
 
             // console.log(`✅ ${type} deleted successfully`);
@@ -92,15 +82,7 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
 
         setLoading(true);
         try {
-            const token = localStorage.getItem("access");
-            if (!token) {
-                alert("You must be logged in to hide products!");
-                setLoading(false);
-                return;
-            }
-
-            const apiAuth = apiWithAuth(token);
-            await apiAuth.patch(`/products/product/${id}`, { status: 'Hidden' });
+            await apiWithAuth.patch(`/products/product/${id}`, { status: 'Hidden' });
 
             // console.log("✅ Product hidden successfully");
             

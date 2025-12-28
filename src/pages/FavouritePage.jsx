@@ -171,7 +171,9 @@ export default function FavouritePage() {
             const supply = isProduct ? item.supplies?.[0] : null;
             const cartKey = isProduct ? `${item.id}-${supply?.id || 'default'}` : `${item.id}`;
             const isInCart = cartEntries.some(([key]) => key === cartKey);
-            const price = isProduct ? Number(supply?.price || 0) : Number(item.price || 0);
+            const price = isProduct
+              ? (supply ? getPrice(supply, currency) : getProductPrice(item, currency))
+              : getProductPrice(item, currency);
 
             return (
               <Card key={cartKey} sx={{ 
@@ -211,7 +213,7 @@ export default function FavouritePage() {
                   </Box>
 
                   <Typography sx={{ mt: 'auto', color: "#16675C", fontSize: 18, fontWeight: 700, textAlign: "right", mb: 1 }}>
-                    ${price.toFixed(2)}
+                    {formatPrice(price, currency)}
                   </Typography>
 
                   <Button

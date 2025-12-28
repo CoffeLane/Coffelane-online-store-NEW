@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Paper, Box, Typography, ToggleButtonGroup, ToggleButton} from '@mui/material';
+import { Paper, Box, Typography, ToggleButtonGroup, ToggleButton, useMediaQuery, useTheme} from '@mui/material';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,Tooltip, ReferenceLine, ReferenceDot} from 'recharts';
 
 const sampleData = [
@@ -24,23 +24,26 @@ function CustomTooltip({ active, payload, label }) {
     <Box sx={{
       bgcolor: '#0f6b55',
       color: '#fff',
-      p: '6px 10px',
+      p: { xs: '4px 8px', md: '6px 10px' },
       borderRadius: '8px',
-      fontSize: 13,
+      fontSize: { xs: 11, md: 13 },
       boxShadow: '0 6px 18px rgba(15,107,85,0.15)'
     }}>
-      <Typography sx={{ fontSize: 12, color: '#fff', mb: 0.2 }}>${v}</Typography>
-      <Typography sx={{ fontSize: 11, opacity: 0.85 }}>{label}</Typography>
+      <Typography sx={{ fontSize: { xs: 11, md: 12 }, color: '#fff', mb: 0.2 }}>${v}</Typography>
+      <Typography sx={{ fontSize: { xs: 10, md: 11 }, opacity: 0.85 }}>{label}</Typography>
     </Box>
   );
 }
 
 export default function RevenueChartFancy({ data = sampleData }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [range, setRange] = useState('Today'); // Today | Week | Month | Year
   const [activePoint, setActivePoint] = useState({ index: 4, x: null }); // marker index
 
   const handleRange = (_, val) => {
-    if (val) setRange(val);
+    if (val) setRange(val);
+
   };
   const maxY = useMemo(() => {
     const m = Math.max(...data.map(d => d.value));
@@ -49,16 +52,16 @@ export default function RevenueChartFancy({ data = sampleData }) {
   }, [data]);
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 3, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography sx={{ fontSize: 18, fontWeight: 600, mb: 1 }}>Revenue</Typography>
-          <Typography sx={{ fontSize: 28, fontWeight: 700 }}>USDT 7,852K</Typography>
-          <Typography sx={{ color: '#02715C', mt: 1, mb: 1 }}>▲ 2.1% vs yesterday</Typography>
-          <Typography sx={{ color: '#999', fontSize: 13 }}>Sales from 1-7 Sep, 2025</Typography>
+    <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, mb: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: { xs: 2, md: 0 }, flexWrap: 'wrap' }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 600, mb: 1 }}>Revenue</Typography>
+          <Typography sx={{ fontSize: { xs: 22, md: 28 }, fontWeight: 700 }}>USDT 7,852K</Typography>
+          <Typography sx={{ color: '#02715C', mt: 1, mb: 1, fontSize: { xs: 12, md: 14 } }}>▲ 2.1% vs yesterday</Typography>
+          <Typography sx={{ color: '#999', fontSize: { xs: 11, md: 13 } }}>Sales from 1-7 Sep, 2025</Typography>
         </Box>
 
-        <Box>
+        <Box sx={{ flexShrink: 0 }}>
           <ToggleButtonGroup
             value={range}
             exclusive
@@ -68,13 +71,16 @@ export default function RevenueChartFancy({ data = sampleData }) {
               bgcolor: '#fff',
               borderRadius: 2,
               boxShadow: 'none',
+              display: 'flex',
+              flexWrap: 'nowrap',
               '& .MuiToggleButton-root': {
                 textTransform: 'none',
                 border: '1px solid #DDD',
-                px: 1.3,
-                py: 0.4,
-                fontSize: 13,
-                color: '#333'
+                px: { xs: 0.8, md: 1.3 },
+                py: { xs: 0.4, md: 0.4 },
+                fontSize: { xs: 10, md: 13 },
+                color: '#333',
+                whiteSpace: 'nowrap'
               },
               '& .Mui-selected': {
                 bgcolor: '#E9ECEB',
@@ -90,11 +96,11 @@ export default function RevenueChartFancy({ data = sampleData }) {
         </Box>
       </Box>
 
-      <Box sx={{ height: 220, mt: 2 }}>
+      <Box sx={{ height: { xs: 180, md: 220 }, mt: { xs: 1, md: 2 } }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
-            margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+            margin={{ top: isMobile ? 10 : 20, right: isMobile ? 10 : 30, left: isMobile ? -10 : 0, bottom: 0 }}
             onMouseMove={(state) => {
               if (state && state.activeTooltipIndex !== undefined) {
                 setActivePoint({ index: state.activeTooltipIndex, x: state.chartX });
@@ -117,8 +123,8 @@ export default function RevenueChartFancy({ data = sampleData }) {
             </defs>
 
             <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#E6E6E6" />
-            <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 12 }} />
-            <YAxis domain={[0, maxY]} axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: 12 }} />
+            <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: { xs: 10, md: 12 } }} />
+            <YAxis domain={[0, maxY]} axisLine={false} tickLine={false} tick={{ fill: '#999', fontSize: { xs: 10, md: 12 } }} />
 
             {activePoint.index !== null && activePoint.x !== null && (
               <ReferenceLine
@@ -135,7 +141,7 @@ export default function RevenueChartFancy({ data = sampleData }) {
               type="monotone"
               dataKey="value"
               stroke="#0E6C59"
-              strokeWidth={6}
+              strokeWidth={isMobile ? 3 : 6}
               fill="url(#fillGrad)"
               activeDot={null}
               dot={false}
@@ -159,14 +165,14 @@ export default function RevenueChartFancy({ data = sampleData }) {
         </ResponsiveContainer>
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
+      <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center', mt: { xs: 1.5, md: 2 }, flexWrap: 'wrap' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#0E6C59' }} />
-          <Typography sx={{ fontSize: 13, color: '#444' }}>This week</Typography>
+          <Box sx={{ width: { xs: 8, md: 10 }, height: { xs: 8, md: 10 }, borderRadius: '50%', bgcolor: '#0E6C59' }} />
+          <Typography sx={{ fontSize: { xs: 11, md: 13 }, color: '#444' }}>This week</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#BDBDBD' }} />
-          <Typography sx={{ fontSize: 13, color: '#444' }}>Last Week</Typography>
+          <Box sx={{ width: { xs: 8, md: 10 }, height: { xs: 8, md: 10 }, borderRadius: '50%', bgcolor: '#BDBDBD' }} />
+          <Typography sx={{ fontSize: { xs: 11, md: 13 }, color: '#444' }}>Last Week</Typography>
         </Box>
       </Box>
     </Paper>

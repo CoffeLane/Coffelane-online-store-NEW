@@ -75,40 +75,38 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ width: '100%', my: 4 }}>
-      {}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 4 }}>
-        <Typography sx={{ ...h3 }}>Dashboard</Typography>
-        <Button sx={{ ...btnCart, gap: 1, display: 'flex', alignItems: 'center' }}>
-          <Box component="img" src={exportIcon} sx={{ width: 24, height: 24 }} />
+    <Box sx={{ width: '100%', my: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 2, my: { xs: 2, md: 4 } }}>
+        <Typography sx={{ ...h3, fontSize: { xs: '16px', md: '32px' } }}>Dashboard</Typography>
+        <Button sx={{ ...btnCart, gap: 1, display: 'flex', alignItems: 'center', fontSize: { xs: '12px', md: '14px' }, py: { xs: 0.75, md: 1 }, flexShrink: 0 }}>
+          <Box component="img" src={exportIcon} sx={{ width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 } }} />
           Export
         </Button>
       </Box>
 
-      {}
-      <Box mb={4} sx={{ backgroundColor: '#fff', borderRadius: '24px', p: 2 }}>
-        <Typography sx={{ ...h5 }}>Today’s Sales</Typography>
-        <Typography sx={{ ...h7, color: '#999', mb: 2 }}>Sales Summary</Typography>
+      <Box mb={4} sx={{ backgroundColor: '#fff', borderRadius: '24px', p: { xs: 1.5, md: 2 } }}>
+        <Typography sx={{ ...h5, fontSize: { xs: '16px', md: '18px' } }}>Today's Sales</Typography>
+        <Typography sx={{ ...h7, color: '#999', mb: 2, fontSize: { xs: '12px', md: '14px' } }}>Sales Summary</Typography>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 1.5, md: 2 } }}>
           {salesCards.map((c) => (
             <Paper
               key={c.title}
               sx={{
                 flex: 1,
-                p: 2,
+                p: { xs: 1.5, md: 2 },
                 backgroundColor: c.color,
                 borderRadius: '24px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2
+                gap: { xs: 1.5, md: 2 }
               }}
             >
-              <Box component="img" src={c.icon} sx={{ width: 40, height: 40 }} />
+              <Box component="img" src={c.icon} sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 } }} />
               <Box>
-                <Typography variant="h6">{c.value}</Typography>
-                <Typography variant="subtitle1">{c.title}</Typography>
-                <Typography variant="caption" color="primary">
+                <Typography variant="h6" sx={{ fontSize: { xs: '18px', md: '24px' } }}>{c.value}</Typography>
+                <Typography variant="subtitle1" sx={{ fontSize: { xs: '14px', md: '16px' } }}>{c.title}</Typography>
+                <Typography variant="caption" color="primary" sx={{ fontSize: { xs: '11px', md: '12px' } }}>
                   {c.diff}
                 </Typography>
               </Box>

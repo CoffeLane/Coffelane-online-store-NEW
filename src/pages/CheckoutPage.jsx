@@ -19,6 +19,7 @@ import { btnStyles, btnCart } from "../styles/btnStyles.jsx";
 import { formatPhone, formatCardNumber, formatExpiry } from "../components/utils/formatters.jsx";
 import { CircularProgress } from "@mui/material";
 import api, { apiWithAuth } from "../store/api/axios.js";
+import { formatPrice } from "../components/utils/priceUtils.jsx";
 
 export default function CheckoutPage() {
   const items = useSelector(selectCartItems);
@@ -27,6 +28,7 @@ export default function CheckoutPage() {
   const user = useSelector((state) => state.auth.user);
   const token = useSelector((state) => state.auth.token);
   const isAdmin = useSelector((state) => state.auth.isAdmin);
+  const currency = useSelector((state) => state.settings.currency);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -403,7 +405,12 @@ export default function CheckoutPage() {
     <Grid sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
       <Typography sx={{ ...titlePage, textAlign: "center", mb: { xs: 2, md: 3 }, fontSize: { xs: '24px', md: '32px' } }}>Checkout page</Typography>
       <Box sx={{ display: "flex", flexDirection: { xs: 'column', lg: 'row' }, flexWrap: { xs: 'wrap', lg: 'nowrap' }, gap: { xs: 2, md: 4 } }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 2, lg: 1 } }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 1, lg: 1 } }}>
+          {/* CartSummary на мобилке сверху */}
+          <Box sx={{ display: { xs: "block", lg: "none" } }}>
+            <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
+          </Box>
+
           <ContactDetailsForm
             step={step}
             firstName={firstName} setFirstName={setFirstName}
@@ -439,12 +446,9 @@ export default function CheckoutPage() {
             icon3={icon3}
             btnCart={btnCart}
           />
-        </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 1, lg: 2 } }}>
-          <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
-
-          <Box sx={{ flex: 1, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+          {/* Кнопка Complete payment на мобилке после PaymentForm */}
+          <Box sx={{ display: { xs: "block", lg: "none" }, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 1, mb: 2 }}>
               <TextField
                 fullWidth
@@ -470,11 +474,6 @@ export default function CheckoutPage() {
                 {discountError}
               </Typography>
             )}
-            {/* {discountCode && (
-              <Typography sx={{ color: "#16675C", mb: 1, fontSize: { xs: "12px", md: "14px" }, fontWeight: 600 }}>
-                Discount code "{discountCode.code}" applied!
-              </Typography>
-            )} */}
             {discountCode && (
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
                 <Typography sx={{ color: "#09d05fff", fontSize: "14px", fontWeight: 600 }}>
@@ -494,9 +493,87 @@ export default function CheckoutPage() {
               </Box>
             )}
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Subtotal:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{total.toFixed(2)}$</Typography></Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Discount:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-{discountAmount.toFixed(2)}$</Typography></Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{(total - discountAmount).toFixed(2)}$</Typography></Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Subtotal:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total, currency)}</Typography></Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Discount:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-{formatPrice(discountAmount, currency)}</Typography></Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total - discountAmount, currency)}</Typography></Box>
+
+            <Divider sx={{ my: { xs: 2, md: 3 }, borderColor: "#3E3027" }} />
+            <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label="I agree to the Privacy Policy and Terms of Use." sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />
+            {errors.agreed && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.agreed}</Typography>)}
+            {errors.submit && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.submit}</Typography>)}
+            <Button
+              fullWidth
+              sx={{ ...btnCart, mt: { xs: 2, md: 3 }, fontSize: { xs: '12px', md: '14px' }, py: { xs: 1, md: 1.5 } }}
+              onClick={handleCompletePayment}
+              disabled={isCreatingOrder || items.length === 0}
+            >
+              {isCreatingOrder ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CircularProgress size={20} sx={{ color: "#fff" }} />
+                  Processing...
+                </Box>
+              ) : (
+                "Complete payment"
+              )}
+            </Button>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 2, lg: 2 } }}>
+          {/* CartSummary на десктопе */}
+          <Box sx={{ display: { xs: "none", lg: "block" } }}>
+            <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
+          </Box>
+
+          {/* Кнопка Complete payment на десктопе в правой колонке */}
+          <Box sx={{ display: { xs: "none", lg: "block" }, flex: 1, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 1, mb: 2 }}>
+              <TextField
+                fullWidth
+                placeholder="Discount code"
+                value={discount}
+                onChange={(e) => {
+                  setDiscount(e.target.value);
+                  setDiscountError("");
+                }}
+                error={!!discountError}
+                sx={{ ...inputStyles }}
+              />
+              <Button
+                onClick={handleApplyDiscount}
+                disabled={discountLoading}
+                sx={{ ...btnStyles, textTransform: "none", width: { xs: '100%', sm: 127 }, height: { xs: 44, md: 52 }, minWidth: { xs: 'auto', sm: 127 } }}
+              >
+                {discountLoading ? <CircularProgress size={20} color="inherit" /> : "Apply"}
+              </Button>
+            </Box>
+            {discountError && (
+              <Typography sx={{ ...helperTextRed, mb: 1, fontSize: { xs: "12px", md: "14px" } }}>
+                {discountError}
+              </Typography>
+            )}
+            {discountCode && (
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                <Typography sx={{ color: "#09d05fff", fontSize: "14px", fontWeight: 600 }}>
+                  Discount code "{discountCode.code}" applied!
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setDiscountCode(null);
+                    setDiscountAmount(0);
+                    setDiscount("");
+                  }}
+                  sx={{ color: "red", textTransform: "none", minWidth: "auto" }}
+                >
+                  Remove
+                </Button>
+              </Box>
+            )}
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Subtotal:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total, currency)}</Typography></Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Discount:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-{formatPrice(discountAmount, currency)}</Typography></Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total - discountAmount, currency)}</Typography></Box>
 
             <Divider sx={{ my: { xs: 2, md: 3 }, borderColor: "#3E3027" }} />
             <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label="I agree to the Privacy Policy and Terms of Use." sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />

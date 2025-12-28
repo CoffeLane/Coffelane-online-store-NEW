@@ -34,7 +34,10 @@ export const CurrencySwitcher = () => {
         <IconButton
           onClick={handleClick}
           sx={{ 
-            color: '#3E3027', 
+            color: '#3E3027',
+            '&:hover': {
+              backgroundColor: 'transparent',
+            },
           }}
         >
           <PaidOutlinedIcon />

@@ -78,9 +78,40 @@ export const loginUser = createAsyncThunk(
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       );
 
-      const profileWithEmail = profileData.profile
-        ? { ...profileData.profile, email: userEmail, role: isAdminEmail ? 'admin' : undefined }
-        : null;
+      // Проверяем аватарку в разных местах ответа API
+      let avatarUrl = profileData.avatar || 
+                       profileData.profile?.avatar || 
+                       profileData.avatar_url ||
+                       profileData.profile?.avatar_url ||
+                       null;
+
+      // Если аватарки нет в API ответе, проверяем localStorage (может быть сохранен с предыдущей сессии)
+      if (!avatarUrl) {
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+          console.log("💾 Avatar not in API response, using saved avatar from localStorage:", savedAvatar);
+          avatarUrl = savedAvatar;
+        }
+      }
+
+      // Формируем полный URL аватарки, если она есть
+      let fullAvatarUrl = null;
+      if (avatarUrl) {
+        fullAvatarUrl = avatarUrl.startsWith('http') 
+          ? avatarUrl 
+          : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+        // Сохраняем аватарку в localStorage при логине
+        localStorage.setItem('userAvatar', fullAvatarUrl);
+        console.log("💾 Avatar saved to localStorage on login:", fullAvatarUrl);
+      }
+
+      // profileData уже содержит все данные профиля, включая аватар
+      const profileWithEmail = {
+        ...profileData,
+        email: userEmail,
+        role: isAdminEmail ? 'admin' : undefined,
+        avatar: fullAvatarUrl || avatarUrl
+      };
 
       return {
         user: profileWithEmail,
@@ -194,17 +225,113 @@ export const fetchProfile = createAsyncThunk(
       // ИСПРАВЛЕНО: apiWithAuth БЕЗ скобок, так как это экспорт из axios.js
       const res = await apiWithAuth.get("/users/info");
       
+      console.log("🔍 fetchProfile API response:", {
+        data: res.data,
+        avatar: res.data.avatar,
+        profileAvatar: res.data.profile?.avatar,
+        profile: res.data.profile,
+        fullData: JSON.stringify(res.data, null, 2)
+      });
+      
       const userEmail = res.data.email;
+      const userId = res.data.profile?.id || res.data.id || res.data.profile_id;
       const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail =>
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
 
+      // Проверяем аватарку в разных местах ответа API
+      let avatarUrl = res.data.avatar || 
+                       res.data.profile?.avatar || 
+                       res.data.avatar_url ||
+                       res.data.profile?.avatar_url ||
+                       null;
+
+      // Если аватарки нет в ответе API, пробуем получить по ID пользователя через /users/list/{id}/
+      // Но только если эндпоинт доступен (не все API поддерживают этот эндпоинт)
+      if (!avatarUrl && userId) {
+        try {
+          console.log("🔍 Avatar not in /users/info, trying /users/list/{id}/ for userId:", userId);
+          const userListRes = await apiWithAuth.get(`/users/list/${userId}/`);
+          console.log("🔍 User list response:", userListRes.data);
+          
+          avatarUrl = userListRes.data?.avatar || 
+                       userListRes.data?.profile?.avatar || 
+                       userListRes.data?.avatar_url ||
+                       userListRes.data?.profile?.avatar_url ||
+                       null;
+          
+          if (avatarUrl) {
+            console.log("✅ Avatar found via /users/list/{id}/:", avatarUrl);
+          }
+        } catch (listError) {
+          // Эндпоинт может быть недоступен (404) или требовать других прав
+          console.log("⚠️ Error fetching user by ID:", listError.response?.status, listError.message);
+          console.log("⚠️ Endpoint /users/list/{id}/ may not be available, continuing with localStorage check");
+          // Игнорируем ошибку и продолжаем с localStorage
+        }
+      }
+
+      // Если аватарки нет в ответе API, проверяем localStorage
+      // (возможно, аватар был загружен ранее, но API не возвращает его)
+      if (!avatarUrl) {
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+          console.log("💾 Avatar not in API response, using saved avatar from localStorage:", savedAvatar);
+          avatarUrl = savedAvatar;
+        }
+      }
+
+      // Формируем полный URL аватарки, если она есть
+      let fullAvatarUrl = null;
+      if (avatarUrl) {
+        fullAvatarUrl = avatarUrl.startsWith('http') 
+          ? avatarUrl 
+          : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+        // Сохраняем аватарку в localStorage
+        localStorage.setItem('userAvatar', fullAvatarUrl);
+        console.log("💾 Avatar saved to localStorage:", fullAvatarUrl);
+      } else {
+        // Если аватарки нет в API ответе, проверяем localStorage
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+          console.log("💾 Using saved avatar from localStorage (API returned null):", savedAvatar);
+          fullAvatarUrl = savedAvatar;
+          // Убеждаемся, что аватар сохранен в localStorage
+          localStorage.setItem('userAvatar', savedAvatar);
+        } else {
+          // НЕ удаляем из localStorage, если аватар был загружен ранее
+          // Проверяем флаг загрузки
+          const avatarUploaded = localStorage.getItem('avatarUploaded');
+          if (avatarUploaded === 'true') {
+            console.log("⚠️ Avatar was uploaded but not found in API response or localStorage");
+            console.log("⚠️ Avatar may need to be re-uploaded or backend needs to return avatar URL");
+          } else {
+            // Если аватарки никогда не было, удаляем из localStorage
+            localStorage.removeItem('userAvatar');
+            console.log("⚠️ No avatar in API response or localStorage");
+          }
+        }
+      }
+
+      // Используем fullAvatarUrl, если он есть (из API или localStorage)
+      const finalAvatarUrl = fullAvatarUrl || null;
+      
       const profileData = res.data.profile ? {
         ...res.data.profile,
         email: userEmail,
         role: isAdminEmail ? 'admin' : undefined,
-        avatar: res.data.avatar || res.data.profile?.avatar || null
-      } : null;
+        avatar: finalAvatarUrl
+      } : {
+        ...res.data,
+        email: userEmail,
+        role: isAdminEmail ? 'admin' : undefined,
+        avatar: finalAvatarUrl
+      };
+
+      console.log("✅ fetchProfile returning:", {
+        user: profileData,
+        avatar: profileData.avatar
+      });
 
       return {
         user: profileData,
@@ -224,11 +351,14 @@ export const logoutUser = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
 
     try {
-      const access = localStorage.getItem("access");
-      if (access) {
-        await api.post("/auth/logout", null, {
-          headers: { Authorization: `Bearer ${access}` },
-        });
+      // Пытаемся вызвать logout на сервере, но игнорируем ошибки
+      // (токен может быть уже истек, но logout все равно должен работать)
+      try {
+        await apiWithAuth.post("/auth/logout");
+      } catch (logoutError) {
+        // Игнорируем ошибки logout (400, 401, 404 и т.д.)
+        // Пользователь все равно должен быть разлогинен локально
+        // console.log("Logout API error (ignored):", logoutError.response?.status);
       }
 
       // Очищаем корзину при разлогинивании
@@ -242,6 +372,8 @@ export const logoutUser = createAsyncThunk(
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
       localStorage.removeItem("persist:auth");
+      // НЕ удаляем userAvatar - он должен сохраняться между сессиями
+      // localStorage.removeItem("userAvatar");
       dispatch(clearFavorites());
       dispatch(clearAuthState());
 
@@ -269,14 +401,12 @@ export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async ({ oldPassword, newPassword }, { rejectWithValue }) => {
     try {
-      const apiAuth = apiWithAuth();
-
       const payload = {
         old_password: oldPassword,
         new_password: newPassword
       };
 
-      const res = await apiAuth.put("/auth/change_password", payload);
+      const res = await apiWithAuth.put("/auth/change_password", payload);
 
       return res.data;
     } catch (err) {
@@ -392,7 +522,15 @@ const authSlice = createSlice({
         state.user = action.payload.user;      // user для Header
         state.profile = action.payload.profile; // если тебе нужен profile отдельно
         state.token = action.payload.token || null; // если есть токен
+        state.email = action.payload.email || null; // сохраняем email
         state.tokenInvalid = false; // Сбрасываем флаг при успешном логине
+        
+        // Сохраняем аватар в localStorage, если он есть в user
+        if (action.payload.user?.avatar) {
+          localStorage.setItem('userAvatar', action.payload.user.avatar);
+          console.log("💾 Avatar saved to localStorage in loginUser.fulfilled:", action.payload.user.avatar);
+        }
+        
         // Устанавливаем флаг админа из payload
         if (action.payload.isAdmin) {
           state.isAdmin = true;
@@ -456,6 +594,52 @@ const authSlice = createSlice({
         state.email = action.payload.email || null;
         state.loading = false;
         state.tokenInvalid = false; // Сбрасываем флаг при успешной загрузке
+        
+        console.log("🔄 fetchProfile.fulfilled - payload:", {
+          userAvatar: action.payload.user?.avatar,
+          profileAvatar: action.payload.profile?.avatar,
+          user: action.payload.user,
+          profile: action.payload.profile
+        });
+        
+        // Сохраняем аватар в localStorage и убеждаемся, что он в user объекте
+        const avatarUrl = action.payload.user?.avatar || action.payload.profile?.avatar;
+        if (avatarUrl) {
+          localStorage.setItem('userAvatar', avatarUrl);
+          console.log("💾 Avatar saved to localStorage in fetchProfile.fulfilled:", avatarUrl);
+          // Убеждаемся, что аватар есть в user объекте
+          if (state.user) {
+            state.user.avatar = avatarUrl;
+          }
+          if (state.profile) {
+            state.profile.avatar = avatarUrl;
+          }
+        } else {
+          // Если аватарки нет в payload, проверяем localStorage
+          const savedAvatar = localStorage.getItem('userAvatar');
+          if (savedAvatar) {
+            console.log("💾 Using saved avatar from localStorage in fetchProfile.fulfilled:", savedAvatar);
+            if (state.user) {
+              state.user.avatar = savedAvatar;
+            }
+            if (state.profile) {
+              state.profile.avatar = savedAvatar;
+            }
+          } else {
+            // НЕ удаляем из localStorage, если аватар был загружен ранее
+            // Проверяем флаг загрузки
+            const avatarUploaded = localStorage.getItem('avatarUploaded');
+            if (avatarUploaded === 'true') {
+              console.log("⚠️ Avatar was uploaded but not found in payload or localStorage");
+              console.log("⚠️ Avatar may need to be re-uploaded");
+            } else {
+              // Если аватарки никогда не было, удаляем из localStorage
+              localStorage.removeItem('userAvatar');
+              console.log("⚠️ No avatar in payload or localStorage, removed from localStorage");
+            }
+          }
+        }
+        
         // Устанавливаем флаг админа из payload
         if (action.payload.isAdmin) {
           state.isAdmin = true;

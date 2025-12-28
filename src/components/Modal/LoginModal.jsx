@@ -11,7 +11,7 @@ import { btnStyles } from "../../styles/btnStyles.jsx";
 import { inputStyles, checkboxStyles } from "../../styles/inputStyles.jsx";
 import { patterns } from "../utils/validation/validatorsPatterns.jsx";
 import { validatePassword } from "../utils/validation/validatePasswords.jsx";
-import { loginUser, registerUser, loginWithGoogle } from "../../store/slice/authSlice.jsx";
+import { loginUser, registerUser, loginWithGoogle, fetchProfile } from "../../store/slice/authSlice.jsx";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import ForgotPasswordModal from "../Modal/ForgotPassword.jsx";
@@ -144,6 +144,9 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                     console.error("❌ Server did not return access token!");
                 }
 
+                // Вызываем fetchProfile для загрузки полного профиля с аватаром
+                dispatch(fetchProfile());
+
                 if (handleClose) handleClose();
                 const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';
                 if (isAdmin) {
@@ -171,6 +174,10 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
 
         if (result.meta.requestStatus === "fulfilled") {
             // console.log("✔ Login successful. Closing modal...");
+            
+            // Вызываем fetchProfile для загрузки полного профиля с аватаром
+            dispatch(fetchProfile());
+            
             if (handleClose) handleClose();
 
             const isAdmin = result.payload?.isAdmin || result.payload?.user?.role === 'admin';

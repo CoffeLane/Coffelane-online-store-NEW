@@ -57,6 +57,7 @@ export default function MyAccountAdmin() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef(null);
+  const avatarInitializedRef = useRef(false);
 
   // Получаем инициалы для дефолтной аватарки
   const userInitials = useMemo(() => {
@@ -116,16 +117,90 @@ export default function MyAccountAdmin() {
   }, [authUser, isEditingAddress]);
 
   // Устанавливаем аватарку из authUser, если она есть
+  // Также проверяем localStorage для восстановления после обновления страницы
   useEffect(() => {
-    if (authUser?.avatar || authUser?.profile?.avatar) {
+    // Всегда проверяем localStorage для восстановления аватарки после обновления страницы
+    const savedAvatar = localStorage.getItem('userAvatar');
+    
+    // Если аватарка не установлена, но есть в localStorage, восстанавливаем ее
+    if (!avatar && savedAvatar) {
+      console.log("✅ Restoring avatar from localStorage:", savedAvatar);
+      setAvatar(savedAvatar);
+      avatarInitializedRef.current = true;
+      return; // Выходим, чтобы не перезаписывать аватарку из authUser
+    }
+    
+    if (authUser) {
+      // Проверяем аватарку в разных местах структуры authUser
       const avatarUrl = authUser.avatar || authUser.profile?.avatar;
+      
+      console.log("🔄 useEffect authUser avatar check:", {
+        authUserAvatar: authUser.avatar,
+        authUserProfileAvatar: authUser.profile?.avatar,
+        avatarUrl,
+        currentAvatar: avatar,
+        savedAvatar
+      });
+      
       if (avatarUrl) {
-        setAvatar(avatarUrl);
+        // Обновляем аватарку только если она изменилась или еще не установлена
+        setAvatar((currentAvatar) => {
+          // Если текущая аватарка - это blob URL (временная), заменяем ее
+          if (currentAvatar && currentAvatar.startsWith('blob:')) {
+            // Убеждаемся, что URL абсолютный
+            const fullAvatarUrl = avatarUrl.startsWith('http') ? avatarUrl : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+            console.log("✅ Replacing blob URL with:", fullAvatarUrl);
+            localStorage.setItem('userAvatar', fullAvatarUrl);
+            return fullAvatarUrl;
+          }
+          // Если аватарка уже установлена и это не временная, не меняем ее
+          if (currentAvatar && !currentAvatar.startsWith('blob:')) {
+            console.log("✅ Keeping existing avatar:", currentAvatar);
+            return currentAvatar;
+          }
+          // Если аватарки нет (null или undefined), устанавливаем новую из authUser
+          if (!currentAvatar) {
+            // Убеждаемся, что URL абсолютный
+            const fullAvatarUrl = avatarUrl.startsWith('http') ? avatarUrl : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+            console.log("✅ Setting new avatar from authUser:", fullAvatarUrl);
+            localStorage.setItem('userAvatar', fullAvatarUrl);
+            avatarInitializedRef.current = true;
+            return fullAvatarUrl;
+          }
+          return currentAvatar;
+        });
+      } else if (!avatarInitializedRef.current) {
+        // Если в authUser нет аватарки и мы еще не инициализировали аватарку, проверяем localStorage
+        if (savedAvatar) {
+          console.log("✅ Using saved avatar from localStorage:", savedAvatar);
+          setAvatar(savedAvatar);
+          avatarInitializedRef.current = true;
+        } else {
+          console.log("⚠️ No avatar in authUser or localStorage, setting to null");
+          setAvatar(null);
+          avatarInitializedRef.current = true;
+        }
       } else {
-        setAvatar(null); // Используем дефолтную аватарку
+        // Если уже инициализировано, но нет аватарки в authUser, проверяем localStorage
+        if (savedAvatar && !avatar) {
+          console.log("✅ No avatar in authUser, restoring from localStorage:", savedAvatar);
+          setAvatar(savedAvatar);
+        } else if (!savedAvatar && !avatar) {
+          console.log("⚠️ No avatar in authUser or localStorage, keeping null");
+        } else {
+          console.log("✅ Keeping current avatar:", avatar);
+        }
       }
-    } else {
-      setAvatar(null); // Используем дефолтную аватарку
+    } else if (!avatarInitializedRef.current) {
+      // Если authUser еще не загружен, но есть сохраненная аватарка, используем ее
+      if (savedAvatar) {
+        console.log("✅ authUser not loaded yet, using saved avatar from localStorage:", savedAvatar);
+        setAvatar(savedAvatar);
+        avatarInitializedRef.current = true;
+      } else {
+        console.log("⚠️ authUser is null/undefined and no saved avatar");
+        avatarInitializedRef.current = true;
+      }
     }
   }, [authUser]);
 
@@ -203,10 +278,8 @@ export default function MyAccountAdmin() {
       // console.log("▶ Saving personal data:", updateData);
       // console.log("▶ Clean phone:", cleanPhone);
 
-      let apiAuth = apiWithAuth(token);
-      
       try {
-        await apiAuth.patch("/users/update", updateData);
+        await apiWithAuth.patch("/users/update", updateData);
 
         setPersonalSuccess("Personal information saved successfully!");
         setTimeout(() => setPersonalSuccess(""), 3000);
@@ -224,10 +297,8 @@ export default function MyAccountAdmin() {
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
             // Токен обновлен, повторяем запрос с новым токеном
             // console.log("✅ Token refreshed, retrying save...");
-            const newToken = refreshResult.payload.access;
-            apiAuth = apiWithAuth(newToken);
             
-            await apiAuth.patch("/users/update", updateData);
+            await apiWithAuth.patch("/users/update", updateData);
 
             setPersonalSuccess("Personal information saved successfully!");
             setTimeout(() => setPersonalSuccess(""), 3000);
@@ -343,10 +414,8 @@ export default function MyAccountAdmin() {
 
       // console.log("▶ Saving address:", updateData);
 
-      let apiAuth = apiWithAuth(token);
-      
       try {
-        await apiAuth.patch("/users/update", updateData);
+        await apiWithAuth.patch("/users/update", updateData);
 
         setAddressSuccess("Address saved successfully!");
         setTimeout(() => setAddressSuccess(""), 3000);
@@ -364,10 +433,8 @@ export default function MyAccountAdmin() {
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
             // Токен обновлен, повторяем запрос с новым токеном
             // console.log("✅ Token refreshed, retrying save...");
-            const newToken = refreshResult.payload.access;
-            apiAuth = apiWithAuth(newToken);
             
-            await apiAuth.patch("/users/update", updateData);
+            await apiWithAuth.patch("/users/update", updateData);
 
             setAddressSuccess("Address saved successfully!");
             setTimeout(() => setAddressSuccess(""), 3000);
@@ -465,17 +532,8 @@ export default function MyAccountAdmin() {
     setAvatarLoading(true);
     setAvatarError("");
     try {
-      const token = localStorage.getItem("access");
-      if (!token) {
-        setAvatarError("No access token. Please log out and log in again.");
-        setAvatarLoading(false);
-        return;
-      }
-
       const formData = new FormData();
       formData.append("avatar", fileToUpload);
-
-      let apiAuth = apiWithAuth(token);
       
       try {
         console.log("📤 Uploading avatar:", {
@@ -484,8 +542,10 @@ export default function MyAccountAdmin() {
           fileType: fileToUpload.type
         });
         
-        // Удаляем Content-Type из заголовков, чтобы Axios автоматически установил multipart/form-data с boundary
-        const response = await apiAuth.patch("/users/update", formData, {
+        // Используем PUT /users/avatars для загрузки аватарки
+        // apiWithAuth - это экземпляр axios, токен добавляется автоматически через интерцептор
+        // Интерцептор автоматически обновит токен, если он истек (401)
+        const response = await apiWithAuth.put("/users/avatars", formData, {
           headers: {
             'Content-Type': undefined, // Позволяем Axios установить правильный Content-Type автоматически
           },
@@ -494,51 +554,140 @@ export default function MyAccountAdmin() {
         console.log("✅ Avatar uploaded successfully:", response.data);
         console.log("✅ Response data profile:", response.data?.profile);
         console.log("✅ Response data full:", JSON.stringify(response.data, null, 2));
+        console.log("✅ Response status:", response.status);
+        console.log("✅ Response headers:", response.headers);
+
+        // Проверяем, есть ли URL аватарки в ответе (различные возможные варианты)
+        let avatarUrl = response.data?.avatar || 
+                         response.data?.profile?.avatar || 
+                         response.data?.avatar_url ||
+                         response.data?.profile?.avatar_url ||
+                         response.data?.profile?.photo ||
+                         response.data?.photo ||
+                         response.data?.url ||
+                         response.data?.image_url ||
+                         response.data?.file ||
+                         response.data?.file_url ||
+                         null;
+
+        // Если URL относительный, формируем полный URL
+        if (avatarUrl && !avatarUrl.startsWith('http')) {
+          avatarUrl = `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+        }
+
+        console.log("🔍 Extracted avatarUrl from response:", avatarUrl);
 
         // Используем временный URL для немедленного отображения
         const tempAvatarUrl = URL.createObjectURL(fileToUpload);
         console.log("✅ Using temporary avatar URL for preview:", tempAvatarUrl);
         setAvatar(tempAvatarUrl);
-
-        // Проверяем, есть ли URL аватарки в ответе (различные возможные варианты)
-        const avatarUrl = response.data?.avatar || 
-                         response.data?.profile?.avatar || 
-                         response.data?.avatar_url ||
-                         response.data?.profile?.avatar_url ||
-                         response.data?.profile?.photo ||
-                         response.data?.photo;
         
         if (avatarUrl) {
           console.log("✅ Setting avatar from response:", avatarUrl);
-          // Если URL относительный, делаем его абсолютным
-          const fullAvatarUrl = avatarUrl.startsWith('http') ? avatarUrl : `${window.location.origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-          setAvatar(fullAvatarUrl);
+          // Сохраняем аватарку в localStorage для восстановления при обновлении страницы
+          localStorage.setItem('userAvatar', avatarUrl);
+          // Обновляем аватар в компоненте
+          setAvatar(avatarUrl);
           // Освобождаем временный URL
           URL.revokeObjectURL(tempAvatarUrl);
+          
+          // Обновляем профиль с сервера, чтобы синхронизировать состояние
+          // НЕ сбрасываем аватарку после fetchProfile, так как она уже установлена
+          const profileResult = await dispatch(fetchProfile());
+          console.log("✅ Profile fetched after avatar upload:", profileResult.payload);
+          
+          // Проверяем, есть ли аватарка в обновленном профиле, и обновляем только если нужно
+          const profileAvatar = profileResult.payload?.user?.avatar || 
+                               profileResult.payload?.user?.profile?.avatar ||
+                               profileResult.payload?.profile?.avatar ||
+                               profileResult.payload?.avatar;
+          
+          console.log("🔍 Checking profile avatar:", {
+            profileResultPayload: profileResult.payload,
+            userAvatar: profileResult.payload?.user?.avatar,
+            userProfileAvatar: profileResult.payload?.user?.profile?.avatar,
+            profileAvatar: profileResult.payload?.profile?.avatar,
+            payloadAvatar: profileResult.payload?.avatar,
+            profileAvatar
+          });
+          
+          if (profileAvatar && profileAvatar !== avatarUrl) {
+            console.log("✅ Updating avatar from profile:", profileAvatar);
+            const fullAvatarUrl = profileAvatar.startsWith('http') ? profileAvatar : `https://onlinestore-928b.onrender.com${profileAvatar.startsWith('/') ? '' : '/'}${profileAvatar}`;
+            setAvatar(fullAvatarUrl);
+            localStorage.setItem('userAvatar', fullAvatarUrl);
+          } else if (profileAvatar) {
+            console.log("✅ Avatar already set, keeping current:", avatarUrl);
+          } else {
+            // Если API не вернул аватар в профиле, но мы его загрузили, сохраняем текущий URL
+            console.log("⚠️ No avatar in profile result, keeping current from upload:", avatarUrl);
+            // Убеждаемся, что аватар сохранен в localStorage
+            if (avatarUrl) {
+              localStorage.setItem('userAvatar', avatarUrl);
+              console.log("💾 Avatar saved to localStorage (from upload response):", avatarUrl);
+            }
+          }
         } else {
-          console.log("⚠️ No avatar URL in response, will fetch from profile");
-        }
-
-        // Обновляем профиль с сервера, чтобы получить актуальную аватарку
-        const profileResult = await dispatch(fetchProfile());
-        console.log("✅ Profile fetched after avatar upload:", profileResult.payload);
-        
-        // Проверяем аватарку в обновленном профиле
-        if (profileResult.payload?.user) {
-          const updatedAvatar = profileResult.payload.user.avatar || 
-                               profileResult.payload.user.profile?.avatar ||
-                               profileResult.payload.profile?.avatar;
+          console.log("⚠️ No avatar URL in response, trying to get user ID and fetch via /users/list/{id}/...");
+          
+          // Пытаемся получить ID пользователя из текущего профиля
+          const currentUserId = authUser?.id || authUser?.profile?.id;
+          
+          if (currentUserId) {
+            try {
+              console.log("🔍 Trying to fetch avatar via /users/list/{id}/ for userId:", currentUserId);
+              const userListRes = await apiWithAuth.get(`/users/list/${currentUserId}/`);
+              console.log("🔍 User list response:", userListRes.data);
+              
+              const listAvatarUrl = userListRes.data?.avatar || 
+                                   userListRes.data?.profile?.avatar || 
+                                   userListRes.data?.avatar_url ||
+                                   userListRes.data?.profile?.avatar_url ||
+                                   null;
+              
+              if (listAvatarUrl) {
+                const fullListAvatarUrl = listAvatarUrl.startsWith('http') 
+                  ? listAvatarUrl 
+                  : `https://onlinestore-928b.onrender.com${listAvatarUrl.startsWith('/') ? '' : '/'}${listAvatarUrl}`;
+                console.log("✅ Avatar found via /users/list/{id}/:", fullListAvatarUrl);
+                setAvatar(fullListAvatarUrl);
+                localStorage.setItem('userAvatar', fullListAvatarUrl);
+                console.log("💾 Avatar saved to localStorage (from /users/list/{id}/):", fullListAvatarUrl);
+                URL.revokeObjectURL(tempAvatarUrl);
+                
+                // Обновляем профиль
+                await dispatch(fetchProfile());
+                return;
+              }
+            } catch (listError) {
+              console.log("⚠️ Error fetching user by ID:", listError.response?.status, listError.message);
+            }
+          }
+          
+          // Если не получилось через /users/list/{id}/, пробуем через fetchProfile
+          console.log("⚠️ No avatar URL in response, fetching from profile...");
+          const profileResult = await dispatch(fetchProfile());
+          console.log("✅ Profile fetched after avatar upload:", profileResult.payload);
+          
+          // Проверяем аватарку в обновленном профиле
+          const updatedAvatar = profileResult.payload?.user?.avatar || 
+                               profileResult.payload?.user?.profile?.avatar ||
+                               profileResult.payload?.profile?.avatar ||
+                               profileResult.payload?.avatar;
+          
           if (updatedAvatar) {
             console.log("✅ Setting avatar from fetched profile:", updatedAvatar);
             // Если URL относительный, делаем его абсолютным
             const fullAvatarUrl = updatedAvatar.startsWith('http') ? updatedAvatar : `https://onlinestore-928b.onrender.com${updatedAvatar.startsWith('/') ? '' : '/'}${updatedAvatar}`;
             setAvatar(fullAvatarUrl);
+            localStorage.setItem('userAvatar', fullAvatarUrl);
+            console.log("💾 Avatar saved to localStorage (from profile):", fullAvatarUrl);
             // Освобождаем временный URL
             URL.revokeObjectURL(tempAvatarUrl);
           } else {
             // Если сервер не вернул URL, оставляем временный URL для предпросмотра
             // Временный URL будет работать до перезагрузки страницы
-            console.log("⚠️ Server did not return avatar URL, using temporary preview URL");
+            console.log("⚠️ Server did not return avatar URL in profile, using temporary preview URL");
             console.log("⚠️ Temporary URL will work until page reload.");
             console.log("⚠️ Note: The server successfully received the avatar file, but did not return its URL.");
             console.log("⚠️ The avatar may be available after page refresh, or the backend may need to be configured to return the avatar URL.");
@@ -557,26 +706,39 @@ export default function MyAccountAdmin() {
         console.error("❌ Error saving avatar:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
-        // Если токен истек (401), пытаемся обновить его
-        if (error.response?.status === 401) {
+        
+        // Проверяем, не истек ли refresh token (интерцептор уже пытался обновить токен)
+        const errorData = error.response?.data;
+        const isRefreshTokenExpired = errorData?.code === 'token_not_valid' || 
+                                     errorData?.detail?.includes('expired') ||
+                                     errorData?.detail?.includes('Token is expired');
+        
+        // Если токен истек (401), пытаемся обновить его вручную
+        if (error.response?.status === 401 && !isRefreshTokenExpired) {
           console.warn("⚠️ Token expired when saving avatar, attempting to refresh...");
           
           const refreshResult = await dispatch(refreshAccessToken());
           
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
-            const newToken = refreshResult.payload.access;
-            apiAuth = apiWithAuth(newToken);
-            
-            // Удаляем Content-Type из заголовков, чтобы Axios автоматически установил multipart/form-data с boundary
-            await apiAuth.patch("/users/update", formData, {
-              headers: {
-                'Content-Type': undefined, // Позволяем Axios установить правильный Content-Type автоматически
-              },
-            });
+            console.log("✅ Token refreshed, retrying avatar upload...");
+            // Используем PUT /users/avatars для загрузки аватарки
+            // apiWithAuth - это экземпляр axios, токен обновляется автоматически через интерцептор
+            // Интерцептор автоматически использует новый токен
+            try {
+              await apiWithAuth.put("/users/avatars", formData, {
+                headers: {
+                  'Content-Type': undefined, // Позволяем Axios установить правильный Content-Type автоматически
+                },
+              });
 
-            await dispatch(fetchProfile());
-            setAvatarFile(null);
-            setAvatarError("");
+              await dispatch(fetchProfile());
+              setAvatarFile(null);
+              setAvatarError("");
+              return;
+            } catch (retryError) {
+              console.error("❌ Error retrying avatar upload after token refresh:", retryError);
+              setAvatarError("Failed to save avatar after token refresh. Please try again.");
+            }
           } else {
             const errorPayload = refreshResult.payload || refreshResult.error;
             const isTokenExpired = errorPayload?.code === 'token_not_valid' || 
@@ -589,6 +751,9 @@ export default function MyAccountAdmin() {
               setAvatarError("Failed to save avatar. Please try again or refresh the page.");
             }
           }
+        } else if (isRefreshTokenExpired || error.response?.status === 401) {
+          // Если refresh token тоже истек, предлагаем перелогиниться
+          setAvatarError("Your session has expired. Please log out and log in again to continue.");
         } else {
           console.error("Error saving avatar:", error);
           console.error("Error response:", error.response?.data);
@@ -675,13 +840,13 @@ export default function MyAccountAdmin() {
   // console.log("MyAccountAdmin - Render - isEditingAddress:", isEditingAddress);
 
   return (
-    <Box sx={{ width: "100%", mt: 4, mb: 3 }}>
+    <Box sx={{ width: "100%", maxWidth: "100%", mt: { xs: 2, md: 4 }, mb: { xs: 2, md: 3 }, boxSizing: "border-box" }}>
       <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
         <AdminBreadcrumbs />
       </Box>
 
       {}
-      <Paper sx={{ p: 3, mb: 3, borderRadius:"24px" }}>
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: { xs: 2, md: 3 }, borderRadius:"24px", width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 1 }}>
           <Box sx={{ position: "relative", display: "inline-block" }}>
             {user.avatar ? (
@@ -760,15 +925,15 @@ export default function MyAccountAdmin() {
       </Paper>
 
       {}
-      <Paper sx={paperStyle(isEditingPersonal)}>
+      <Paper sx={{ ...paperStyle(isEditingPersonal), width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box mb={2}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography sx={{ ...h4 }}>Personal Information</Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+            <Typography sx={{ ...h4, fontSize: { xs: '16px', md: '18px' } }}>Personal Information</Typography>
             <Button 
               variant="contained" 
               size="small" 
               endIcon={!isEditingPersonal ? <EditIcon /> : null} 
-              sx={{ ...btnCart }} 
+              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }} 
               onClick={() => {
                 if (isEditingPersonal) {
                   handleSavePersonal();
@@ -793,9 +958,9 @@ export default function MyAccountAdmin() {
           <Alert severity="error" sx={{ mb: 2 }}>{personalErrors.general}</Alert>
         )}
 
-        <Grid container spacing={2}>
-          <Grid display="flex" flexDirection="column" gap={2} flex={1}>
-            <Box>
+        <Grid container spacing={{ xs: 2, md: 2 }} sx={{ width: "100%", m: 0 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>First Name</Typography>
               <TextField 
                 fullWidth 
@@ -808,7 +973,10 @@ export default function MyAccountAdmin() {
                 helperText={personalErrors.firstName}
               />
             </Box>
-            <Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Last Name</Typography>
               <TextField 
                 fullWidth 
@@ -821,7 +989,10 @@ export default function MyAccountAdmin() {
                 helperText={personalErrors.lastName}
               />
             </Box>
-            <Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Email</Typography>
               <TextField 
                 fullWidth 
@@ -836,8 +1007,8 @@ export default function MyAccountAdmin() {
             </Box>
           </Grid>
 
-          <Grid display="flex" flexDirection="column" gap={2} flex={1}>
-            <Box>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Phone number</Typography>
               <TextField 
                 fullWidth 
@@ -914,31 +1085,20 @@ export default function MyAccountAdmin() {
                 helperText={personalErrors.phone}
               />
             </Box>
-            <Box>
-              <Typography sx={{ ...h7, mb: 1 }}>User role</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={personalData?.role || "Administrator"} 
-                onChange={handlePersonalChange("role")}
-                disabled={!isEditingPersonal}
-                placeholder="User role"
-              />
-            </Box>
           </Grid>
         </Grid>
       </Paper>
 
       {}
-      <Paper sx={paperStyle(isEditingAddress)} >
+      <Paper sx={{ ...paperStyle(isEditingAddress), width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box mb={2}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography sx={{ ...h4 }}>Address</Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+            <Typography sx={{ ...h4, fontSize: { xs: '16px', md: '18px' } }}>Address</Typography>
             <Button 
               variant="contained" 
               size="small" 
               endIcon={!isEditingAddress ? <EditIcon /> : null} 
-              sx={{ ...btnCart }} 
+              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }} 
               onClick={() => {
                 if (isEditingAddress) {
                   handleSaveAddress();
@@ -963,9 +1123,9 @@ export default function MyAccountAdmin() {
           <Alert severity="error" sx={{ mb: 2 }}>{addressErrors.general}</Alert>
         )}
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4} display="flex" flexDirection="column" gap={2} flex={1}>
-            <Box>
+        <Grid container spacing={{ xs: 2, md: 2 }} sx={{ width: "100%", m: 0 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Country</Typography>
               <TextField 
                 fullWidth 
@@ -976,7 +1136,10 @@ export default function MyAccountAdmin() {
                 placeholder="Country"
               />
             </Box>
-            <Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>City/Region</Typography>
               <TextField 
                 fullWidth 
@@ -989,8 +1152,8 @@ export default function MyAccountAdmin() {
             </Box>
           </Grid>
 
-          <Grid item xs={12} md={4} display="flex" flexDirection="column" gap={2} flex={1}>
-            <Box>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>State</Typography>
               <TextField 
                 fullWidth 
@@ -1001,7 +1164,10 @@ export default function MyAccountAdmin() {
                 placeholder="State"
               />
             </Box>
-            <Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Street name</Typography>
               <TextField 
                 fullWidth 
@@ -1014,8 +1180,8 @@ export default function MyAccountAdmin() {
             </Box>
           </Grid>
 
-          <Grid item xs={12} md={4} display="flex" flexDirection="column" gap={2} flex={1}>
-            <Box>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Zip code</Typography>
               <TextField 
                 fullWidth 
@@ -1034,7 +1200,10 @@ export default function MyAccountAdmin() {
                 helperText={addressErrors.house}
               />
             </Box>
-            <Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Apt. number</Typography>
               <TextField 
                 fullWidth 

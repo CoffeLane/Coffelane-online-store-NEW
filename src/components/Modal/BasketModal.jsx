@@ -7,6 +7,8 @@ import CoffeeIcon from '@mui/icons-material/Coffee'; // Импорт иконк�
 import deleteIcon from "../../assets/icons/delete-icon.svg";
 import { btnCart } from "../../styles/btnStyles.jsx";
 import { h3, h5 } from "../../styles/typographyStyles.jsx";
+import { useSelector } from "react-redux";
+import { formatPrice } from "../utils/priceUtils.jsx";
 
 // Вспомогательный компонент для обработки картинки товара в корзине
 const CartItemImage = ({ src, alt, isMobile }) => {
@@ -58,6 +60,7 @@ export default function BasketModal({
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const currency = useSelector((state) => state.settings.currency);
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
   const total = subtotal - discount;
 
@@ -129,7 +132,7 @@ export default function BasketModal({
                         </IconButton>
                       </Box>
 
-                      <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>${(item.price * item.qty).toFixed(2)}</Typography>
+                      <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(item.price * item.qty, currency)}</Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -143,15 +146,15 @@ export default function BasketModal({
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Subtotal</Typography>
-              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>${subtotal.toFixed(2)}</Typography>
+              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(subtotal, currency)}</Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Discount</Typography>
-              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-${discount.toFixed(2)}</Typography>
+              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>-{formatPrice(discount, currency)}</Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total</Typography>
-              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>${total.toFixed(2)}</Typography>
+              <Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total, currency)}</Typography>
             </Box>
           </Box>
 

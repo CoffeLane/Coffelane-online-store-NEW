@@ -11,11 +11,13 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
+import { getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
 
 export default function AccessoriesCardData({ products, favorites, onToggleFavorite, isRecommended = false }) {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const cartEntries = useSelector(selectCartItems);
+    const currency = useSelector((state) => state.settings.currency);
 
     return (
         <Box sx={{ 
@@ -77,7 +79,7 @@ export default function AccessoriesCardData({ products, favorites, onToggleFavor
                             
                             <Box sx={{ mt: 'auto' }}>
                                 <Typography sx={{ color: isOutOfStock ? "#999" : "#16675C", fontSize: { xs: 16, md: 18 }, fontWeight: 700, textAlign: "right", mb: 1 }}>
-                                    {isOutOfStock ? "SOLD OUT" : `$${Number(item.price || 0).toFixed(2)}`}
+                                    {isOutOfStock ? "SOLD OUT" : formatPrice(getProductPrice(item, currency), currency)}
                                 </Typography>
                                 <Button 
                                     variant="contained" fullWidth disabled={isOutOfStock}

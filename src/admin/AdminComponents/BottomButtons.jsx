@@ -2,10 +2,22 @@ import React from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
 import {  btnCart, btnStyles } from "../../styles/btnStyles";
 
-export default function BottomButtons({ isProductReady, onSave, loading = false }) {
+export default function BottomButtons({ isProductReady, onSave, loading = false, onPreview }) {
   return (
     <Box display="flex" gap={2}>
-      <Button variant="outlined" fullWidth disabled={!isProductReady || loading} sx={{ ...btnStyles, textTransform: "none", backgroundColor: !isProductReady ? "#E0E0E0" : btnStyles.backgroundColor, color: !isProductReady ? "#9E9E9E" : btnStyles.color, borderColor: !isProductReady ? "#BDBDBD" : btnStyles.borderColor}}>
+      <Button 
+        variant="outlined" 
+        fullWidth 
+        disabled={!isProductReady || loading} 
+        onClick={onPreview}
+        sx={{ 
+          ...btnStyles, 
+          textTransform: "none", 
+          backgroundColor: !isProductReady ? "#E0E0E0" : btnStyles.backgroundColor, 
+          color: !isProductReady ? "#9E9E9E" : btnStyles.color, 
+          borderColor: !isProductReady ? "#BDBDBD" : btnStyles.borderColor
+        }}
+      >
         Preview
       </Button>
       <Button 

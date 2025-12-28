@@ -27,7 +27,7 @@ export default function AdminBreadcrumbs() {
   if (segments.length === 1 && segments[0] === 'admin') {
     return (
       <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-        <Typography sx={{ ...h3 }}>Admin</Typography>
+        <Typography sx={{ ...h3, fontSize: { xs: '14px', md: h3.fontSize } }}>Admin</Typography>
       </Breadcrumbs>
     );
   }
@@ -40,7 +40,7 @@ export default function AdminBreadcrumbs() {
         const label = labels[seg] || seg.charAt(0).toUpperCase() + seg.slice(1);
 
         return isLast ? (
-          <Typography key={to} sx={{ ...h3 }}>
+          <Typography key={to} sx={{ ...h3, fontSize: { xs: '14px', md: h3.fontSize } }}>
             {label}
           </Typography>
         ) : (
@@ -50,6 +50,7 @@ export default function AdminBreadcrumbs() {
             underline="hover"
             color="inherit"
             to={to}
+            sx={{ fontSize: { xs: '14px', md: 'inherit' } }}
           >
             {label}
           </Link>

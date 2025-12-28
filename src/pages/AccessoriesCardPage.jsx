@@ -32,7 +32,7 @@ export default function AccessoriesCardPage() {
         flexDirection: { xs: "column", md: "row" },
         justifyContent: "center", gap: { xs: 4, md: 10 }
       }}>
-        <Box sx={{ width: { xs: "100%", md: "400px" } }}>
+        <Box sx={{ width: { xs: "100%", md: "400px" }, display: "flex", justifyContent: "center" }}>
           <AccessoriesImageSlider photos={selectedAccessory.photos_url} productName={selectedAccessory.name}/>
         </Box>
 

@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
+import { getPrice, formatPrice } from "../utils/priceUtils.jsx";
 
 
 const ProductImage = ({ src, alt }) => {
@@ -47,10 +48,11 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const cartEntries = useSelector(selectCartItems);
+  const currency = useSelector((state) => state.settings.currency);
 
   return (
-    <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 2, md: 3 }, justifyContent: "center", width: "100%",}}>
-      {products.map((item) => {
+    <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 2, md: 3 }, justifyContent: "center", width: "100%" }}>
+      {products.map((item, index) => {
         const itemId = String(item.id);
         const supply = item.supplies?.[0] || null;
         const isOutOfStock = !supply || Number(supply.quantity) <= 0;
@@ -114,7 +116,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
               
               <Box sx={{ mt: 'auto' }}>
                 <Typography sx={{ color: "#16675C", fontWeight: 700, textAlign: "right", mb: 1 }}>
-                  ${supply ? Number(supply.price).toFixed(2) : "0.00"}
+                  {supply ? formatPrice(getPrice(supply, currency), currency) : formatPrice(0, currency)}
                 </Typography>
                 
                 <Button 

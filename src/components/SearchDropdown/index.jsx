@@ -2,8 +2,12 @@ import React from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { Link } from 'react-router-dom';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { useSelector } from 'react-redux';
+import { getPrice, getProductPrice, formatPrice } from '../utils/priceUtils.jsx';
 
 const SearchDropdown = ({ results, loading, query, onClose, error }) => {
+  const currency = useSelector((state) => state.settings.currency);
+  
   if (loading) {
     return (
       <Box
@@ -105,9 +109,8 @@ const SearchDropdown = ({ results, loading, query, onClose, error }) => {
     >
       {results.slice(0, 8).map((product) => {
         const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || '';
-        const price = product.supplies?.[0]?.price || '0';
-        
-      
+        const supply = product.supplies?.[0];
+        const price = supply ? getPrice(supply, currency) : getProductPrice(product, currency);
         const productUrl = `/coffee/product/${product.id}`;
 
         return (
@@ -175,7 +178,7 @@ const SearchDropdown = ({ results, loading, query, onClose, error }) => {
                     fontSize: '14px',
                   }}
                 >
-                  ${parseFloat(price).toFixed(2)}
+                  {formatPrice(price, currency)}
                 </Typography>
               </Box>
             </Box>

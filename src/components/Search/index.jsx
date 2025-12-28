@@ -10,7 +10,7 @@ const Search = () => {
   };
 
   return (
-    <Box sx={{width:'240px', height:'52px'}}>
+    <Box sx={{width: { xs: '100%', sm: '240px' }, height:'52px'}}>
       <TextField fullWidth variant="outlined" size="small" placeholder="Search" onChange={onChange} autoComplete="off" autoCorrect="off"
         sx={{
           '& .MuiOutlinedInput-root': {

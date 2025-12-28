@@ -3,6 +3,8 @@ import { Box, Typography, IconButton } from "@mui/material";
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 import CoffeeIcon from '@mui/icons-material/Coffee'; // Импорт иконки для заглушки
+import { useSelector } from "react-redux";
+import { getPrice, getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
 
 // Вспомогательный компонент для картинки в саммари заказа
 const SummaryImage = ({ src, alt }) => {
@@ -43,6 +45,7 @@ const SummaryImage = ({ src, alt }) => {
 };
 
 export default function CartSummary({ items, handleRemove, handleQuantityChange, icondelete }) {
+  const currency = useSelector((state) => state.settings.currency);
 
   return (
     <Box sx={{ flex: 1, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
@@ -50,7 +53,7 @@ export default function CartSummary({ items, handleRemove, handleQuantityChange,
         const { product, quantity } = cartItem;
         const supplies = product.supplies || [];
         const selectedSupply = supplies.find((s) => s.id === product.selectedSupplyId);
-        const price = Number(selectedSupply?.price ?? product.price ?? 0);
+        const price = selectedSupply ? getPrice(selectedSupply, currency) : getProductPrice(product, currency);
         const weight = selectedSupply?.weight ?? null;
         
         // Получаем URL фото (проверяем оба варианта структуры данных)
@@ -87,7 +90,7 @@ export default function CartSummary({ items, handleRemove, handleQuantityChange,
                     <AddIcon sx={{ fontSize: { xs: 14, md: 18 } }} />
                   </IconButton>
                 </Box>
-                <Typography sx={{ fontSize: { xs: '14px', md: '16px' }, fontWeight: 600 }}>${(price * quantity).toFixed(2)}</Typography>
+                <Typography sx={{ fontSize: { xs: '14px', md: '16px' }, fontWeight: 600 }}>{formatPrice(price * quantity, currency)}</Typography>
               </Box>
             </Box>
           </Box>

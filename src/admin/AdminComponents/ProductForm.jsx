@@ -11,6 +11,7 @@ export default function ProductForm({
     price, setPrice,
     weight, setWeight,
     description, setDescription,
+    productType = 'product', // 'product' или 'accessory'
 }) {
     return (
         <Box sx={{mt:3}}>
@@ -45,8 +46,13 @@ export default function ProductForm({
             <Typography sx={{ ...h7 }} mb={1}>Price</Typography>
             <TextField fullWidth value={price || ""} onChange={(e) => setPrice(e.target.value)} sx={{ ...inputStyles, mb: 2 }}/>
 
-            <Typography sx={{ ...h7 }} mb={1}>Total weight</Typography>
-            <WeightSelectorAdmin weight={weight} setWeight={setWeight}/>
+            {/* Поле веса только для продуктов, не для аксессуаров */}
+            {productType !== 'accessory' && (
+                <>
+                    <Typography sx={{ ...h7 }} mb={1}>Total weight</Typography>
+                    <WeightSelectorAdmin weight={weight} setWeight={setWeight}/>
+                </>
+            )}
 
             <Typography sx={{ ...h7, mt: 2 }} mb={1}>Description</Typography>
             <TextField multiline  minRows={4} fullWidth

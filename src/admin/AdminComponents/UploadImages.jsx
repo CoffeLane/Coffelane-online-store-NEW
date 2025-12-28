@@ -1,17 +1,26 @@
 import React from "react";
-import { Box, Typography, Button, IconButton } from "@mui/material";
+import { Box, Typography, Button, IconButton, useMediaQuery, useTheme } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function UploadImages({ images, cover, setCover, handleImageUpload, handleDeletePhoto }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   return (
-    <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-      {}
-      <Box>
-        <label htmlFor="upload-cover" style={{ cursor: "pointer" }}>
+    <Box sx={{ 
+      display: "flex", 
+      flexDirection: { xs: 'column', md: 'row' },
+      justifyContent: { xs: 'flex-start', md: 'space-between' },
+      gap: { xs: 2, md: 2 },
+      alignItems: { xs: 'flex-start', md: 'flex-start' }
+    }}>
+      <Box sx={{ width: '100%', maxWidth: { xs: '100%', md: 350 }, flex: { xs: 'none', md: 1 } }}>
+        <label htmlFor="upload-cover" style={{ cursor: "pointer", display: "block", width: "100%" }}>
           <Box
             sx={{
-              width: 400,
-              height: 400,
+              width: { xs: '100%', md: 350 },
+              maxWidth: '100%',
+              height: { xs: 300, md: 350 },
               borderRadius: 3,
               overflow: "hidden",
               position: "relative",
@@ -53,36 +62,45 @@ export default function UploadImages({ images, cover, setCover, handleImageUploa
               Cover
             </Button>
           </Box>
-        </label>
-
         <input type="file" id="upload-cover" accept="image/*" hidden onChange={handleImageUpload} />
+        </label>
       </Box>
-      <Box display="flex" flexDirection="column" gap={2}>
+      <Box sx={{ 
+        display: "flex", 
+        flexDirection: { xs: 'row', md: 'column' },
+        gap: 2,
+        flexWrap: { xs: 'wrap', md: 'nowrap' },
+        width: { xs: '100%', md: 280 },
+        minWidth: { xs: 'auto', md: 280 },
+        flexShrink: 0,
+      }}>
         {images.map((img, i) => {
           const src = img.url || (img.file ? URL.createObjectURL(img.file) : "");
           if (!src) return null;
 
           return (
-            <Box key={img.id || i} position="relative">
-              <img
+            <Box key={img.id || i} sx={{ position: "relative", width: { xs: 100, md: '100%' } }}>
+              <Box
+                component="img"
                 src={src}
                 alt={`thumb-${i}`}
-                width="160"
-                height="160"
-                style={{
+                onClick={() => setCover(img)}
+                sx={{
+                  width: '100%',
+                  height: { xs: 100, md: 280 },
                   borderRadius: "8px",
                   border: cover === img ? "2px solid #3F63AC" : "2px solid transparent",
                   cursor: "pointer",
                   objectFit: "cover",
                 }}
-                onClick={() => setCover(img)}
               />
-              {img.id && handleDeletePhoto && (
+              {handleDeletePhoto && (
                 <IconButton
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeletePhoto(img.id);
+                    // Передаем id если есть, иначе сам объект изображения
+                    handleDeletePhoto(img.id || img);
                   }}
                   sx={{
                     position: "absolute",
@@ -98,11 +116,12 @@ export default function UploadImages({ images, cover, setCover, handleImageUploa
           );
         })}
 
-        <label
+        <Box
+          component="label"
           htmlFor="upload-image"
-          style={{
-            width: 160,
-            height: 160,
+          sx={{
+            width: { xs: 100, md: '100%' },
+            height: { xs: 100, md: 280 },
             borderRadius: "8px",
             border: "2px dashed #3F63AC",
             backgroundColor: "#EAF9FF",
@@ -111,11 +130,12 @@ export default function UploadImages({ images, cover, setCover, handleImageUploa
             justifyContent: "center",
             cursor: "pointer",
             position: "relative",
+            flexShrink: 0,
           }}
         >
-          <Typography sx={{ fontSize: 28, color: "#3F63AC" }}>+</Typography>
+          <Typography sx={{ fontSize: { xs: 24, md: 28 }, color: "#3F63AC" }}>+</Typography>
           <input type="file" id="upload-image" multiple accept="image/*" hidden onChange={handleImageUpload} />
-        </label>
+        </Box>
       </Box>
     </Box>
   );

@@ -73,8 +73,7 @@ export default function AccountSettingsForm() {
     setErrors((prev) => ({ ...prev, submit: undefined }));
 
     try {
-      const apiAuth = apiWithAuth();
-      const response = await apiAuth.patch("/users/update", { email: formData.email });
+      const response = await apiWithAuth.patch("/users/update", { email: formData.email });
 
       setLeftSuccess("Email saved!");
       setTimeout(() => setLeftSuccess(""), 3000);

@@ -16,14 +16,49 @@ export const apiWithAuth = axios.create({
 
 const getCleanToken = (key) => {
   try {
+    // Для refresh token сначала проверяем localStorage напрямую
+    if (key === 'refresh') {
+      const refreshToken = localStorage.getItem('refresh');
+      if (refreshToken) {
+        return refreshToken.replace(/^"+|"+$/g, '');
+      }
+    }
+    
+    // Для access token и других ключей проверяем Redux Persist
     const persistData = localStorage.getItem('persist:auth');
-    if (!persistData) return null;
+    if (!persistData) {
+      // Если нет persist:auth, для access token проверяем localStorage напрямую
+      if (key === 'token') {
+        const accessToken = localStorage.getItem('access');
+        if (accessToken) {
+          return accessToken.replace(/^"+|"+$/g, '');
+        }
+      }
+      return null;
+    }
+    
     const authState = JSON.parse(persistData);
     // Извлекаем значение и убираем кавычки, которые добавляет Redux Persist
     let token = authState[key];
-    if (!token || token === 'null' || token === 'undefined') return null;
+    if (!token || token === 'null' || token === 'undefined') {
+      // Если не нашли в persist:auth, для access token проверяем localStorage
+      if (key === 'token') {
+        const accessToken = localStorage.getItem('access');
+        if (accessToken) {
+          return accessToken.replace(/^"+|"+$/g, '');
+        }
+      }
+      return null;
+    }
     return token.replace(/^"+|"+$/g, '');
   } catch (e) {
+    // В случае ошибки, для access token проверяем localStorage напрямую
+    if (key === 'token') {
+      const accessToken = localStorage.getItem('access');
+      if (accessToken) {
+        return accessToken.replace(/^"+|"+$/g, '');
+      }
+    }
     return null;
   }
 };
@@ -66,13 +101,18 @@ apiWithAuth.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Пропускаем автоматическое обновление токена, если установлен флаг _skipAuthRefresh
+      if (originalRequest._skipAuthRefresh) {
+        return Promise.reject(error);
+      }
+      
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return apiWithAuth(originalRequest);
+            return apiWithAuth.request(originalRequest);
           })
           .catch((err) => Promise.reject(err));
       }
@@ -96,7 +136,7 @@ apiWithAuth.interceptors.response.use(
         isRefreshing = false;
 
         originalRequest.headers.Authorization = `Bearer ${access}`;
-        return apiWithAuth(originalRequest);
+        return apiWithAuth.request(originalRequest);
       } catch (err) {
         isRefreshing = false;
         processQueue(err, null);
