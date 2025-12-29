@@ -1,6 +1,27 @@
 import {createSlice, createAsyncThunk} from "@reduxjs/toolkit";
 import api from "../api/axios";
 
+const filterItems = (items, query, extraFields = []) => {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+
+  return items.filter((item) => {
+    
+    const fieldsToSearch = [
+      item.name, 
+      item.brand, 
+      item.title, 
+      ...extraFields.map(f => item[f])
+    ].filter(Boolean); 
+
+    return fieldsToSearch.some(fieldValue => {
+      const words = fieldValue.toLowerCase().split(/\s+/); 
+      return words.some(word => word.startsWith(q)); 
+    });
+  });
+};
+
+
 export const searchProducts = createAsyncThunk("search/searchProducts", async (query, thunkAPI) => {
  try {
   if (!query || !query.trim()) {
@@ -16,27 +37,15 @@ export const searchProducts = createAsyncThunk("search/searchProducts", async (q
    },
   });
 
-  //   console.log('Products response:', response.data);
+    // console.log('Products response:', response.data);
 
-  let allProducts = response.data.data || [];
+  const allProducts = response.data.data || [];
 
-  const filteredProducts = allProducts.filter((product) => {
-   const name = product.name?.toLowerCase() || "";
-   const brand = product.brand?.toLowerCase() || "";
-   const description = product.description?.toLowerCase() || "";
-   const sort = product.sort?.toLowerCase() || "";
-
-   return (
-    name.includes(searchQuery) ||
-    brand.includes(searchQuery) ||
-    description.includes(searchQuery) ||
-    sort.includes(searchQuery)
-   );
-  });
+  const filtered = filterItems(allProducts, query, ["sort"]);
 
   return {
-   data: filteredProducts,
-   totalItems: filteredProducts.length,
+   data: filtered,
+   totalItems: filtered.length,
   };
  } catch (error) {
   return thunkAPI.rejectWithValue({
@@ -45,13 +54,14 @@ export const searchProducts = createAsyncThunk("search/searchProducts", async (q
   });
  }
 });
+
 export const searchAccessories = createAsyncThunk("search/searchAccessories", async (query, thunkAPI) => {
  try {
   if (!query || !query.trim()) {
    return {data: [], totalItems: 0};
   }
 
-  const searchQuery = query.trim().toLowerCase();
+  // const searchQuery = query.trim().toLowerCase();
 
   const response = await api.get("/accessories", {
    params: {
@@ -60,25 +70,12 @@ export const searchAccessories = createAsyncThunk("search/searchAccessories", as
    },
   });
 
-  let allAccessories = response.data.data || [];
-
-  const filteredAccessories = allAccessories.filter((accessory) => {
-   const name = accessory.name?.toLowerCase() || "";
-   const brand = accessory.brand?.toLowerCase() || "";
-   const description = accessory.description?.toLowerCase() || "";
-   const category = accessory.category?.toLowerCase() || "";
-
-   return (
-    name.includes(searchQuery) ||
-    brand.includes(searchQuery) ||
-    description.includes(searchQuery) ||
-    category.includes(searchQuery)
-   );
-  });
+  const allAccessories = response.data.data || [];
+  const filtered = filterItems(allAccessories, query, ["category"]);
 
   return {
-   data: filteredAccessories,
-   totalItems: filteredAccessories.length,
+   data: filtered,
+   totalItems: filtered.length,
   };
  } catch (error) {
   return thunkAPI.rejectWithValue({
@@ -88,70 +85,40 @@ export const searchAccessories = createAsyncThunk("search/searchAccessories", as
  }
 });
 
-export const searchAll = createAsyncThunk("search/searchAll", async (query, thunkAPI) => {
- try {
-  if (!query || !query.trim()) {
-   return {
-    products: [],
-    accessories: [],
-    totalItems: 0,
-   };
+export const searchAll = createAsyncThunk(
+  "search/searchAll",
+  async (query, thunkAPI) => {
+    try {
+      if (!query?.trim()) return { products: [], accessories: [], totalItems: 0 };
+
+      const [pRes, aRes] = await Promise.all([
+        api.get("/products", { params: { page: 1, size: 100 } }),
+        api.get("/accessories", { params: { page: 1, size: 100 } }),
+      ]);
+
+      const getArray = (res) => {
+        if (Array.isArray(res.data)) return res.data;
+        if (Array.isArray(res.data?.data)) return res.data.data;
+        if (Array.isArray(res.data?.products)) return res.data.products;
+        return [];
+      };
+
+      const products = getArray(pRes);
+      const accessories = getArray(aRes);
+
+      const filteredProducts = filterItems(products, query, ["sort"]);
+      const filteredAccessories = filterItems(accessories, query, ["category"]);
+
+      return {
+        products: filteredProducts,
+        accessories: filteredAccessories,
+        totalItems: filteredProducts.length + filteredAccessories.length,
+      };
+    } catch (error) {
+      return thunkAPI.rejectWithValue({ message: "Search failed" });
+    }
   }
-
-  const searchQuery = query.trim().toLowerCase();
-
-  // Паралельні запити
-  const [productsResponse, accessoriesResponse] = await Promise.all([
-   api.get("/products", {params: {page: 1, size: 100}}),
-   api.get("/accessories", {params: {page: 1, size: 100}}),
-  ]);
-
-  let allProducts = productsResponse.data.data || [];
-  let allAccessories = accessoriesResponse.data.data || [];
-
-  // Фільтрація продуктів
-  const filteredProducts = allProducts.filter((product) => {
-   const name = product.name?.toLowerCase() || "";
-   const brand = product.brand?.toLowerCase() || "";
-   const description = product.description?.toLowerCase() || "";
-   const sort = product.sort?.toLowerCase() || "";
-
-   return (
-    name.includes(searchQuery) ||
-    brand.includes(searchQuery) ||
-    description.includes(searchQuery) ||
-    sort.includes(searchQuery)
-   );
-  });
-
-  // Фільтрація аксесуарів
-  const filteredAccessories = allAccessories.filter((accessory) => {
-   const name = accessory.name?.toLowerCase() || "";
-   const brand = accessory.brand?.toLowerCase() || "";
-   const description = accessory.description?.toLowerCase() || "";
-   const category = accessory.category?.toLowerCase() || "";
-
-   return (
-    name.includes(searchQuery) ||
-    brand.includes(searchQuery) ||
-    description.includes(searchQuery) ||
-    category.includes(searchQuery)
-   );
-  });
-
-  return {
-   products: filteredProducts,
-   accessories: filteredAccessories,
-   totalItems: filteredProducts.length + filteredAccessories.length,
-  };
- } catch (error) {
-  return thunkAPI.rejectWithValue({
-   message: error.response?.data?.message || "Search failed",
-   products: [],
-   accessories: [],
-  });
- }
-});
+);
 
 const searchSlice = createSlice({
  name: "search",

@@ -5,10 +5,13 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import {useSelector} from "react-redux";
 import {getPrice, getProductPrice, formatPrice} from "../utils/priceUtils.jsx";
 
+import KitchenIcon from '@mui/icons-material/Kitchen';
+
 const SearchDropdown = ({results, loading, query, onClose, error}) => {
- const currency = useSelector((state) => state.settings.currency);
- const products = useSelector((state) => state.search.products);
- const accessories = useSelector((state) => state.search.accessories);
+  const currency = useSelector((state) => state.settings.currency);
+  const products = useSelector((state) => state.search.products || []);
+  const accessories = useSelector((state) => state.search.accessories || []);
+  const totalResults = products.length + accessories.length;
 
  if (loading) {
   return (
@@ -112,10 +115,27 @@ const SearchDropdown = ({results, loading, query, onClose, error}) => {
     zIndex: 1000,
     minWidth: "350px",
    }}
-  >
-   {results.slice(0, 8).map((product) => {
-    const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || "";
-    const supply = product.supplies?.[0];
+   >
+     {products.length > 0 && (
+       <>
+         <Box sx={{ 
+            px: 2, 
+            py: 1.5, 
+            bgcolor: '#f8f8f8',
+            borderBottom: '1px solid #e0e0e0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          }}>
+     <Typography
+      variant="subtitle2"
+           sx={{ px: 2, pt: 1.5, pb: 0.5, fontWeight: 600, color: "#666" }}>
+      Products ({products.length})
+         </Typography>
+         </Box>
+     
+   {products.slice(0, 8).map((product) => {
+const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || '';    const supply = product.supplies?.[0];
     const price = supply ? getPrice(supply, currency) : getProductPrice(product, currency);
     const productUrl = `/coffee/product/${product.id}`;
 
@@ -133,14 +153,16 @@ const SearchDropdown = ({results, loading, query, onClose, error}) => {
         p: 1.5,
         gap: 1.5,
         cursor: "pointer",
-        transition: "background 0.2s",
-        borderBottom: "1px solid #f0f0f0",
-        "&:hover": {
-         bgcolor: "#f8f8f8",
-        },
+       
         "&:last-child": {
          borderBottom: "none",
-        },
+            },
+         transition: 'all 0.2s',
+                    borderBottom: '1px solid #f5f5f5',
+                    '&:hover': {
+                      bgcolor: '#f8f8f8',
+                      transform: 'translateX(4px)',
+                    },
        }}
       >
        <Box
@@ -190,17 +212,32 @@ const SearchDropdown = ({results, loading, query, onClose, error}) => {
      </Link>
     );
    })}
+         </>
+   )}
+
+     
    {accessories.length > 0 && (
-    <>
+     <>
+        <Box sx={{ 
+            px: 2, 
+            py: 1.5, 
+            bgcolor: '#f8f8f8',
+            borderBottom: '1px solid #e0e0e0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            mt: products.length > 0 ? 1 : 0,
+          }}>
      <Typography
       variant="subtitle2"
       sx={{px: 2, pt: 1.5, pb: 0.5, fontWeight: 600, color: "#666"}}
      >
-      Accessories
-     </Typography>
+      Accessories ({accessories.length})
+           </Typography>
+        </Box>
      {accessories.slice(0, 4).map((accessory) => {
-      const imageUrl = accessory.accessory_photos?.[0]?.url || "";
-      const price = getProductPrice(accessory, currency);
+
+       const price = getProductPrice(accessory, currency);
       const productUrl = `/accessories/product/${accessory.id}`;
 
       return (
@@ -211,40 +248,65 @@ const SearchDropdown = ({results, loading, query, onClose, error}) => {
         onClick={onClose}
        >
         <Box
-         sx={
-          {
-          
-          }
-         }
+         sx={{
+          display: 'flex',
+          alignItems: 'center',
+          p: 1.5,
+          gap: 1.5,
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+            '&:hover': {
+             bgcolor: '#f8f8f8',
+             transform: 'translateX(4px)',
+            },
+          }}
         >
-         <Box
-          component="img"
-          src={imageUrl}
-          alt={accessory.name}
-          sx={
-           {
-          
-           }
-          }
-         />
-         <Box sx={{flex: 1, minWidth: 0}}>
+        <Box
+           sx={{
+             width: 50,
+              height: 50,
+              borderRadius: '8px',
+              display: 'grid', placeItems: 'center',
+              bgcolor: '#E8F5E9',
+              border: '1px solid #e0e0e0',
+              }}
+         >
+          <KitchenIcon sx={{ color: '#16675C', fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+        </Box>
+        <Box sx={{flex: 1, minWidth: 0}}>
           <Typography
            variant="body2"
-           sx={
-            {
-           
-            }
-           }
+           sx={{
+              fontWeight: 500,
+              color: '#232323',
+              mb: 0.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
           >
            {accessory.name}
-          </Typography>
+              </Typography>
+                 {accessory.category && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: '#666',
+                          fontSize: '12px',
+                          display: 'block',
+                          mb: 0.3,
+                        }}
+                      >
+                        {accessory.category}
+                      </Typography>
+                    )}
           <Typography
            variant="caption"
-           sx={
-            {
-            
-            }
-           }
+           sx={{
+            color: '#16675C',
+            fontWeight: 600,
+            fontSize: '14px'
+           }}
           >
            {formatPrice(price, currency)}
           </Typography>
@@ -254,8 +316,10 @@ const SearchDropdown = ({results, loading, query, onClose, error}) => {
       );
      })}
     </>
-   )}
-   {(results.length > 8 || accessories.length > 4) && (
+     )}
+     
+
+   {totalResults > 8  && (
     <Box
      sx={{
       borderTop: "1px solid #e3e3e3",
