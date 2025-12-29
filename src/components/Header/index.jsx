@@ -17,7 +17,7 @@ import { selectCartCount, selectCartItems, addToCart, decrementQuantity, removeF
 import SettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { searchProducts, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
+import { searchAll, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
 import SearchDropdown from "../SearchDropdown/index.jsx";
 import { CurrencySwitcher } from "../CurrencySwitcher.jsx";
 
@@ -52,7 +52,7 @@ function Header() {
         const timeoutId = setTimeout(() => {
             if (searchInput.trim()) {
                 // console.log(' Dispatching search for:', searchInput);
-                dispatch(searchProducts(searchInput));
+                dispatch(searchAll(searchInput));
                 setShowSearchDropdown(true);
             } else {
                 dispatch(clearSearch());
