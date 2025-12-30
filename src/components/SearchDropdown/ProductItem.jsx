@@ -1,10 +1,16 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { Box, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
+import { getPrice, getProductPrice, formatPrice } from '../utils/priceUtils';
 
 const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
+  
   const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || '';
-  const price = product.supplies?.[0]?.price || '0';
+  const currency = useSelector((state) => state.settings.currency);
+    const supply = product.supplies?.[0];
+
+  const price = supply ? getPrice(supply, currency) : getProductPrice(product, currency);
   const productUrl = `/coffee/product/${product.id}`;
 
   const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -86,7 +92,7 @@ const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
               fontWeight: 600,
             }}
           >
-            ${parseFloat(price).toFixed(2)}
+            {formatPrice(price, currency)}
           </Typography>
         </Box>
       </Box>

@@ -2,21 +2,21 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import KitchenIcon from '@mui/icons-material/Kitchen';
-// import { useSelector } from 'react-redux';
-import { getProductPrice } from '../../utils/productUtils';
+import { useSelector } from 'react-redux';
+import { getProductPrice, formatPrice } from '../utils/priceUtils.jsx';
 
 const AccessoryItem = ({ accessory, searchInput, onProductClick, isLastItem }) => {
-    const price = getProductPrice(accessory, currency);
-    const productUrl = `/accessories/product/${accessory.id}`;
+  const currency = useSelector((state) => state.settings.currency);
+  const price = getProductPrice(accessory, currency);
+  const productUrl = `/accessories/product/${accessory.id}`;
 
   const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const safeSearch = escapeRegExp(searchInput);
 
   const highlightText = (text, query) => {
     if (!query) return text;
-    
+    const safe = escapeRegExp(query);
     return text
-      .split(new RegExp(`(${safeSearch})`, 'gi'))
+      .split(new RegExp(`(${safe})`, 'gi'))
       .map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
           <span key={i} style={{ color: '#16675C', fontWeight: 600 }}>
@@ -74,22 +74,20 @@ const AccessoryItem = ({ accessory, searchInput, onProductClick, isLastItem }) =
             {highlightText(accessory.name, searchInput)}
           </Typography>
           
-          <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-                      {accessory.category?.name && (
-                            <Typography
-                                                  variant="caption"
-                                                  sx={{
-                                                    color: '#666',
-                                                    fontSize: '12px',
-                                                    display: 'block',
-                                                    mb: 0.3,
-                                                  }}
-                                                >
-                                                  {accessory.category}
-                                                </Typography>
-            )}
-          </Typography>
-          
+          {accessory.category?.name && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: '#666',
+                fontSize: '12px',
+                display: 'block',
+                mb: 0.3,
+              }}
+            >
+              {accessory.category.name}
+            </Typography>
+          )}
+
           <Typography
             variant="body1"
             sx={{
@@ -97,7 +95,7 @@ const AccessoryItem = ({ accessory, searchInput, onProductClick, isLastItem }) =
               fontWeight: 600,
             }}
           >
-            ${parseFloat(price).toFixed(2)}
+            {formatPrice(price, currency)}
           </Typography>
         </Box>
       </Box>
