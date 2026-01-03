@@ -43,12 +43,11 @@ export default function ProductCardPage() {
         justifyContent: "center",
         gap: { xs: 4, md: 8 }
       }}>
-        {/* СЛАЙДЕР СТРОГО ПО ЦЕНТРУ */}
+
         <Box sx={{ width: { xs: "100%", md: "450px" }, display: 'flex', justifyContent: 'center' }}>
           <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
         </Box>
 
-        {/* ИНФОРМАЦИЯ */}
         <Box sx={{ flex: 1, maxWidth: { xs: "100%", md: 550 }, width: "100%" }}>
           <ProductInfo 
             product={selectedProduct} 

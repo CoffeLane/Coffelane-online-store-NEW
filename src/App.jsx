@@ -2,12 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
-
-const ADMIN_EMAILS = [
-  'admin@coffeelane.com',
-  'admin@example.com',
-];
-
 import HomePage from './pages/HomePage.jsx'
 import NotFoundPage from './pages/NotFoundPage';
 import Header from './components/Header/index.jsx';
@@ -32,46 +26,53 @@ import ProductEdit from './admin/Pages/ProductEdit.jsx';
 import Orders from './admin/Pages/Orders.jsx';
 import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
-import { setTokens, fetchProfile, refreshAccessToken, setAdminMode } from "./store/slice/authSlice";
+import { tokenRefreshedFromInterceptor, fetchProfile, setAdminMode } from "./store/slice/authSlice";
+
+
+
+const ADMIN_EMAILS = [
+  'admin@coffeelane.com',
+  'admin@example.com',
+];
 
 
 function App() {
+
   const dispatch = useDispatch();
-  // Достаем error из стора
   const { user, token, loading, error, isAdmin, email } = useSelector(state => state.auth);
 
   useEffect(() => {
     const handleRefreshed = (e) => {
       const { access, refresh } = e.detail;
-      dispatch(setTokens({ access, refresh }));
+      dispatch(tokenRefreshedFromInterceptor({ access, refresh }));
     };
     window.addEventListener('tokenRefreshed', handleRefreshed);
     return () => window.removeEventListener('tokenRefreshed', handleRefreshed);
   }, [dispatch]);
 
   useEffect(() => {
-    const tokenFromStorage = localStorage.getItem("access"); // или логика через getCleanToken
+    const tokenFromStorage = localStorage.getItem("access");
     const currentToken = token || tokenFromStorage;
-
-    // Вызываем fetchProfile только если есть токен, но нет пользователя
-    // Не вызываем повторно, если пользователь уже загружен (чтобы избежать 429 ошибок)
     if (currentToken && !user && !loading && !error) {
       dispatch(fetchProfile());
     }
-  }, [dispatch, user, loading, token, error]);
-  
-  // 3. ПРОВЕРКА РОЛИ АДМИНА
-  useEffect(() => {
-    if (user && !isAdmin) {
-      const userEmail = email || user.email;
-      const isAdminEmail = userEmail ? ADMIN_EMAILS.some(e => userEmail.toLowerCase() === e.toLowerCase()) : false;
-      const isAdminRole = user.role === 'admin';
+  }, [dispatch, user, token, loading, error]);
 
-      if (isAdminEmail || isAdminRole) {
-        dispatch(setAdminMode(true));
+
+  useEffect(() => {
+    if (user) {
+      const userEmail = email || user.email;
+      if (!userEmail) return;
+
+      const isAdminEmail = ADMIN_EMAILS.some(e => userEmail.toLowerCase() === e.toLowerCase());
+      const isAdminRole = user.role === 'admin';
+      const shouldBeAdmin = isAdminEmail || isAdminRole;
+
+      if (shouldBeAdmin !== isAdmin) {
+        dispatch(setAdminMode(shouldBeAdmin));
       }
     }
-  }, [user, isAdmin, dispatch]);
+  }, [user, isAdmin, email, dispatch]);
 
   return (
     <BrowserRouter>

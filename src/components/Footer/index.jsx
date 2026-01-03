@@ -56,8 +56,6 @@ export default function Footer() {
         try {
             try {
                 const response = await api.post("/newsletter/subscribe", { email: value });
-                // console.log("✅ Newsletter subscription successful:", response.data);
-                
                 setSuccess(true);
                 setValue("");
                 setLoading(false);

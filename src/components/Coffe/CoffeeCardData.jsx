@@ -72,10 +72,9 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
             boxShadow: 2,
             opacity: isOutOfStock ? 0.7 : 1,
           }}>
-            {/* ИЗОБРАЖЕНИЕ С ОБРАБОТКОЙ ОШИБКИ */}
+
             <Box sx={{ position: "relative", width: "100%", height: { xs: 160, md: 250 }, mb: 1 }}>
               <ProductImage src={mainPhoto} alt={item.name} />
-              
               <Box 
                 component="img" 
                 src={favorites?.[itemId] ? favoriteActive : favorite}
@@ -90,7 +89,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
                   p: 0.5
                 }}
                 onClick={(e) => {
-                  e.stopPropagation(); // Чтобы не срабатывал переход на товар
+                  e.stopPropagation(); 
                   onToggleFavorite(item);
                 }} 
               />

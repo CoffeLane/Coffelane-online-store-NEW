@@ -46,7 +46,6 @@ export default function AccessoriesCardData({ products, favorites, onToggleFavor
                         boxShadow: 2,
                         opacity: isOutOfStock ? 0.7 : 1,
                     }}>
-                        {/* Изображение */}
                         <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 300 }, mb: 1,  }}>
                             {item.photos_url?.[0]?.url ? (
                                 <CardMedia component="img" image={item.photos_url[0].url} sx={{ width: "100%", height: "100%", objectFit: "contain" }} />
@@ -62,8 +61,6 @@ export default function AccessoriesCardData({ products, favorites, onToggleFavor
                                 onClick={() => onToggleFavorite(item)}
                             />
                         </Box>
-
-                        {/* Контент */}
                         <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '0 !important' }}>
                             <Box sx={{ my: 1 }}>
                                 <Typography 

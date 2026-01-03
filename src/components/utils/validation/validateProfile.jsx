@@ -28,13 +28,13 @@ export const validateProfile = ({ type = "all", ...formData }) => {
         }
 
         // email validation
-         const forbiddenDomains = ["test.test", "example.com"]; // список запрещённых доменов
+         const forbiddenDomains = ["test.test", "example.com"]; 
         const domain = email.split("@")[1]?.toLowerCase();
 
         if (!email) {
             errors.email = "Email is required";
         } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
-            errors.email = "Invalid email format (example: user@example.com).";
+            errors.email = "Invalid email format (example: user@gmail.com).";
         } else if (forbiddenDomains.includes(domain)) {
             errors.email = "This email domain is not allowed.";
         }
@@ -73,8 +73,6 @@ export const validateProfile = ({ type = "all", ...formData }) => {
                 errors.houseNumber = "Zip code format must be as follows: 12345, 12345-6789, K1A 0B1, SW1A 1AA, 75008, 01001";
             }
         }
-
-        // aptNumber is optional, no validation needed
     }
 
     return errors;

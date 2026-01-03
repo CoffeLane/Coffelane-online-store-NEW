@@ -108,7 +108,6 @@ export default function ProductImageSlider({ photos = [], productName }) {
         )}
       </Box>
 
-      {/* Сетка миниатюр с заглушками */}
       {photoUrls.length > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap" }}>
           {photoUrls.map((img, index) => (

@@ -2,65 +2,25 @@ import axios from 'axios';
 
 const API_URL = 'https://onlinestore-928b.onrender.com/api';
 
-// Базовый экземпляр
+// Базовий екземпляр для звичайних запитів (логін, реєстрація, рефреш)
 const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Экземпляр с авторизацией
+// Екземпляр для запитів, де потрібна авторизація
 export const apiWithAuth = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
 const getCleanToken = (key) => {
-  try {
-    // Для refresh token сначала проверяем localStorage напрямую
-    if (key === 'refresh') {
-      const refreshToken = localStorage.getItem('refresh');
-      if (refreshToken) {
-        return refreshToken.replace(/^"+|"+$/g, '');
-      }
-    }
-    
-    // Для access token и других ключей проверяем Redux Persist
-    const persistData = localStorage.getItem('persist:auth');
-    if (!persistData) {
-      // Если нет persist:auth, для access token проверяем localStorage напрямую
-      if (key === 'token') {
-        const accessToken = localStorage.getItem('access');
-        if (accessToken) {
-          return accessToken.replace(/^"+|"+$/g, '');
-        }
-      }
-      return null;
-    }
-    
-    const authState = JSON.parse(persistData);
-    // Извлекаем значение и убираем кавычки, которые добавляет Redux Persist
-    let token = authState[key];
-    if (!token || token === 'null' || token === 'undefined') {
-      // Если не нашли в persist:auth, для access token проверяем localStorage
-      if (key === 'token') {
-        const accessToken = localStorage.getItem('access');
-        if (accessToken) {
-          return accessToken.replace(/^"+|"+$/g, '');
-        }
-      }
-      return null;
-    }
-    return token.replace(/^"+|"+$/g, '');
-  } catch (e) {
-    // В случае ошибки, для access token проверяем localStorage напрямую
-    if (key === 'token') {
-      const accessToken = localStorage.getItem('access');
-      if (accessToken) {
-        return accessToken.replace(/^"+|"+$/g, '');
-      }
-    }
+  const storageKey = key === 'refresh' ? 'refresh' : 'access';
+  const rawToken = localStorage.getItem(storageKey);
+  if (!rawToken || rawToken === 'null' || rawToken === 'undefined' || rawToken === '""') {
     return null;
   }
+  return rawToken.replace(/^"+|"+$/g, '');
 };
 
 let isRefreshing = false;
@@ -74,38 +34,34 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Интерцептор запроса
+// Додаємо токен до кожного запиту apiWithAuth
 apiWithAuth.interceptors.request.use((config) => {
-  const token = getCleanToken('token');
+  const token = getCleanToken('access'); // виправлено ключ на 'access'
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Интерцептор ответа
 apiWithAuth.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // ПРОВЕРКА: Если ошибка не связана с запросом или нет URL, просто отклоняем
     if (!originalRequest || !originalRequest.url) {
       return Promise.reject(error);
     }
 
-    // Если 401 на самом запросе обновления токена — выходим
+    // Запобігаємо циклу на самому рефреші
     if (originalRequest.url.includes('/auth/refresh')) {
       isRefreshing = false;
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Пропускаем автоматическое обновление токена, если установлен флаг _skipAuthRefresh
       if (originalRequest._skipAuthRefresh) {
         return Promise.reject(error);
       }
-      
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -127,9 +83,9 @@ apiWithAuth.interceptors.response.use(
         const response = await api.post('/auth/refresh', { refresh: refreshToken });
         const { access, refresh } = response.data;
 
-        // Оповещаем App.jsx об обновлении через событие
-        window.dispatchEvent(new CustomEvent('tokenRefreshed', { 
-          detail: { access, refresh } 
+        // Подія для синхронізації з Redux/App
+        window.dispatchEvent(new CustomEvent('tokenRefreshed', {
+          detail: { access, refresh }
         }));
 
         processQueue(null, access);
@@ -140,11 +96,19 @@ apiWithAuth.interceptors.response.use(
       } catch (err) {
         isRefreshing = false;
         processQueue(err, null);
-        // Не делаем редирект здесь, пусть Slice решает, что делать с ошибкой
+
+        // Якщо рефреш не вдався (токен прострочений зовсім)
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          // ТВОЯ ВАЖЛИВА ПЕРЕВІРКА:
+          if (!originalRequest.url.includes('/auth/login')) {
+            console.error("Session expired. Logging out...");
+            localStorage.clear();
+            window.location.href = '/recovery_password/login';
+          }
+        }
         return Promise.reject(err);
       }
     }
-
     return Promise.reject(error);
   }
 );

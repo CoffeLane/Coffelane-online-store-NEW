@@ -6,30 +6,30 @@ import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import { btnCart, btnInCart } from "../../styles/btnStyles.jsx";
 import { h4, h5, h6 } from "../../styles/typographyStyles.jsx";
-import { fetchOrders } from "../../store/slice/ordersSlice.jsx";
+import { fetchUserOrders } from "../../store/slice/ordersSlice.jsx";
 import deliveredImg from "../../assets/images/status/delivered.png";
 import deliveringImg from "../../assets/images/status/delivering.png";
 import cancelledImg from "../../assets/images/status/cancelled.png";
+import { useNavigate } from "react-router-dom";
 
 export default function OrderHistory() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Проверка на мобилку
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useDispatch();
   const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
 
+
   useEffect(() => {
-    dispatch(fetchOrders({ page: 1, size: 10 }));
+    dispatch(fetchUserOrders({ page: 1, size: 20 }));
   }, [dispatch]);
 
   const location = useLocation();
 
   useEffect(() => {
-    // Если мы пришли со страницы успеха и в стейте есть ID заказа
     if (location.state?.openOrderId) {
       setOpenOrderId(location.state.openOrderId);
-
-      // Опционально: прокрутка к этому заказу, если список длинный
       setTimeout(() => {
         const element = document.getElementById(`order-${location.state.openOrderId}`);
         if (element) element.scrollIntoView({ behavior: 'smooth' });
@@ -74,7 +74,8 @@ export default function OrderHistory() {
     return <Alert severity="error">{typeof error === 'string' ? error : 'Failed to load orders.'}</Alert>;
   }
 
-  const ordersList = orders?.data || (Array.isArray(orders) ? orders : []);
+
+  const ordersList = Array.isArray(orders) ? [...orders].sort((a, b) => b.id - a.id) : [];
 
   if (ordersList.length === 0) {
     return (
@@ -92,10 +93,11 @@ export default function OrderHistory() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: isMobile ? 1 : 0 }}>
       {ordersList.map(order => {
-        const totalAmount = order.positions?.reduce((sum, p) => {
-          const price = p.product?.total_price || p.accessory?.total_price || p.price || 0;
-          return sum + (price * (p.quantity || 1));
-        }, 0).toFixed(2);
+        const totalAmount = Array.isArray(order.positions)
+          ? order.positions?.reduce((sum, p) => {
+            const price = p.product?.total_price || p.accessory?.total_price || p.price || 0;
+            return sum + (price * (p.quantity || 1));
+          }, 0).toFixed(2) : "0.00";
 
         return (
           <Box key={order.id} id={`order-${order.id}`} sx={{ border: "1px solid #E0E0E0", borderRadius: isMobile ? "16px" : "24px", p: isMobile ? 2 : 3 }}>
@@ -117,11 +119,11 @@ export default function OrderHistory() {
                 </Box>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Date placed</Typography>
-                  <Typography>{new Date(order.billing_details?.created_at).toLocaleDateString()}</Typography>
+                  <Typography>{new Date(order.created_at).toLocaleDateString()}</Typography>
                 </Box>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Total Amount</Typography>
-                  <Typography sx={{ fontWeight: 600 }}>${totalAmount}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>${order.order_amount || totalAmount}</Typography>
                 </Box>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Status</Typography>
@@ -143,14 +145,12 @@ export default function OrderHistory() {
               </Button>
             </Box>
 
-            {/* ДЕТАЛИ ЗАКАЗА (ТОВАРЫ) */}
             <Collapse in={openOrderId === order.id} timeout="auto" unmountOnExit>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3, pt: 2, borderTop: "1px solid #E0E0E0" }}>
                 {order.positions?.map((pos, index) => {
                   const item = pos.product || pos.accessory;
                   return (
                     <Box key={index} sx={{ display: "flex", alignItems: "center", gap: isMobile ? 2 : 3 }}>
-                      {/* Картинка или заглушка */}
                       <Box sx={{
                         width: isMobile ? 60 : 80,
                         height: isMobile ? 60 : 80,
@@ -169,17 +169,15 @@ export default function OrderHistory() {
                         )}
                       </Box>
 
-                      {/* Описание товара */}
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1.1rem", fontWeight: 600, lineHeight: 1.2 }}>
                           {item?.name}
                         </Typography>
                         <Typography sx={{ fontSize: "0.8rem", color: "gray", mt: 0.5 }}>
-                          Quantity: {pos.quantity}
+                          Quantity: {item?.quantity}
                         </Typography>
                       </Box>
 
-                      {/* Цена */}
                       <Typography sx={{ fontWeight: 600, color: "#16675C", fontSize: isMobile ? "0.9rem" : "1rem" }}>
                         ${(item?.total_price || 0).toFixed(2)}
                       </Typography>
@@ -194,3 +192,4 @@ export default function OrderHistory() {
     </Box>
   );
 }
+

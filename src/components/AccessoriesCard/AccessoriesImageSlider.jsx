@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CoffeeIcon from '@mui/icons-material/Coffee'; // Импортируем иконку
+import CoffeeIcon from '@mui/icons-material/Coffee'; 
 
 export default function AccessoriesImageSlider({ photos = [], productName }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -36,7 +36,7 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
   return (
     <Box sx={{ mt: { xs: 2, md: 4 }, maxWidth: { xs: "100%", md: 700 }, mx: "auto", px: { xs: 1, md: 0 } }}>
       <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-        {/* Кнопки навигации показываем только если фото больше одного */}
+
         {photoUrls.length > 1 && (
           <IconButton 
             onClick={handlePrev} 
@@ -91,7 +91,6 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
         )}
       </Box>
 
-      {/* Превью (миниатюры) показываем только если фото больше одного */}
       {photoUrls.length > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap", px: { xs: 1, md: 0 } }}>
           {photoUrls.map((img, index) => (

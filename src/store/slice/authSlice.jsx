@@ -3,22 +3,19 @@ import api from "../api/axios";
 import { apiWithAuth } from "../api/axios";
 import { clearFavorites } from './favoritesSlice';
 import { clearCart } from './cartSlice';
-import { clearBasket } from './basketSlice';
+import { clearBasket, clearBasketState } from './basketSlice';
 
-// Список админских email (можно расширить)
+
 const ADMIN_EMAILS = [
   'admin@coffeelane.com',
   'admin@example.com',
-  // Добавьте сюда другие админские email
 ];
 
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (data, { rejectWithValue }) => {
     try {
-      // Логируем данные для отладки
-      console.log("Registration data being sent:", JSON.stringify(data, null, 2));
-
+      // console.log("Registration data being sent:", JSON.stringify(data, null, 2));
       const res = await api.post("/users/registration", data);
       return res.data;
     } catch (err) {
@@ -27,7 +24,6 @@ export const registerUser = createAsyncThunk(
       console.error("Error status:", err.response?.status);
       console.error("Full error response:", JSON.stringify(err.response?.data, null, 2));
 
-      // Если ошибка в формате {email: Array(1)}, преобразуем её в более читаемый формат
       if (errorData && typeof errorData === 'object') {
         const formattedError = {};
         Object.keys(errorData).forEach(key => {
@@ -65,27 +61,24 @@ export const loginUser = createAsyncThunk(
       });
 
       const profileData = profileRes.data;
-      // console.log("▶ loginUser - profileData (FULL):", JSON.stringify(profileData, null, 2));
-      // console.log("▶ loginUser - profileData.email:", profileData.email);
-      // console.log("▶ loginUser - email from login param:", email);
+      console.log("▶ loginUser - profileData (FULL):", JSON.stringify(profileData, null, 2));
+      console.log("▶ loginUser - profileData.email:", profileData.email);
+      console.log("▶ loginUser - email from login param:", email);
 
       const userEmail = profileData.email || email;
 
-      // console.log("▶ loginUser - final userEmail:", userEmail);
+      console.log("▶ loginUser - final userEmail:", userEmail);
 
-      // Проверяем, является ли пользователь админом по email
       const isAdminEmail = ADMIN_EMAILS.some(adminEmail =>
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       );
 
-      // Проверяем аватарку в разных местах ответа API
-      let avatarUrl = profileData.avatar || 
-                       profileData.profile?.avatar || 
-                       profileData.avatar_url ||
-                       profileData.profile?.avatar_url ||
-                       null;
+      let avatarUrl = profileData.avatar ||
+        profileData.profile?.avatar ||
+        profileData.avatar_url ||
+        profileData.profile?.avatar_url ||
+        null;
 
-      // Если аватарки нет в API ответе, проверяем localStorage (может быть сохранен с предыдущей сессии)
       if (!avatarUrl) {
         const savedAvatar = localStorage.getItem('userAvatar');
         if (savedAvatar) {
@@ -94,18 +87,15 @@ export const loginUser = createAsyncThunk(
         }
       }
 
-      // Формируем полный URL аватарки, если она есть
       let fullAvatarUrl = null;
       if (avatarUrl) {
-        fullAvatarUrl = avatarUrl.startsWith('http') 
-          ? avatarUrl 
+        fullAvatarUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
           : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-        // Сохраняем аватарку в localStorage при логине
         localStorage.setItem('userAvatar', fullAvatarUrl);
         console.log("💾 Avatar saved to localStorage on login:", fullAvatarUrl);
       }
 
-      // profileData уже содержит все данные профиля, включая аватар
       const profileWithEmail = {
         ...profileData,
         email: userEmail,
@@ -183,7 +173,6 @@ export const loginWithGoogle = createAsyncThunk(
 );
 
 
-// Обновление access token через refresh token
 export const refreshAccessToken = createAsyncThunk(
   "auth/refreshToken",
   async (_, { rejectWithValue }) => {
@@ -209,10 +198,6 @@ export const refreshAccessToken = createAsyncThunk(
 
       return rejectWithValue("No access token in refresh response");
     } catch (err) {
-      // Если refresh token тоже истек, НЕ очищаем токены
-      // Пользователь остается залогиненным, токены могут быть обновлены позже
-      // localStorage.removeItem("access");
-      // localStorage.removeItem("refresh");
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -222,9 +207,7 @@ export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
   async (_, { rejectWithValue }) => {
     try {
-      // ИСПРАВЛЕНО: apiWithAuth БЕЗ скобок, так как это экспорт из axios.js
       const res = await apiWithAuth.get("/users/info");
-      
       console.log("🔍 fetchProfile API response:", {
         data: res.data,
         avatar: res.data.avatar,
@@ -232,90 +215,77 @@ export const fetchProfile = createAsyncThunk(
         profile: res.data.profile,
         fullData: JSON.stringify(res.data, null, 2)
       });
-      
+
       const userEmail = res.data.email;
       const userId = res.data.profile?.id || res.data.id || res.data.profile_id;
       const isAdminEmail = userEmail ? ADMIN_EMAILS.some(adminEmail =>
         userEmail.toLowerCase().trim() === adminEmail.toLowerCase().trim()
       ) : false;
 
-      // Проверяем аватарку в разных местах ответа API
-      let avatarUrl = res.data.avatar || 
-                       res.data.profile?.avatar || 
-                       res.data.avatar_url ||
-                       res.data.profile?.avatar_url ||
-                       null;
+      let avatarUrl = res.data.avatar ||
+        res.data.profile?.avatar ||
+        res.data.avatar_url ||
+        res.data.profile?.avatar_url ||
+        null;
 
       // Если аватарки нет в ответе API, пробуем получить по ID пользователя через /users/list/{id}/
       // Но только если эндпоинт доступен (не все API поддерживают этот эндпоинт)
-      if (!avatarUrl && userId) {
-        try {
-          console.log("🔍 Avatar not in /users/info, trying /users/list/{id}/ for userId:", userId);
-          const userListRes = await apiWithAuth.get(`/users/list/${userId}/`);
-          console.log("🔍 User list response:", userListRes.data);
-          
-          avatarUrl = userListRes.data?.avatar || 
-                       userListRes.data?.profile?.avatar || 
-                       userListRes.data?.avatar_url ||
-                       userListRes.data?.profile?.avatar_url ||
-                       null;
-          
-          if (avatarUrl) {
-            console.log("✅ Avatar found via /users/list/{id}/:", avatarUrl);
-          }
-        } catch (listError) {
-          // Эндпоинт может быть недоступен (404) или требовать других прав
-          console.log("⚠️ Error fetching user by ID:", listError.response?.status, listError.message);
-          console.log("⚠️ Endpoint /users/list/{id}/ may not be available, continuing with localStorage check");
-          // Игнорируем ошибку и продолжаем с localStorage
-        }
-      }
+      // if (!avatarUrl && userId) {
+      //   try {
+      //     console.log("🔍 Avatar not in /users/info, trying /users/list/{id}/ for userId:", userId);
+      //     const userListRes = await apiWithAuth.get(`/users/list/${userId}/`);
+      //     console.log("🔍 User list response:", userListRes.data);
 
-      // Если аватарки нет в ответе API, проверяем localStorage
-      // (возможно, аватар был загружен ранее, но API не возвращает его)
+      //     avatarUrl = userListRes.data?.avatar || 
+      //                  userListRes.data?.profile?.avatar || 
+      //                  userListRes.data?.avatar_url ||
+      //                  userListRes.data?.profile?.avatar_url ||
+      //                  null;
+
+      //     if (avatarUrl) {
+      //       console.log("✅ Avatar found via /users/list/{id}/:", avatarUrl);
+      //     }
+      //   } catch (listError) {
+      //     // Эндпоинт может быть недоступен (404) или требовать других прав
+      //     console.log("⚠️ Error fetching user by ID:", listError.response?.status, listError.message);
+      //     console.log("⚠️ Endpoint /users/list/{id}/ may not be available, continuing with localStorage check");
+      //     // Игнорируем ошибку и продолжаем с localStorage
+      //   }
+      // }
+
       if (!avatarUrl) {
         const savedAvatar = localStorage.getItem('userAvatar');
         if (savedAvatar) {
-          console.log("💾 Avatar not in API response, using saved avatar from localStorage:", savedAvatar);
+          // console.log("💾 Avatar not in API response, using saved avatar from localStorage:", savedAvatar);
           avatarUrl = savedAvatar;
         }
       }
 
-      // Формируем полный URL аватарки, если она есть
       let fullAvatarUrl = null;
       if (avatarUrl) {
-        fullAvatarUrl = avatarUrl.startsWith('http') 
-          ? avatarUrl 
+        fullAvatarUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
           : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-        // Сохраняем аватарку в localStorage
         localStorage.setItem('userAvatar', fullAvatarUrl);
         console.log("💾 Avatar saved to localStorage:", fullAvatarUrl);
       } else {
-        // Если аватарки нет в API ответе, проверяем localStorage
         const savedAvatar = localStorage.getItem('userAvatar');
         if (savedAvatar) {
           console.log("💾 Using saved avatar from localStorage (API returned null):", savedAvatar);
           fullAvatarUrl = savedAvatar;
-          // Убеждаемся, что аватар сохранен в localStorage
           localStorage.setItem('userAvatar', savedAvatar);
         } else {
-          // НЕ удаляем из localStorage, если аватар был загружен ранее
-          // Проверяем флаг загрузки
           const avatarUploaded = localStorage.getItem('avatarUploaded');
           if (avatarUploaded === 'true') {
-            console.log("⚠️ Avatar was uploaded but not found in API response or localStorage");
-            console.log("⚠️ Avatar may need to be re-uploaded or backend needs to return avatar URL");
+            // console.log("⚠️ Avatar was uploaded but not found in API response or localStorage");
+            // console.log("⚠️ Avatar may need to be re-uploaded or backend needs to return avatar URL");
           } else {
-            // Если аватарки никогда не было, удаляем из localStorage
             localStorage.removeItem('userAvatar');
-            console.log("⚠️ No avatar in API response or localStorage");
+            // console.log("⚠️ No avatar in API response or localStorage");
           }
         }
       }
-
-      // Используем fullAvatarUrl, если он есть (из API или localStorage)
       const finalAvatarUrl = fullAvatarUrl || null;
-      
       const profileData = res.data.profile ? {
         ...res.data.profile,
         email: userEmail,
@@ -328,10 +298,10 @@ export const fetchProfile = createAsyncThunk(
         avatar: finalAvatarUrl
       };
 
-      console.log("✅ fetchProfile returning:", {
-        user: profileData,
-        avatar: profileData.avatar
-      });
+      // console.log("✅ fetchProfile returning:", {
+      //   user: profileData,
+      //   avatar: profileData.avatar
+      // });
 
       return {
         user: profileData,
@@ -340,7 +310,6 @@ export const fetchProfile = createAsyncThunk(
         isAdmin: isAdminEmail
       };
     } catch (err) {
-      // Если запрос упал даже после попытки интерцептора обновить токен
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -348,68 +317,69 @@ export const fetchProfile = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   "auth/logout",
-  async (_, { dispatch, rejectWithValue }) => {
+  async (_, { dispatch }) => {
+    // 1. Достаем токен и ОЧЕНЬ тщательно чистим его
+    const rawRefresh = localStorage.getItem("refresh");
+
+    // Если токена нет совсем, просто чистим локально и выходим
+    if (!rawRefresh) {
+      dispatch(clearAuthState());
+      dispatch(clearCart());
+      dispatch(clearFavorites());
+      dispatch(clearBasketState());
+      return;
+    }
+
+    const cleanRefresh = rawRefresh.replace(/^"+|"+$/g, "");
 
     try {
-      // Пытаемся вызвать logout на сервере, но игнорируем ошибки
-      // (токен может быть уже истек, но logout все равно должен работать)
-      try {
-        await apiWithAuth.post("/auth/logout");
-      } catch (logoutError) {
-        // Игнорируем ошибки logout (400, 401, 404 и т.д.)
-        // Пользователь все равно должен быть разлогинен локально
-        // console.log("Logout API error (ignored):", logoutError.response?.status);
-      }
+      // 2. Пытаемся уведомить сервер
+      await apiWithAuth.post("/auth/logout", { refresh: cleanRefresh });
+    } catch (serverError) {
+      // Если 400 или 401 — серверу этот токен уже не важен
+      console.warn("Server-side logout failed, proceeding with local cleanup", serverError.response?.data);
+    } finally {
+      // 3. САМОЕ ВАЖНОЕ: Что бы ни случилось на сервере, чистим браузер
+      localStorage.clear(); // Удаляет всё: access, refresh, isAdmin, userAvatar
 
-      // Очищаем корзину при разлогинивании
-      dispatch(clearCart());
-      try {
-        await dispatch(clearBasket());
-      } catch (basketError) {
-        // Игнорируем ошибки очистки корзины при logout
-      }
-
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-      localStorage.removeItem("persist:auth");
-      // НЕ удаляем userAvatar - он должен сохраняться между сессиями
-      // localStorage.removeItem("userAvatar");
-      dispatch(clearFavorites());
       dispatch(clearAuthState());
-
-      return {};
-    } catch (err) {
-      // Очищаем корзину даже при ошибке logout
       dispatch(clearCart());
-      try {
-        await dispatch(clearBasket());
-      } catch (basketError) {
-        // Игнорируем ошибки
-      }
-
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-      localStorage.removeItem("persist:auth");
-      dispatch(clearAuthState());
       dispatch(clearFavorites());
-      return rejectWithValue(err.response?.data || err.message);
+      dispatch(clearBasketState());
+
+      // Перенаправление на главную (опционально, если не срабатывает автоматически)
+      window.location.href = '/';
     }
   }
 );
 
 export const changePassword = createAsyncThunk(
   "auth/changePassword",
-  async ({ oldPassword, newPassword }, { rejectWithValue }) => {
+  async ({ oldPassword, newPassword }, { rejectWithValue, getState }) => {
     try {
+      // 1. Берем самый актуальный токен прямо из стейта перед запросом
+      const state = getState();
+      const token = state.auth?.token || localStorage.getItem("access")?.replace(/^"+|"+$/g, "");
+
       const payload = {
         old_password: oldPassword,
         new_password: newPassword
       };
 
-      const res = await apiWithAuth.put("/auth/change_password", payload);
+      // 2. Явно передаем заголовки, если apiWithAuth иногда их "теряет"
+      const res = await apiWithAuth.put("/auth/change_password", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
       return res.data;
     } catch (err) {
+      // Если сервер вернул 401 даже с токеном, возможно, нужно разлогинить пользователя
+      if (err.response?.status === 401) {
+        // Опционально: dispatch(logoutUser());
+        return rejectWithValue("Сессия истекла. Пожалуйста, войдите снова.");
+      }
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -419,37 +389,19 @@ export const changePassword = createAsyncThunk(
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    token: localStorage.getItem("access") || null,
+    token: localStorage.getItem("access")?.replace(/^"+|"+$/g, "") || null,
     user: null,
     profile: null,
-    email: null, // Сохраняем email отдельно
+    email: null,
     loading: false,
     error: null,
-    tokenInvalid: false, // Флаг для отслеживания невалидного токена
+    tokenInvalid: false,
     changePasswordLoading: false,
     changePasswordError: null,
     changePasswordSuccess: false,
-    // Проверяем isAdmin из localStorage, но также проверяем роль пользователя из persist
     isAdmin: (() => {
       const storedIsAdmin = localStorage.getItem("isAdmin");
-      if (storedIsAdmin === "true") return true;
-      if (storedIsAdmin === "false") return false;
-      // Если в localStorage нет значения, проверяем persist:auth
-      try {
-        const persistAuth = localStorage.getItem("persist:auth");
-        if (persistAuth) {
-          const parsed = JSON.parse(persistAuth);
-          if (parsed.profile) {
-            const profile = JSON.parse(parsed.profile);
-            if (profile?.role === 'admin' || profile?.role === 'Administrator') {
-              return true;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Error parsing persist:auth:", e);
-      }
-      return false;
+      return storedIsAdmin === "true";
     })(),
   },
   reducers: {
@@ -461,9 +413,6 @@ const authSlice = createSlice({
       state.error = null;
       state.loading = false;
       state.tokenInvalid = false;
-      state.changePasswordLoading = false;
-      state.changePasswordError = null;
-      state.changePasswordSuccess = false;
       state.isAdmin = false;
       localStorage.removeItem("isAdmin");
     },
@@ -471,33 +420,22 @@ const authSlice = createSlice({
       state.changePasswordSuccess = false;
     },
     tokenRefreshedFromInterceptor: (state, action) => {
-      state.token = action.payload.access;
+      state.token = action.payload.access?.replace(/^"+|"+$/g, "");
       state.tokenInvalid = false;
     },
     setAdminMode: (state, action) => {
+      if (state.isAdmin === action.payload) return;
       state.isAdmin = action.payload;
       if (action.payload) {
         localStorage.setItem("isAdmin", "true");
-        // Устанавливаем роль в user объекте для совместимости
-        if (state.user) {
-          state.user.role = "admin";
-        }
       } else {
         localStorage.removeItem("isAdmin");
-        if (state.user && state.user.role === "admin") {
-          delete state.user.role;
-        }
       }
-    },
-    // Внутри authSlice.js
-    setTokens: (state, action) => {
-      state.token = action.payload.access;
-      // если хранишь refresh в сторе, то и его:
-      // state.refreshToken = action.payload.refresh;
     },
   },
   extraReducers: (builder) => {
     builder
+      // REGISTER + LOGIN
       .addCase(registerAndLoginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -506,184 +444,86 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.profile = action.payload.profile;
-        state.tokenInvalid = false; // Сбрасываем флаг при успешной регистрации
-      })
-      .addCase(registerAndLoginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.token = action.payload.token?.replace(/^"+|"+$/g, "");
+        state.tokenInvalid = false;
       })
 
+      // LOGIN USER (ОБЪЕДИНЕННЫЙ И ИСПРАВЛЕННЫЙ)
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;      // user для Header
-        state.profile = action.payload.profile; // если тебе нужен profile отдельно
-        state.token = action.payload.token || null; // если есть токен
-        state.email = action.payload.email || null; // сохраняем email
-        state.tokenInvalid = false; // Сбрасываем флаг при успешном логине
-        
-        // Сохраняем аватар в localStorage, если он есть в user
-        if (action.payload.user?.avatar) {
-          localStorage.setItem('userAvatar', action.payload.user.avatar);
-          console.log("💾 Avatar saved to localStorage in loginUser.fulfilled:", action.payload.user.avatar);
-        }
-        
-        // Устанавливаем флаг админа из payload
-        if (action.payload.isAdmin) {
-          state.isAdmin = true;
-          localStorage.setItem("isAdmin", "true");
-          if (state.user) {
-            state.user.role = "admin";
-          }
-        }
-      })
+       // 1. Очищуємо токени від лапок ПЕРЕД збереженням
+      const cleanAccess = action.payload.token?.replace(/^"+|"+$/g, "");
+      // Якщо refresh приходить окремо (залежить від вашого API)
+      const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
+
+      state.token = cleanAccess;
+      state.user = action.payload.user;
+      state.profile = action.payload.profile;
+      state.email = action.payload.email || null;
+      state.tokenInvalid = false;
+
+      // 2. Зберігаємо чисті рядки в localStorage
+      if (cleanAccess) localStorage.setItem("access", cleanAccess);
+      if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
+      
+      if (action.payload.user?.avatar) {
+        localStorage.setItem('userAvatar', action.payload.user.avatar);
+      }
+      
+      if (action.payload.isAdmin) {
+        state.isAdmin = true;
+        localStorage.setItem("isAdmin", "true");
+      }
+    })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(loginWithGoogle.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(loginWithGoogle.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload.user;
-        state.profile = action.payload.profile;
-        state.token = action.payload.access || null;
-        state.email = action.payload.user?.email || null;
-        state.tokenInvalid = false; // Сбрасываем флаг при успешном логине
-        // Устанавливаем флаг админа из payload
-        if (action.payload.isAdmin) {
-          state.isAdmin = true;
-          localStorage.setItem("isAdmin", "true");
-          if (state.user) {
-            state.user.role = "admin";
-          }
-        }
-      })
-      .addCase(loginWithGoogle.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.user = null;
-        state.profile = null;
-        state.token = null;
-        state.email = null;
-        state.tokenInvalid = false;
-        state.isAdmin = false;
-        state.favorites = [];
-        state.toggling = {};
-        state.loading = false;
-        state.error = null;
-        localStorage.removeItem("isAdmin");
-      })
-      .addCase(logoutUser.rejected, (state) => {
-        state.user = null;
-        state.profile = null;
-        state.token = null;
-        state.email = null;
-        state.tokenInvalid = false;
-      })
+
+      // FETCH PROFILE
       .addCase(fetchProfile.fulfilled, (state, action) => {
+        state.loading = false;
         state.user = action.payload.user;
         state.profile = action.payload.profile;
         state.email = action.payload.email || null;
-        state.loading = false;
-        state.tokenInvalid = false; // Сбрасываем флаг при успешной загрузке
-        
-        console.log("🔄 fetchProfile.fulfilled - payload:", {
-          userAvatar: action.payload.user?.avatar,
-          profileAvatar: action.payload.profile?.avatar,
-          user: action.payload.user,
-          profile: action.payload.profile
-        });
-        
-        // Сохраняем аватар в localStorage и убеждаемся, что он в user объекте
-        const avatarUrl = action.payload.user?.avatar || action.payload.profile?.avatar;
-        if (avatarUrl) {
-          localStorage.setItem('userAvatar', avatarUrl);
-          console.log("💾 Avatar saved to localStorage in fetchProfile.fulfilled:", avatarUrl);
-          // Убеждаемся, что аватар есть в user объекте
-          if (state.user) {
-            state.user.avatar = avatarUrl;
-          }
-          if (state.profile) {
-            state.profile.avatar = avatarUrl;
-          }
-        } else {
-          // Если аватарки нет в payload, проверяем localStorage
-          const savedAvatar = localStorage.getItem('userAvatar');
-          if (savedAvatar) {
-            console.log("💾 Using saved avatar from localStorage in fetchProfile.fulfilled:", savedAvatar);
-            if (state.user) {
-              state.user.avatar = savedAvatar;
-            }
-            if (state.profile) {
-              state.profile.avatar = savedAvatar;
-            }
-          } else {
-            // НЕ удаляем из localStorage, если аватар был загружен ранее
-            // Проверяем флаг загрузки
-            const avatarUploaded = localStorage.getItem('avatarUploaded');
-            if (avatarUploaded === 'true') {
-              console.log("⚠️ Avatar was uploaded but not found in payload or localStorage");
-              console.log("⚠️ Avatar may need to be re-uploaded");
-            } else {
-              // Если аватарки никогда не было, удаляем из localStorage
-              localStorage.removeItem('userAvatar');
-              console.log("⚠️ No avatar in payload or localStorage, removed from localStorage");
-            }
-          }
-        }
-        
-        // Устанавливаем флаг админа из payload
+        state.tokenInvalid = false;
+        state.user.avatar && localStorage.setItem('userAvatar', state.user.avatar);
+
         if (action.payload.isAdmin) {
           state.isAdmin = true;
           localStorage.setItem("isAdmin", "true");
-          if (state.user) {
-            state.user.role = "admin";
-          }
         }
       })
+
+      // LOGOUT
+      .addCase(logoutUser.fulfilled, (state) => {
+        // Полный сброс стейта при успешном выходе
+        return {
+          ...authSlice.getInitialState(),
+          token: null,
+          isAdmin: false
+        };
+      })
+
+      // REFRESH TOKEN
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
-        state.token = action.payload.access;
-        state.tokenInvalid = false; // Сбрасываем флаг при успешном обновлении
+        const cleanAccess = action.payload.access?.replace(/^"+|"+$/g, "");
+        const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
+        state.token = cleanAccess;
+        state.tokenInvalid = false;
+
+        if (cleanAccess) localStorage.setItem("access", cleanAccess);
+        if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
       })
       .addCase(refreshAccessToken.rejected, (state) => {
-        // Если refresh token истек, помечаем токен как невалидный
-        // Но НЕ очищаем данные пользователя - пользователь остается залогиненным
         state.tokenInvalid = true;
-        // Не очищаем токены из localStorage, чтобы можно было попробовать обновить позже
-        // localStorage.removeItem("access");
-        // localStorage.removeItem("refresh");
       })
-      .addCase(fetchProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchProfile.rejected, (state, action) => {
-        state.loading = false;
 
-        // Если токен невалиден (401), помечаем токен как невалидный
-        // Но НЕ очищаем данные пользователя - пользователь остается залогиненным
-        // Токен будет автоматически обновляться при следующем запросе через refresh token
-        if (action.payload?.code === "token_not_valid" || action.payload?.silent) {
-          // Помечаем токен как невалидный, но сохраняем данные пользователя
-          state.tokenInvalid = true;
-          // НЕ очищаем user, profile, email - пользователь остается залогиненным
-          // НЕ очищаем isAdmin - флаг админа сохраняется
-          // Не сохраняем ошибку, если это тихая ошибка (истекший токен)
-        } else {
-          // Для других ошибок сохраняем сообщение об ошибке
-          state.error = action.payload;
-          state.tokenInvalid = false; // Сбрасываем флаг для других ошибок
-        }
-      },
-      )
+      // CHANGE PASSWORD
       .addCase(changePassword.pending, (state) => {
         state.changePasswordLoading = true;
         state.changePasswordError = null;
@@ -700,6 +540,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthState, clearChangePasswordSuccess, setAdminMode, tokenRefreshedFromInterceptor, setTokens } = authSlice.actions;
+export const { clearAuthState, clearChangePasswordSuccess, setAdminMode, tokenRefreshedFromInterceptor } = authSlice.actions;
 export default authSlice.reducer;
-

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography, Button } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import Search from '../../components/Search/index.jsx';
 import { h5 } from "../../styles/typographyStyles.jsx";
@@ -7,141 +7,94 @@ import ProductsTableOrders from '../AdminComponents/ProductsTableOrders.jsx';
 import AdminBreadcrumbs from '../AdminBreadcrumbs/AdminBreadcrumbs.jsx';
 import OrderDetails from '../AdminComponents/OrderDetails.jsx';
 import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
-import userAvatar from '../../assets/admin/user-avatar.jpg';
+
+// Константи для зображень
+const PRODUCT_PLACEHOLDER = 'https://via.placeholder.com/150?text=No+Product';
 
 export default function Orders() {
   const dispatch = useDispatch();
-  const { orders, loading, error, count, page: currentPage } = useSelector((state) => state.orders);
-  
+
+  // Отримуємо дані з Redux
+  const { orders, loading, error, count } = useSelector((state) => state.orders);
+
   const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+  const rowsPerPage = 20;
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Загружаем заказы при монтировании и при изменении страницы
+  // Завантаження замовлень
   useEffect(() => {
-    dispatch(fetchOrders({ page, size: rowsPerPage }));
+    // Додаємо ordering=-id щоб нові були зверху (якщо бекенд підтримує)
+    dispatch(fetchOrders({ page, size: rowsPerPage, ordering: '-id' }));
   }, [dispatch, page]);
 
-  // Преобразуем данные из API в формат, который ожидают компоненты
-  const transformedOrders = orders.map((order) => {
-    // Форматируем дату
-    const formatDate = (dateString) => {
-      if (!dateString) {
-        console.log("⚠️ No date string provided for order:", order.id);
-        return 'N/A';
-      }
-      try {
+  // Трансформація даних під формат таблиці та деталей
+  const transformedOrders = (orders || [])
+    .slice() // Створюємо копію для безпечного сортування на фронті, якщо бекенд не відсортував
+    .sort((a, b) => b.id - a.id) 
+    .map((order) => {
+      
+      // 1. Форматування дати
+      const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-          console.log("⚠️ Invalid date string:", dateString, "for order:", order.id);
-          return dateString; // Возвращаем исходную строку, если дата невалидна
-        }
-        return date.toLocaleDateString('en-GB', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          year: 'numeric' 
-        });
-      } catch (e) {
-        console.error("❌ Error formatting date:", e, "for order:", order.id, "dateString:", dateString);
-        return dateString || 'N/A';
-      }
-    };
-    
-    // Логируем структуру заказа для отладки (только для первого заказа)
-    if (orders.indexOf(order) === 0) {
-      console.log("📦 First order structure:", {
-        id: order.id,
-        billing_details: order.billing_details,
-        created_at: order.created_at,
-        total: order.total,
-        total_price: order.total_price,
-        positions: order.positions?.length || 0
+        return isNaN(date.getTime()) 
+          ? 'N/A' 
+          : date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      };
+
+      // 2. Ім'я клієнта (беремо з кореня об'єкта згідно з твоїм JSON)
+      const customerName = order.first_name && order.last_name
+        ? `${order.first_name} ${order.last_name}`
+        : `Customer #${order.customer || 'N/A'}`;
+
+      // 3. Список товарів (itemsList)
+      const itemsList = (order.positions || []).map((position) => {
+        const itemData = position.product || position.accessory || {};
+        
+        // Пошук фото товару (не використовуємо тут userAvatar!)
+        const photoUrl = itemData.photos_url?.[0]?.url || 
+                         itemData.product_photos?.[0]?.url ||
+                         itemData.accessory_photos?.[0]?.url ||
+                         PRODUCT_PLACEHOLDER;
+
+        return {
+          name: itemData.name || 'Unknown Product',
+          quantity: position.quantity || 1,
+          price: Number(itemData.price || position.price || 0),
+          image: photoUrl,
+        };
       });
-    }
 
-    // Получаем имя клиента из billing_details или customer_data
-    const customerName = order.billing_details?.first_name && order.billing_details?.last_name
-      ? `${order.billing_details.first_name} ${order.billing_details.last_name}`
-      : order.customer_data?.email?.split('@')[0] || 'Customer';
+      // 4. Загальна кількість одиниць товару
+      const totalItemsCount = itemsList.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
-    // Получаем ID клиента
-    const customerId = order.customer_data?.id || order.user_id || 'N/A';
-
-    // Преобразуем позиции заказа в itemsList
-    const itemsList = (order.positions || []).map((position) => {
-      const product = position.product || position.accessory || {};
-      const photoUrl = product.photos_url?.[0]?.url || 
-                      product.product_photos?.[0]?.url ||
-                      product.accessory_photos?.[0]?.url ||
-                      null;
-      
-      // Получаем цену из product/accessory или position
-      const itemPrice = product.total_price || 
-                       product.price || 
-                       position.total_price || 
-                       position.price || 
-                       0;
-      
       return {
-        name: product.name || position.name || 'Unknown Product',
-        quantity: position.quantity || 1,
-        price: Number(itemPrice) || 0,
-        image: photoUrl || userAvatar,
+        id: order.id,
+        ID: String(order.id),
+        status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending',
+        date: formatDate(order.created_at),
+        customer: customerName,
+        customerPhoto: order.customer_data?.avatar || null, // Передаємо null, якщо немає фото (OrderDetails обробить це)
+        customerId: String(order.customer || 'N/A'),
+        itemsList: itemsList,
+        total: order.order_amount || 0,
+        items: totalItemsCount,
+        originalOrder: order, // Зберігаємо все замовлення для OrderDetails (адреса, телефон тощо)
       };
     });
-
-    // Подсчитываем общее количество товаров
-    const totalItems = itemsList.reduce((sum, item) => sum + (item.quantity || 0), 0);
-
-    // Рассчитываем общую сумму из позиций (как в OrdersHistory)
-    const calculatedTotal = (order.positions || []).reduce((sum, p) => {
-      const price = p.product?.total_price || 
-                   p.accessory?.total_price || 
-                   p.product?.price ||
-                   p.accessory?.price ||
-                   p.total_price || 
-                   p.price || 
-                   0;
-      return sum + (price * (p.quantity || 1));
-    }, 0);
-
-    // Получаем дату из billing_details.created_at (как в OrdersHistory) или других полей
-    const orderDate = order.billing_details?.created_at ||
-                     order.created_at || 
-                     order.date || 
-                     order.order_date || 
-                     order.created || 
-                     order.updated_at ||
-                     order.timestamp ||
-                     order.created_date;
-    
-    return {
-      id: order.id,
-      ID: order.id || order.order_id || 'N/A',
-      status: order.status || 'Pending',
-      date: formatDate(orderDate),
-      customer: customerName,
-      customerPhoto: order.customer_data?.avatar || userAvatar,
-      customerId: String(customerId),
-      itemsList: itemsList,
-      total: order.total || order.total_price || calculatedTotal || 0,
-      items: totalItems,
-      // Сохраняем оригинальные данные для деталей
-      originalOrder: order,
-    };
-  });
 
   const totalPages = Math.ceil((count || 0) / rowsPerPage);
 
   const handlePageChange = (e, newPage) => {
     setPage(newPage);
-    setSelectedOrder(null); // Сбрасываем выбранный заказ при смене страницы
+    setSelectedOrder(null); 
   };
 
   const handleSelectOrder = (order) => {
     setSelectedOrder(order);
   };
 
+  // Стан завантаження
   if (loading && orders.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
@@ -150,29 +103,45 @@ export default function Orders() {
     );
   }
 
+  // Стан помилки
   if (error && orders.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography sx={{ color: '#c62828', mb: 2 }}>
           Error loading orders: {error?.detail || error?.message || 'Unknown error'}
         </Typography>
-        <Typography sx={{ color: '#666' }}>
-          Please try refreshing the page or contact support if the problem persists.
-        </Typography>
+        <Button variant="outlined" onClick={() => window.location.reload()}>Retry</Button>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, width: '100%', gap: { xs: 2, md: 3 }, my: { xs: 2, md: 3 } }}>
-
-      <Box sx={{ flex: selectedOrder ? { xs: 'none', lg: '2 1 0%' } : '1 1 100%', display: 'flex', flexDirection: 'column', minWidth: 0, transition: 'flex 0.3s ease', width: { xs: '100%', lg: 'auto' } }}>
-        <Box mb={3} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 2, sm: 0 } }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: { xs: 'column', lg: 'row' }, 
+      width: '100%', 
+      gap: { xs: 2, md: 3 }, 
+      my: { xs: 2, md: 3 } 
+    }}>
+      {/* Ліва частина: Таблиця */}
+      <Box sx={{ 
+        flex: selectedOrder ? { xs: 'none', lg: '2 1 0%' } : '1 1 100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minWidth: 0, 
+        transition: 'flex 0.3s ease', 
+        width: { xs: '100%', lg: 'auto' } 
+      }}>
+        <Box mb={3} sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: { xs: 2, sm: 0 } 
+        }}>
           <AdminBreadcrumbs />
           <Box display="flex" gap={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              <Search />
-            </Box>
+            <Search />
           </Box>
         </Box>
 
@@ -190,14 +159,14 @@ export default function Orders() {
         </Box>
       </Box>
 
+      {/* Права частина: Деталі замовлення */}
       {selectedOrder && (
         <Box sx={{ 
           width: { xs: '100%', lg: 400 }, 
-          minWidth: { xs: '100%', lg: 300 }, 
-          maxWidth: { xs: '100%', lg: 400 }, 
+          minWidth: { xs: '100%', lg: 350 }, 
+          maxWidth: { xs: '100%', lg: 450 }, 
           display: 'flex', 
-          flexDirection: 'column', 
-          gap: { xs: 2, md: 3 } 
+          flexDirection: 'column'
         }}>
           <OrderDetails order={selectedOrder} />
         </Box>

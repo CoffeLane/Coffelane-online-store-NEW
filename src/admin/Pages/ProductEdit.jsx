@@ -24,7 +24,7 @@ export default function ProductEdit() {
   const [description, setDescription] = useState("");
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [productType, setProductType] = useState('product'); // 'product' или 'accessory'
+  const [productType, setProductType] = useState('product');
 
   const [images, setImages] = useState([]);
   const [cover, setCover] = useState(null);
@@ -36,16 +36,8 @@ export default function ProductEdit() {
     const categoryValid = category && String(category).trim().length > 0;
     const priceStr = price ? String(price).trim() : "";
     const priceValid = priceStr.length > 0 && !isNaN(Number(priceStr)) && Number(priceStr) > 0;
-    
-    // Для аксессуаров вес не обязателен
     const weightStr = weight ? String(weight).trim() : "";
     const weightValid = productType === 'accessory' ? true : weightStr.length > 0;
-    
-    // Временная отладка (можно убрать позже)
-    // console.log("🔍 isProductReady check:", {
-    //   nameValid, categoryValid, priceValid, weightValid,
-    //   productName, category, price, weight, productType
-    // });
     
     return nameValid && categoryValid && priceValid && weightValid;
   }, [productName, category, price, weight, productType]);
@@ -66,8 +58,6 @@ export default function ProductEdit() {
       fetchedIdRef.current = id;
       try {
         let response;
-        
-        // Пробуем разные эндпоинты: админский, обычный продукт, аксессуар
         let lastError = null;
         
         // Пробуем загрузить продукт или аксессуар
@@ -564,7 +554,7 @@ export default function ProductEdit() {
       </Box>
 
       <Grid container spacing={{ xs: 2, md: 3 }} flexWrap={{ xs: 'wrap', md: 'nowrap' }} sx={{ maxWidth: "100%", width: "100%" }}>
-        <Grid item xs={12} md={9} lg={10} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, md: 3 }, maxWidth: "100%", width: "100%" }}>
+        <Grid item xs={12} md={8} lg={10} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, md: 3 }, maxWidth: "100%", width: "100%" }}>
           <Card sx={{ p: { xs: 2, md: 3 }, borderRadius: "24px", width: "100%" }}>
             <UploadImages
               images={images}
@@ -585,7 +575,7 @@ export default function ProductEdit() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3} lg={2} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, md: 3 } }}>
+        <Grid item xs={12} md={4} lg={2} sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, md: 3 } }}>
           <ProductSettings visible={visible} setVisible={setVisible} stock={stock} />
           <RelatedItems onAddItems={() => alert("ADD")} />
           <BottomButtons 

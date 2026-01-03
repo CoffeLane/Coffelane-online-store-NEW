@@ -70,7 +70,7 @@ export default function FavouritePage() {
   const hasLoadedRef = useRef(false);
   const modalOpenedRef = useRef(false);
 
-  // Загрузка данных и проверка авторизации
+
   useEffect(() => {
     if (!token || !user) {
       if (!token && !modalOpenedRef.current) {
@@ -86,7 +86,6 @@ export default function FavouritePage() {
     }
   }, [token, user, dispatch]);
 
-  // Мапа для быстрой проверки состояния "избранное"
   const favoritesMap = useMemo(() => {
     return favorites.reduce((acc, item) => {
       acc[String(item.id)] = true;
@@ -94,7 +93,6 @@ export default function FavouritePage() {
     }, {});
   }, [favorites]);
 
-  // Список всех избранных с защитой от пустых данных
   const allFavorites = useMemo(() => {
     if (!favorites || favorites.length === 0) return [];
     return [...favorites];
@@ -201,7 +199,6 @@ export default function FavouritePage() {
                   />
                 </Box>
 
-                {/* Контент */}
                 <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '8px !important' }}>
                   <Box sx={{ height: { xs: 70, md: 88 }, overflow: "hidden" }}>
                     <Typography 

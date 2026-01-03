@@ -8,8 +8,6 @@ import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined';
 export const CurrencySwitcher = () => {
   const dispatch = useDispatch();
   const currency = useSelector((state) => state.settings.currency);
-  
-  // Состояние для управления открытием меню
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -23,7 +21,7 @@ export const CurrencySwitcher = () => {
 
   const handleSelect = (newCurrency) => {
     dispatch(setCurrency(newCurrency));
-    // Загружаем товары с новой валютой
+    // товары с новой валютой
     dispatch(fetchProducts({ filters: {} })); 
     handleClose();
   };

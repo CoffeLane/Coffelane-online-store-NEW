@@ -1,16 +1,15 @@
-import React, { useState } from "react"; // Добавили useState
+import React, { useState } from "react"; 
 import { Drawer, IconButton, Button, Box, Typography, Divider, useMediaQuery, useTheme } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import CoffeeIcon from '@mui/icons-material/Coffee'; // Импорт иконки для заглушки
+import CoffeeIcon from '@mui/icons-material/Coffee'; 
 import deleteIcon from "../../assets/icons/delete-icon.svg";
 import { btnCart } from "../../styles/btnStyles.jsx";
 import { h3, h5 } from "../../styles/typographyStyles.jsx";
 import { useSelector } from "react-redux";
 import { formatPrice } from "../utils/priceUtils.jsx";
 
-// Вспомогательный компонент для обработки картинки товара в корзине
 const CartItemImage = ({ src, alt, isMobile }) => {
   const [hasError, setHasError] = useState(false);
 
@@ -81,10 +80,7 @@ export default function BasketModal({
             {items.map((item, index) => (
               <Box key={item.id}>
                 <Box sx={{ display: "flex", gap: { xs: 1, md: 2 }, py: { xs: 2, md: 3 }, position: "relative" }}>
-                  
-                  {/* ИСПОЛЬЗУЕМ КОМПОНЕНТ С ЗАГЛУШКОЙ */}
                   <CartItemImage src={item.img} alt={item.name} isMobile={isMobile} />
-
                   <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <Typography sx={{ ...h5, pr: 2, fontSize: { xs: '14px', md: '16px' } }}>

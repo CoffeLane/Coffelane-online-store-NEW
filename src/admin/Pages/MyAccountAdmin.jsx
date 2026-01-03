@@ -72,7 +72,7 @@ export default function MyAccountAdmin() {
   const phoneInputRef = useRef(null);
   const personalDataInitializedRef = useRef(false);
   const addressDataInitializedRef = useRef(false);
-  
+
   // Заполняем данные из Redux store сразу при появлении authUser
   // Данные устанавливаются при первой загрузке или когда authUser меняется
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function MyAccountAdmin() {
       // Устанавливаем данные при первой загрузке или если не редактируем
       if (!personalDataInitializedRef.current || !isEditingPersonal) {
         // console.log("MyAccountAdmin - Setting personalData from authUser:", authUser);
-        
+
         const newPersonalData = {
           firstName: authUser.first_name || "",
           lastName: authUser.last_name || "",
@@ -94,13 +94,13 @@ export default function MyAccountAdmin() {
       }
     }
   }, [authUser, email, isEditingPersonal]);
-  
+
   useEffect(() => {
     if (authUser) {
       // Устанавливаем данные при первой загрузке или если не редактируем
       if (!addressDataInitializedRef.current || !isEditingAddress) {
         // console.log("MyAccountAdmin - Setting addressData from authUser:", authUser);
-        
+
         const newAddressData = {
           country: authUser.country || "",
           state: authUser.state || "",
@@ -121,7 +121,7 @@ export default function MyAccountAdmin() {
   useEffect(() => {
     // Всегда проверяем localStorage для восстановления аватарки после обновления страницы
     const savedAvatar = localStorage.getItem('userAvatar');
-    
+
     // Если аватарка не установлена, но есть в localStorage, восстанавливаем ее
     if (!avatar && savedAvatar) {
       console.log("✅ Restoring avatar from localStorage:", savedAvatar);
@@ -129,11 +129,11 @@ export default function MyAccountAdmin() {
       avatarInitializedRef.current = true;
       return; // Выходим, чтобы не перезаписывать аватарку из authUser
     }
-    
+
     if (authUser) {
       // Проверяем аватарку в разных местах структуры authUser
       const avatarUrl = authUser.avatar || authUser.profile?.avatar;
-      
+
       console.log("🔄 useEffect authUser avatar check:", {
         authUserAvatar: authUser.avatar,
         authUserProfileAvatar: authUser.profile?.avatar,
@@ -141,7 +141,7 @@ export default function MyAccountAdmin() {
         currentAvatar: avatar,
         savedAvatar
       });
-      
+
       if (avatarUrl) {
         // Обновляем аватарку только если она изменилась или еще не установлена
         setAvatar((currentAvatar) => {
@@ -223,21 +223,21 @@ export default function MyAccountAdmin() {
 
     // Валидация полей
     const errors = {};
-    
+
     if (!personalData.firstName?.trim()) {
       errors.firstName = "First name is required";
     }
-    
+
     if (!personalData.lastName?.trim()) {
       errors.lastName = "Last name is required";
     }
-    
+
     if (!personalData.email?.trim()) {
       errors.email = "Email is required";
     } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(personalData.email.trim())) {
       errors.email = "Invalid email format (example: user@example.com)";
     }
-    
+
     // Валидация телефона (если он указан)
     if (personalData.phone && !isValidPhone(personalData.phone)) {
       errors.phone = "Please enter a valid phone number in international format, for example +380931234567";
@@ -265,7 +265,7 @@ export default function MyAccountAdmin() {
         // Если + уже есть, используем как есть, иначе добавляем
         cleanPhone = normalized.startsWith("+") ? normalized : `+${normalized}`;
       }
-      
+
       const updateData = {
         profile: {
           first_name: personalData.firstName?.trim() || "",
@@ -284,45 +284,45 @@ export default function MyAccountAdmin() {
         setPersonalSuccess("Personal information saved successfully!");
         setTimeout(() => setPersonalSuccess(""), 3000);
         setIsEditingPersonal(false);
-        
+
         // Обновляем профиль с сервера, чтобы получить актуальные данные
         await dispatch(fetchProfile());
       } catch (error) {
         // Если токен истек (401), пытаемся обновить его
         if (error.response?.status === 401) {
           // console.warn("⚠️ Token expired when saving personal info, attempting to refresh...");
-          
+
           const refreshResult = await dispatch(refreshAccessToken());
-          
+
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
             // Токен обновлен, повторяем запрос с новым токеном
             // console.log("✅ Token refreshed, retrying save...");
-            
+
             await apiWithAuth.patch("/users/update", updateData);
 
             setPersonalSuccess("Personal information saved successfully!");
             setTimeout(() => setPersonalSuccess(""), 3000);
             setIsEditingPersonal(false);
-            
+
             // Обновляем профиль с сервера, чтобы получить актуальные данные
             await dispatch(fetchProfile());
           } else {
             // Не удалось обновить токен
             // console.warn("⚠️ Failed to refresh token", refreshResult);
             const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' || 
-                                   errorPayload?.detail?.includes('expired') ||
-                                   errorPayload?.detail?.includes('Token is expired');
-            
+            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
+              errorPayload?.detail?.includes('expired') ||
+              errorPayload?.detail?.includes('Token is expired');
+
             if (isTokenExpired) {
               // Refresh token истек - сессия закончилась
-              setPersonalErrors({ 
-                general: "Your session has expired. Please log out and log in again to continue." 
+              setPersonalErrors({
+                general: "Your session has expired. Please log out and log in again to continue."
               });
             } else {
               // Другая ошибка при обновлении токена
-              setPersonalErrors({ 
-                general: "Failed to save. Please try again or refresh the page." 
+              setPersonalErrors({
+                general: "Failed to save. Please try again or refresh the page."
               });
             }
           }
@@ -331,10 +331,10 @@ export default function MyAccountAdmin() {
           // console.error("Error saving personal info:", error);
           // console.error("Error response:", error.response?.data);
           // console.error("Error status:", error.response?.status);
-          
+
           const errorData = error.response?.data;
           let errorMessage = "Failed to save personal information. Please try again.";
-          
+
           if (errorData) {
             // Проверяем ошибки валидации от сервера
             if (errorData.profile) {
@@ -357,14 +357,14 @@ export default function MyAccountAdmin() {
               errorMessage = errorData;
             }
           }
-          
+
           setPersonalErrors({ general: errorMessage });
         }
       }
     } catch (error) {
       // console.error("Error saving personal info:", error);
-      setPersonalErrors({ 
-        general: "An unexpected error occurred. Please try again." 
+      setPersonalErrors({
+        general: "An unexpected error occurred. Please try again."
       });
     } finally {
       setPersonalLoading(false);
@@ -420,45 +420,45 @@ export default function MyAccountAdmin() {
         setAddressSuccess("Address saved successfully!");
         setTimeout(() => setAddressSuccess(""), 3000);
         setIsEditingAddress(false);
-        
+
         // Обновляем профиль с сервера, чтобы получить актуальные данные
         await dispatch(fetchProfile());
       } catch (error) {
         // Если токен истек (401), пытаемся обновить его
         if (error.response?.status === 401) {
           // console.warn("⚠️ Token expired when saving address, attempting to refresh...");
-          
+
           const refreshResult = await dispatch(refreshAccessToken());
-          
+
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
             // Токен обновлен, повторяем запрос с новым токеном
             // console.log("✅ Token refreshed, retrying save...");
-            
+
             await apiWithAuth.patch("/users/update", updateData);
 
             setAddressSuccess("Address saved successfully!");
             setTimeout(() => setAddressSuccess(""), 3000);
             setIsEditingAddress(false);
-            
+
             // Обновляем профиль с сервера, чтобы получить актуальные данные
             await dispatch(fetchProfile());
           } else {
             // Не удалось обновить токен
             // console.warn("⚠️ Failed to refresh token", refreshResult);
             const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' || 
-                                   errorPayload?.detail?.includes('expired') ||
-                                   errorPayload?.detail?.includes('Token is expired');
-            
+            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
+              errorPayload?.detail?.includes('expired') ||
+              errorPayload?.detail?.includes('Token is expired');
+
             if (isTokenExpired) {
               // Refresh token истек - сессия закончилась
-              setAddressErrors({ 
-                general: "Your session has expired. Please log out and log in again to continue." 
+              setAddressErrors({
+                general: "Your session has expired. Please log out and log in again to continue."
               });
             } else {
               // Другая ошибка при обновлении токена
-              setAddressErrors({ 
-                general: "Failed to save. Please try again or refresh the page." 
+              setAddressErrors({
+                general: "Failed to save. Please try again or refresh the page."
               });
             }
           }
@@ -467,11 +467,11 @@ export default function MyAccountAdmin() {
           // console.error("Error saving address:", error);
           // console.error("Error response:", error.response?.data);
           // console.error("Error status:", error.response?.status);
-          
+
           // Показываем ошибку пользователю
           const errorData = error.response?.data;
           let errorMessage = "Failed to save address";
-          
+
           if (errorData) {
             // Проверяем ошибки валидации от сервера
             if (errorData.profile) {
@@ -489,7 +489,7 @@ export default function MyAccountAdmin() {
               errorMessage = errorData;
             }
           }
-          
+
           setAddressErrors({ general: errorMessage });
         }
       }
@@ -509,16 +509,16 @@ export default function MyAccountAdmin() {
         setAvatarError('Please select an image file');
         return;
       }
-      
+
       // Проверяем размер файла (макс 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setAvatarError('Image size should be less than 5MB');
         return;
       }
-      
+
       // Создаем временный URL для предпросмотра (будет использован в handleSaveAvatar)
       // Не устанавливаем здесь, чтобы не конфликтовать с логикой в handleSaveAvatar
-      
+
       // Сразу сохраняем аватарку на сервер
       await handleSaveAvatar(file);
     }
@@ -528,20 +528,20 @@ export default function MyAccountAdmin() {
   const handleSaveAvatar = async (file = null) => {
     const fileToUpload = file || avatarFile;
     if (!fileToUpload) return;
-    
+
     setAvatarLoading(true);
     setAvatarError("");
     try {
       const formData = new FormData();
       formData.append("avatar", fileToUpload);
-      
+
       try {
         console.log("📤 Uploading avatar:", {
           fileName: fileToUpload.name,
           fileSize: fileToUpload.size,
           fileType: fileToUpload.type
         });
-        
+
         // Используем PUT /users/avatars для загрузки аватарки
         // apiWithAuth - это экземпляр axios, токен добавляется автоматически через интерцептор
         // Интерцептор автоматически обновит токен, если он истек (401)
@@ -558,17 +558,17 @@ export default function MyAccountAdmin() {
         console.log("✅ Response headers:", response.headers);
 
         // Проверяем, есть ли URL аватарки в ответе (различные возможные варианты)
-        let avatarUrl = response.data?.avatar || 
-                         response.data?.profile?.avatar || 
-                         response.data?.avatar_url ||
-                         response.data?.profile?.avatar_url ||
-                         response.data?.profile?.photo ||
-                         response.data?.photo ||
-                         response.data?.url ||
-                         response.data?.image_url ||
-                         response.data?.file ||
-                         response.data?.file_url ||
-                         null;
+        let avatarUrl = response.data?.avatar ||
+          response.data?.profile?.avatar ||
+          response.data?.avatar_url ||
+          response.data?.profile?.avatar_url ||
+          response.data?.profile?.photo ||
+          response.data?.photo ||
+          response.data?.url ||
+          response.data?.image_url ||
+          response.data?.file ||
+          response.data?.file_url ||
+          null;
 
         // Если URL относительный, формируем полный URL
         if (avatarUrl && !avatarUrl.startsWith('http')) {
@@ -581,7 +581,7 @@ export default function MyAccountAdmin() {
         const tempAvatarUrl = URL.createObjectURL(fileToUpload);
         console.log("✅ Using temporary avatar URL for preview:", tempAvatarUrl);
         setAvatar(tempAvatarUrl);
-        
+
         if (avatarUrl) {
           console.log("✅ Setting avatar from response:", avatarUrl);
           // Сохраняем аватарку в localStorage для восстановления при обновлении страницы
@@ -590,18 +590,18 @@ export default function MyAccountAdmin() {
           setAvatar(avatarUrl);
           // Освобождаем временный URL
           URL.revokeObjectURL(tempAvatarUrl);
-          
+
           // Обновляем профиль с сервера, чтобы синхронизировать состояние
           // НЕ сбрасываем аватарку после fetchProfile, так как она уже установлена
           const profileResult = await dispatch(fetchProfile());
           console.log("✅ Profile fetched after avatar upload:", profileResult.payload);
-          
+
           // Проверяем, есть ли аватарка в обновленном профиле, и обновляем только если нужно
-          const profileAvatar = profileResult.payload?.user?.avatar || 
-                               profileResult.payload?.user?.profile?.avatar ||
-                               profileResult.payload?.profile?.avatar ||
-                               profileResult.payload?.avatar;
-          
+          const profileAvatar = profileResult.payload?.user?.avatar ||
+            profileResult.payload?.user?.profile?.avatar ||
+            profileResult.payload?.profile?.avatar ||
+            profileResult.payload?.avatar;
+
           console.log("🔍 Checking profile avatar:", {
             profileResultPayload: profileResult.payload,
             userAvatar: profileResult.payload?.user?.avatar,
@@ -609,7 +609,7 @@ export default function MyAccountAdmin() {
             profileAvatar: profileResult.payload?.profile?.avatar,
             payloadAvatar: profileResult.payload?.avatar,
           });
-          
+
           if (profileAvatar && profileAvatar !== avatarUrl) {
             console.log("✅ Updating avatar from profile:", profileAvatar);
             const fullAvatarUrl = profileAvatar.startsWith('http') ? profileAvatar : `https://onlinestore-928b.onrender.com${profileAvatar.startsWith('/') ? '' : '/'}${profileAvatar}`;
@@ -628,32 +628,32 @@ export default function MyAccountAdmin() {
           }
         } else {
           console.log("⚠️ No avatar URL in response, trying to get user ID and fetch via /users/list/{id}/...");
-          
+
           // Пытаемся получить ID пользователя из текущего профиля
           const currentUserId = authUser?.id || authUser?.profile?.id;
-          
+
           if (currentUserId) {
             try {
               console.log("🔍 Trying to fetch avatar via /users/list/{id}/ for userId:", currentUserId);
               const userListRes = await apiWithAuth.get(`/users/list/${currentUserId}/`);
               console.log("🔍 User list response:", userListRes.data);
-              
-              const listAvatarUrl = userListRes.data?.avatar || 
-                                   userListRes.data?.profile?.avatar || 
-                                   userListRes.data?.avatar_url ||
-                                   userListRes.data?.profile?.avatar_url ||
-                                   null;
-              
+
+              const listAvatarUrl = userListRes.data?.avatar ||
+                userListRes.data?.profile?.avatar ||
+                userListRes.data?.avatar_url ||
+                userListRes.data?.profile?.avatar_url ||
+                null;
+
               if (listAvatarUrl) {
-                const fullListAvatarUrl = listAvatarUrl.startsWith('http') 
-                  ? listAvatarUrl 
+                const fullListAvatarUrl = listAvatarUrl.startsWith('http')
+                  ? listAvatarUrl
                   : `https://onlinestore-928b.onrender.com${listAvatarUrl.startsWith('/') ? '' : '/'}${listAvatarUrl}`;
                 console.log("✅ Avatar found via /users/list/{id}/:", fullListAvatarUrl);
                 setAvatar(fullListAvatarUrl);
                 localStorage.setItem('userAvatar', fullListAvatarUrl);
                 console.log("💾 Avatar saved to localStorage (from /users/list/{id}/):", fullListAvatarUrl);
                 URL.revokeObjectURL(tempAvatarUrl);
-                
+
                 // Обновляем профиль
                 await dispatch(fetchProfile());
                 return;
@@ -662,18 +662,18 @@ export default function MyAccountAdmin() {
               console.log("⚠️ Error fetching user by ID:", listError.response?.status, listError.message);
             }
           }
-          
+
           // Если не получилось через /users/list/{id}/, пробуем через fetchProfile
           console.log("⚠️ No avatar URL in response, fetching from profile...");
           const profileResult = await dispatch(fetchProfile());
           console.log("✅ Profile fetched after avatar upload:", profileResult.payload);
-          
+
           // Проверяем аватарку в обновленном профиле
-          const updatedAvatar = profileResult.payload?.user?.avatar || 
-                               profileResult.payload?.user?.profile?.avatar ||
-                               profileResult.payload?.profile?.avatar ||
-                               profileResult.payload?.avatar;
-          
+          const updatedAvatar = profileResult.payload?.user?.avatar ||
+            profileResult.payload?.user?.profile?.avatar ||
+            profileResult.payload?.profile?.avatar ||
+            profileResult.payload?.avatar;
+
           if (updatedAvatar) {
             console.log("✅ Setting avatar from fetched profile:", updatedAvatar);
             // Если URL относительный, делаем его абсолютным
@@ -690,14 +690,14 @@ export default function MyAccountAdmin() {
             console.log("⚠️ Temporary URL will work until page reload.");
             console.log("⚠️ Note: The server successfully received the avatar file, but did not return its URL.");
             console.log("⚠️ The avatar may be available after page refresh, or the backend may need to be configured to return the avatar URL.");
-            
+
             // Сохраняем информацию о том, что аватарка была загружена
             // Это поможет при следующей загрузке страницы определить, что аватарка должна быть
             localStorage.setItem('avatarUploaded', 'true');
             localStorage.setItem('avatarUploadTime', Date.now().toString());
           }
         }
-        
+
         setAvatarFile(null);
         setAvatarError("");
         // Аватарка сохранена автоматически
@@ -705,19 +705,19 @@ export default function MyAccountAdmin() {
         console.error("❌ Error saving avatar:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
-        
+
         // Проверяем, не истек ли refresh token (интерцептор уже пытался обновить токен)
         const errorData = error.response?.data;
-        const isRefreshTokenExpired = errorData?.code === 'token_not_valid' || 
-                                     errorData?.detail?.includes('expired') ||
-                                     errorData?.detail?.includes('Token is expired');
-        
+        const isRefreshTokenExpired = errorData?.code === 'token_not_valid' ||
+          errorData?.detail?.includes('expired') ||
+          errorData?.detail?.includes('Token is expired');
+
         // Если токен истек (401), пытаемся обновить его вручную
         if (error.response?.status === 401 && !isRefreshTokenExpired) {
           console.warn("⚠️ Token expired when saving avatar, attempting to refresh...");
-          
+
           const refreshResult = await dispatch(refreshAccessToken());
-          
+
           if (refreshAccessToken.fulfilled.match(refreshResult)) {
             console.log("✅ Token refreshed, retrying avatar upload...");
             // Используем PUT /users/avatars для загрузки аватарки
@@ -740,10 +740,10 @@ export default function MyAccountAdmin() {
             }
           } else {
             const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' || 
-                                   errorPayload?.detail?.includes('expired') ||
-                                   errorPayload?.detail?.includes('Token is expired');
-            
+            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
+              errorPayload?.detail?.includes('expired') ||
+              errorPayload?.detail?.includes('Token is expired');
+
             if (isTokenExpired) {
               setAvatarError("Your session has expired. Please log out and log in again to continue.");
             } else {
@@ -757,10 +757,10 @@ export default function MyAccountAdmin() {
           console.error("Error saving avatar:", error);
           console.error("Error response:", error.response?.data);
           console.error("Error status:", error.response?.status);
-          
+
           // Формируем понятное сообщение об ошибке
           let errorMessage = "Failed to save avatar. Please try again.";
-          
+
           if (error.response?.data) {
             const errorData = error.response.data;
             if (errorData.avatar) {
@@ -776,7 +776,7 @@ export default function MyAccountAdmin() {
           } else if (error.message) {
             errorMessage = error.message;
           }
-          
+
           setAvatarError(errorMessage);
         }
       }
@@ -828,6 +828,8 @@ export default function MyAccountAdmin() {
   };
 
   // Отладочный лог перед рендером
+  console.log("Current avatar:", avatar);
+
   // console.log("MyAccountAdmin - Render - authUser:", authUser);
   // console.log("MyAccountAdmin - Render - personalData:", personalData);
   // console.log("MyAccountAdmin - Render - personalData.firstName:", personalData?.firstName);
@@ -844,15 +846,18 @@ export default function MyAccountAdmin() {
         <AdminBreadcrumbs />
       </Box>
 
-      {}
-      <Paper sx={{ p: { xs: 2, md: 3 }, mb: { xs: 2, md: 3 }, borderRadius:"24px", width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+      { }
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: { xs: 2, md: 3 }, borderRadius: "24px", width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 1 }}>
           <Box sx={{ position: "relative", display: "inline-block" }}>
             {user.avatar ? (
-              <Box 
-                component="img" 
-                src={user.avatar} 
-                alt="Avatar" 
+              <Box
+                component="img"
+                src={user.avatar}
+                onError={(e) => {
+                  e.target.src = ""; 
+                }}
+                alt="Avatar"
                 sx={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }}
               />
             ) : (
@@ -904,9 +909,9 @@ export default function MyAccountAdmin() {
               onChange={handleAvatarChange}
             />
           </Box>
-          <Box 
-            component={RouterLink} 
-            to="/admin/account" 
+          <Box
+            component={RouterLink}
+            to="/admin/account"
             sx={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", cursor: "pointer", "&:hover": { opacity: 0.8 } }}
           >
             <Typography sx={{ ...h6, mb: 0.5 }}>{user.firstName} {user.lastName}</Typography>
@@ -923,16 +928,16 @@ export default function MyAccountAdmin() {
         )}
       </Paper>
 
-      {}
+      { }
       <Paper sx={{ ...paperStyle(isEditingPersonal), width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box mb={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
             <Typography sx={{ ...h4, fontSize: { xs: '16px', md: '18px' } }}>Personal Information</Typography>
-            <Button 
-              variant="contained" 
-              size="small" 
-              endIcon={!isEditingPersonal ? <EditIcon /> : null} 
-              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }} 
+            <Button
+              variant="contained"
+              size="small"
+              endIcon={!isEditingPersonal ? <EditIcon /> : null}
+              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }}
               onClick={() => {
                 if (isEditingPersonal) {
                   handleSavePersonal();
@@ -961,10 +966,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>First Name</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={personalData?.firstName || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={personalData?.firstName || ""}
                 onChange={handlePersonalChange("firstName")}
                 disabled={!isEditingPersonal}
                 placeholder="First Name"
@@ -977,10 +982,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Last Name</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={personalData?.lastName || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={personalData?.lastName || ""}
                 onChange={handlePersonalChange("lastName")}
                 disabled={!isEditingPersonal}
                 placeholder="Last Name"
@@ -993,10 +998,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Email</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={personalData?.email || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={personalData?.email || ""}
                 onChange={handlePersonalChange("email")}
                 disabled={!isEditingPersonal}
                 placeholder="Email"
@@ -1009,37 +1014,37 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Phone number</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={personalData?.phone || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={personalData?.phone || ""}
                 inputRef={phoneInputRef}
                 onChange={isEditingPersonal ? (e) => {
                   const input = e.target;
                   const inputValue = input.value;
                   const cursorPosition = input.selectionStart;
-                  
+
                   // Сохраняем количество цифр до курсора
                   const digitsBeforeCursor = inputValue.slice(0, cursorPosition).replace(/\D/g, '').length;
-                  
+
                   // Форматируем телефон при вводе
                   const formatted = formatPhone(inputValue);
-                  
+
                   // Очищаем ошибку при вводе
                   if (personalErrors.phone) {
                     setPersonalErrors((prev) => ({ ...prev, phone: undefined }));
                   }
-                  
+
                   // Обновляем состояние
                   setPersonalData((prev) => ({ ...prev, phone: formatted }));
-                  
+
                   // Восстанавливаем позицию курсора после форматирования
                   requestAnimationFrame(() => {
                     if (phoneInputRef.current) {
                       // Подсчитываем позицию курсора в отформатированном значении
                       let newCursorPosition = 0;
                       let digitCount = 0;
-                      
+
                       // Находим позицию, где должно быть курсор на основе количества цифр
                       for (let i = 0; i < formatted.length; i++) {
                         if (/\d/.test(formatted[i])) {
@@ -1054,12 +1059,12 @@ export default function MyAccountAdmin() {
                           newCursorPosition = formatted.length;
                         }
                       }
-                      
+
                       // Если курсор был в начале или не найдена позиция, ставим после последней цифры
                       if (newCursorPosition === 0 && formatted.length > 0) {
                         newCursorPosition = formatted.length;
                       }
-                      
+
                       phoneInputRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
                     }
                   });
@@ -1088,16 +1093,16 @@ export default function MyAccountAdmin() {
         </Grid>
       </Paper>
 
-      {}
+      { }
       <Paper sx={{ ...paperStyle(isEditingAddress), width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box mb={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
             <Typography sx={{ ...h4, fontSize: { xs: '16px', md: '18px' } }}>Address</Typography>
-            <Button 
-              variant="contained" 
-              size="small" 
-              endIcon={!isEditingAddress ? <EditIcon /> : null} 
-              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }} 
+            <Button
+              variant="contained"
+              size="small"
+              endIcon={!isEditingAddress ? <EditIcon /> : null}
+              sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' } }}
               onClick={() => {
                 if (isEditingAddress) {
                   handleSaveAddress();
@@ -1126,10 +1131,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Country</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.country || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.country || ""}
                 onChange={handleAddressChange("country")}
                 disabled={!isEditingAddress}
                 placeholder="Country"
@@ -1140,10 +1145,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>City/Region</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.city || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.city || ""}
                 onChange={handleAddressChange("city")}
                 disabled={!isEditingAddress}
                 placeholder="City/Region"
@@ -1154,10 +1159,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>State</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.state || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.state || ""}
                 onChange={handleAddressChange("state")}
                 disabled={!isEditingAddress}
                 placeholder="State"
@@ -1168,10 +1173,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Street name</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.street || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.street || ""}
                 onChange={handleAddressChange("street")}
                 disabled={!isEditingAddress}
                 placeholder="Street name"
@@ -1182,10 +1187,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Zip code</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.house || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.house || ""}
                 onChange={(e) => {
                   handleAddressChange("house")(e);
                   // Очищаем ошибку при вводе
@@ -1204,10 +1209,10 @@ export default function MyAccountAdmin() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Box sx={{ width: "100%", mb: 2 }}>
               <Typography sx={{ ...h7, mb: 1 }}>Apt. number</Typography>
-              <TextField 
-                fullWidth 
-                sx={disabledInputStyles} 
-                value={addressData.apt || ""} 
+              <TextField
+                fullWidth
+                sx={disabledInputStyles}
+                value={addressData.apt || ""}
                 onChange={handleAddressChange("apt")}
                 disabled={!isEditingAddress}
                 placeholder="Apt. number"
