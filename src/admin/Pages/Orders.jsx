@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box, CircularProgress, Typography, Button } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import Search from '../../components/Search/index.jsx';
@@ -7,6 +7,7 @@ import ProductsTableOrders from '../AdminComponents/ProductsTableOrders.jsx';
 import AdminBreadcrumbs from '../AdminBreadcrumbs/AdminBreadcrumbs.jsx';
 import OrderDetails from '../AdminComponents/OrderDetails.jsx';
 import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
+import { apiWithAuth, default as api } from '../../store/api/axios.js';
 
 // Константи для зображень
 const PRODUCT_PLACEHOLDER = 'https://via.placeholder.com/150?text=No+Product';
@@ -20,12 +21,129 @@ export default function Orders() {
   const [page, setPage] = useState(1);
   const rowsPerPage = 20;
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [photoCache, setPhotoCache] = useState(new Map()); // Кэш для фото продуктов/аксессуаров
 
   // Завантаження замовлень
   useEffect(() => {
     // Додаємо ordering=-id щоб нові були зверху (якщо бекенд підтримує)
     dispatch(fetchOrders({ page, size: rowsPerPage, ordering: '-id' }));
   }, [dispatch, page]);
+
+  // Загрузка фото для всех продуктов/аксессуаров в заказах
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    const loadPhotos = async () => {
+      // Собираем все уникальные ID продуктов и аксессуаров
+      const productIds = new Set();
+      const accessoryIds = new Set();
+
+      orders.forEach(order => {
+        (order.positions || []).forEach(position => {
+          if (position.product?.id) {
+            productIds.add(position.product.id);
+          }
+          if (position.accessory?.id) {
+            accessoryIds.add(position.accessory.id);
+          }
+        });
+      });
+
+      // Проверяем, какие фото уже загружены
+      setPhotoCache(prevCache => {
+        const photoPromises = [];
+        
+        // Загружаем фото продуктов
+        productIds.forEach(productId => {
+          if (!prevCache.has(`product-${productId}`)) {
+            photoPromises.push(
+              api.get(`/products/${productId}`)
+                .then(response => {
+                  const product = response.data;
+                  let photoUrl = null;
+                  
+                  // Извлекаем фото из различных полей
+                  if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
+                    const firstPhoto = product.photos_url[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  } else if (product.product_photos && Array.isArray(product.product_photos) && product.product_photos.length > 0) {
+                    const firstPhoto = product.product_photos[0];
+                    if (firstPhoto.photo) {
+                      photoUrl = typeof firstPhoto.photo === 'string' ? firstPhoto.photo : (firstPhoto.photo.url || firstPhoto.photo.photo_url);
+                    } else {
+                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
+                    }
+                  }
+                  
+                  // Если URL относительный, добавляем базовый URL
+                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
+                    const baseUrl = 'https://onlinestore-928b.onrender.com';
+                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+                  }
+                  
+                  return { key: `product-${productId}`, photoUrl: photoUrl || PRODUCT_PLACEHOLDER };
+                })
+                .catch(err => {
+                  console.warn(`Failed to load photo for product ${productId}:`, err);
+                  return { key: `product-${productId}`, photoUrl: PRODUCT_PLACEHOLDER };
+                })
+            );
+          }
+        });
+
+        // Загружаем фото аксессуаров
+        accessoryIds.forEach(accessoryId => {
+          if (!prevCache.has(`accessory-${accessoryId}`)) {
+            photoPromises.push(
+              api.get(`/accessories/${accessoryId}`)
+                .then(response => {
+                  const accessory = response.data;
+                  let photoUrl = null;
+                  
+                  // Извлекаем фото из различных полей
+                  if (accessory.photos_url && Array.isArray(accessory.photos_url) && accessory.photos_url.length > 0) {
+                    const firstPhoto = accessory.photos_url[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  } else if (accessory.accessory_photos && Array.isArray(accessory.accessory_photos) && accessory.accessory_photos.length > 0) {
+                    const firstPhoto = accessory.accessory_photos[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  }
+                  
+                  // Если URL относительный, добавляем базовый URL
+                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
+                    const baseUrl = 'https://onlinestore-928b.onrender.com';
+                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+                  }
+                  
+                  return { key: `accessory-${accessoryId}`, photoUrl: photoUrl || PRODUCT_PLACEHOLDER };
+                })
+                .catch(err => {
+                  console.warn(`Failed to load photo for accessory ${accessoryId}:`, err);
+                  return { key: `accessory-${accessoryId}`, photoUrl: PRODUCT_PLACEHOLDER };
+                })
+            );
+          }
+        });
+
+        // Ждем загрузки всех фото и обновляем кэш
+        if (photoPromises.length > 0) {
+          Promise.all(photoPromises).then(results => {
+            setPhotoCache(currentCache => {
+              const newCache = new Map(currentCache);
+              results.forEach(({ key, photoUrl }) => {
+                newCache.set(key, photoUrl);
+              });
+              return newCache;
+            });
+          });
+        }
+        
+        return prevCache; // Возвращаем текущий кэш без изменений
+      });
+    };
+
+    loadPhotos();
+  }, [orders]);
 
   // Трансформація даних під формат таблиці та деталей
   const transformedOrders = (orders || [])
@@ -51,11 +169,16 @@ export default function Orders() {
       const itemsList = (order.positions || []).map((position) => {
         const itemData = position.product || position.accessory || {};
         
-        // Пошук фото товару (не використовуємо тут userAvatar!)
-        const photoUrl = itemData.photos_url?.[0]?.url || 
-                         itemData.product_photos?.[0]?.url ||
-                         itemData.accessory_photos?.[0]?.url ||
-                         PRODUCT_PLACEHOLDER;
+        // Получаем фото из кэша или используем placeholder
+        let photoUrl = PRODUCT_PLACEHOLDER;
+        
+        if (position.product?.id) {
+          const cacheKey = `product-${position.product.id}`;
+          photoUrl = photoCache.get(cacheKey) || PRODUCT_PLACEHOLDER;
+        } else if (position.accessory?.id) {
+          const cacheKey = `accessory-${position.accessory.id}`;
+          photoUrl = photoCache.get(cacheKey) || PRODUCT_PLACEHOLDER;
+        }
 
         return {
           name: itemData.name || 'Unknown Product',
@@ -68,10 +191,23 @@ export default function Orders() {
       // 4. Загальна кількість одиниць товару
       const totalItemsCount = itemsList.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
+      // Маппинг статусов для отображения
+      const statusLabels = {
+        processing: 'Processing',
+        delivered: 'Delivered',
+        delivering: 'Delivered',
+        in_transit: 'Delivered',
+        cancelled: 'Cancelled',
+        canceled: 'Cancelled',
+      };
+      
+      const orderStatus = (order.status || '').toLowerCase();
+      const displayStatus = statusLabels[orderStatus] || (order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending');
+
       return {
         id: order.id,
         ID: String(order.id),
-        status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending',
+        status: displayStatus,
         date: formatDate(order.created_at),
         customer: customerName,
         customerPhoto: order.customer_data?.avatar || null, // Передаємо null, якщо немає фото (OrderDetails обробить це)
@@ -168,7 +304,7 @@ export default function Orders() {
           display: 'flex', 
           flexDirection: 'column'
         }}>
-          <OrderDetails order={selectedOrder} />
+          <OrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} />
         </Box>
       )}
     </Box>

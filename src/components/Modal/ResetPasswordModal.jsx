@@ -141,7 +141,7 @@ export default function ResetPasswordModal({ open, handleClose, setSuccessModalO
                 />
 
                 <Button sx={{ ...btnStyles, width: "100%", textTransform: "none" }} onClick={handleSubmit} disabled={loading}>
-                    {loading ? <CircularProgress size={24} /> : "Reset Password"}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : "Reset Password"}
                 </Button>
             </Box>
         </Dialog>

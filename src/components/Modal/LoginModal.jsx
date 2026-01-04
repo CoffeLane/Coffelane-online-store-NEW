@@ -206,13 +206,42 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
             }
         } else {
             const errorData = result.payload;
-            let errorMessage = "Invalid email or password. Please try again.";
+            let errorMessage = "Invalid email or password";
+            
+            // Check if it's an authentication error and replace with user-friendly message
             if (typeof errorData === 'string') {
-                errorMessage = errorData;
+                const lowerError = errorData.toLowerCase();
+                if (lowerError.includes('no active account') || 
+                    lowerError.includes('invalid credentials') ||
+                    lowerError.includes('authentication') ||
+                    lowerError.includes('неверные') ||
+                    lowerError.includes('не найден')) {
+                    errorMessage = "Invalid email or password";
+                } else {
+                    errorMessage = errorData;
+                }
             } else if (errorData?.detail) {
-                errorMessage = errorData.detail;
+                const lowerError = String(errorData.detail).toLowerCase();
+                if (lowerError.includes('no active account') || 
+                    lowerError.includes('invalid credentials') ||
+                    lowerError.includes('authentication') ||
+                    lowerError.includes('неверные') ||
+                    lowerError.includes('не найден')) {
+                    errorMessage = "Invalid email or password";
+                } else {
+                    errorMessage = errorData.detail;
+                }
             } else if (errorData?.message) {
-                errorMessage = errorData.message;
+                const lowerError = String(errorData.message).toLowerCase();
+                if (lowerError.includes('no active account') || 
+                    lowerError.includes('invalid credentials') ||
+                    lowerError.includes('authentication') ||
+                    lowerError.includes('неверные') ||
+                    lowerError.includes('не найден')) {
+                    errorMessage = "Invalid email or password";
+                } else {
+                    errorMessage = errorData.message;
+                }
             }
 
             setErrors({ submit: errorMessage });

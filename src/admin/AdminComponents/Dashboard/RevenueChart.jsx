@@ -38,8 +38,8 @@ function CustomTooltip({ active, payload, label }) {
 export default function RevenueChartFancy({ data = sampleData }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [range, setRange] = useState('Today'); // Today | Week | Month | Year
-  const [activePoint, setActivePoint] = useState({ index: 4, x: null }); // marker index
+  const [range, setRange] = useState('Today'); 
+  const [activePoint, setActivePoint] = useState({ index: 4, x: null }); 
 
   const handleRange = (_, val) => {
     if (val) setRange(val);

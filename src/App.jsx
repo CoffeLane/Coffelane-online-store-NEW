@@ -24,6 +24,7 @@ import Products from './admin/Pages/Products.jsx';
 import ProductAdd from './admin/Pages/ProductAdd.jsx';
 import ProductEdit from './admin/Pages/ProductEdit.jsx';
 import Orders from './admin/Pages/Orders.jsx';
+import OrderEdit from './admin/Pages/OrderEdit.jsx';
 import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
 import { tokenRefreshedFromInterceptor, fetchProfile, setAdminMode } from "./store/slice/authSlice";
@@ -112,6 +113,7 @@ function App() {
           <Route path="products/add" element={<ProductAdd />} />
           <Route path="products/edit/:id" element={<ProductEdit />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/edit/:id" element={<OrderEdit />} />
           <Route path="account" element={<MyAccount />} />
         </Route>
       </Routes>

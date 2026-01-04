@@ -29,7 +29,7 @@ export default function ProductCardPage() {
     }
   }, [selectedProduct]);
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: '#A4795B' }}/></Box>;
   if (!selectedProduct) return <Box sx={{ py: 10, textAlign: 'center' }}>Product not found</Box>;
 
   const recommended = items.filter((p) => String(p.id) !== String(id)).slice(0, 3);

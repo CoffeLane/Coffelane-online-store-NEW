@@ -254,8 +254,9 @@ export default function CheckoutPage() {
       positions: orderItems,
       order_notes: "",
       customer_data: { email: email.trim() },
-      // discount_code: discountCode?.id ? Number(discountCode.id) : null
-      discount_code: discountCode?.code || null
+      // НЕ отправляем discount_code при создании заказа - применяем его позже через отдельный эндпоинт
+      // discount_code будет применен после создания заказа через /discount-codes/{code}/{order_id}/
+      discount_code: null
     };
 
     console.log("📤 Данные заказа на отправку:", orderData);
@@ -331,7 +332,9 @@ export default function CheckoutPage() {
       const discountData = response.data;
 
       // ДИВИМОСЬ У КОНСОЛЬ: перевір, чи є тут id (наприклад, 1, 2, 3...)
-    console.log("🔍 Full Discount Data:", discountData);
+      console.log("🔍 Full Discount Data:", discountData);
+      console.log("🔍 Discount ID:", discountData.id);
+      console.log("🔍 Discount Code:", discountData.code);
 
      
 

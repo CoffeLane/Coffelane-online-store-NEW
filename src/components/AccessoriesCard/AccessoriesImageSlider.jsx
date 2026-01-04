@@ -6,14 +6,28 @@ import CoffeeIcon from '@mui/icons-material/Coffee';
 
 export default function AccessoriesImageSlider({ photos = [], productName }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const photoUrls = photos.filter((photo) => photo.url).map((photo) => photo.url);
+  
+  const photoUrls = photos
+    .map(photo => {
+      if (typeof photo === 'string') {
+        return photo.startsWith('http') ? photo : `https://onlinestore-928b.onrender.com${photo.startsWith('/') ? '' : '/'}${photo}`;
+      }
+      const photoUrl = photo.url || photo.photo || photo.photo_url || photo.image_url || null;
+      if (photoUrl && typeof photoUrl === 'string') {
+        if (!photoUrl.startsWith('http')) {
+          return `https://onlinestore-928b.onrender.com${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+        }
+        return photoUrl;
+      }
+      return null;
+    })
+    .filter(url => url !== null);
 
   const handlePrev = () =>
     setSelectedIndex((prev) => (prev === 0 ? photoUrls.length - 1 : prev - 1));
   const handleNext = () =>
     setSelectedIndex((prev) => (prev === photoUrls.length - 1 ? 0 : prev + 1));
 
-  // Блок-заглушка, если фото нет
   if (!photoUrls.length) {
     return (
       <Box sx={{ 

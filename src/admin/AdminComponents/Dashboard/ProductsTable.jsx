@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
+import CoffeeIcon from '@mui/icons-material/Coffee';
 import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
@@ -20,20 +21,16 @@ export default function ProductsTable({
   setCategoryFilter,
   onRefresh,
 }) {
-  // Все доступные бренды из Filter.jsx
+
   const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
-  
-  // Формируем список категорий: сначала "Category", затем все бренды из Filter.jsx, затем уникальные категории из продуктов
   const categories = useMemo(() => {
     const productCategories = new Set(products.map(p => p.category));
     const allCategories = ['Category', ...allBrands, ...Array.from(productCategories)];
-    // Убираем дубликаты, сохраняя порядок
     return Array.from(new Set(allCategories));
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (categoryFilter === 'Category' || !categoryFilter) return products;
-    // Фильтруем продукты по категории, учитывая возможные различия в регистре и пробелах
     return products.filter(p => {
       const productCategory = (p.category || '').trim();
       const filterCategory = categoryFilter.trim();
@@ -41,19 +38,15 @@ export default function ProductsTable({
     });
   }, [products, categoryFilter]);
 
-  // Пересчитываем totalPages на основе отфильтрованных продуктов
-  // Если выбрана категория, применяем пагинацию на клиенте
   const itemsPerPage = 10;
   const calculatedTotalPages = categoryFilter === 'Category' || !categoryFilter
     ? totalPages
     : Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
   
-  // Применяем пагинацию к отфильтрованным продуктам, если выбрана категория
   const paginatedFilteredProducts = useMemo(() => {
     if (categoryFilter === 'Category' || !categoryFilter) {
-      return filteredProducts; // Используем серверную пагинацию
+      return filteredProducts;
     }
-    // Применяем клиентскую пагинацию к отфильтрованным продуктам
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredProducts.slice(startIndex, endIndex);
@@ -61,31 +54,18 @@ export default function ProductsTable({
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [imageErrors, setImageErrors] = useState({});
+
+  const handleImageError = (productId) => {
+    setImageErrors(prev => ({ ...prev, [productId]: true }));
+  };
 
   if (isMobile) {
     return (
       <Box sx={{ width: '100%' }}>
-        <Paper sx={{ 
-          borderRadius: '24px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-          overflow: 'hidden',
-          mb: 2
-        }}>
-          {/* Заголовок таблицы */}
-          <Box sx={{ 
-            backgroundColor: '#EAD9C9',
-            px: 2,
-            py: 1.5,
-            borderBottom: '2px solid #D4C4B5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <Typography sx={{ 
-              fontWeight: 600, 
-              fontSize: '14px', 
-              color: '#3E3027' 
-            }}>
+        <Paper sx={{borderRadius: '24px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', overflow: 'hidden', mb: 2}}>
+          <Box sx={{  backgroundColor: '#EAD9C9', px: 2, py: 1.5, borderBottom: '2px solid #D4C4B5', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+            <Typography sx={{  fontWeight: 600,  fontSize: '14px', color: '#3E3027' }}>
               Products
             </Typography>
             <Checkbox
@@ -106,14 +86,7 @@ export default function ProductsTable({
             />
           </Box>
           
-          {/* Контейнер с карточками */}
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 1.5,
-            p: 2,
-            backgroundColor: '#fafafa'
-          }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column',  gap: 1.5, p: 2, backgroundColor: '#fafafa'}}>
             {paginatedFilteredProducts.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <Typography sx={{ color: '#999', fontSize: '14px' }}>No products found</Typography>
@@ -122,8 +95,7 @@ export default function ProductsTable({
               paginatedFilteredProducts.map((p) => {
               const isSelected = selectedIds.includes(p.id);
               return (
-                <Card
-                  key={p.id}
+                <Card key={`${p.type}-${p.id}`}
                   sx={{
                     borderRadius: '12px',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
@@ -142,9 +114,7 @@ export default function ProductsTable({
                   <CardContent sx={{ p: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                       <Box sx={{ display: 'flex', gap: 1.5, flex: 1 }}>
-                        <Checkbox 
-                          checked={isSelected} 
-                          onChange={() => handleSelectOne(p.id)}
+                        <Checkbox checked={isSelected} onChange={() => handleSelectOne(p.id)}
                           sx={{ 
                             p: 0,
                             color: '#A4795B',
@@ -156,11 +126,9 @@ export default function ProductsTable({
                             },
                           }}
                         />
-                        {p.image ? (
-                          <Box
-                            component="img"
-                            src={p.image}
-                            alt={p.name}
+                        {p.image && !imageErrors[p.id] ? (
+                          <Box component="img" src={p.image} alt={p.name}
+                            onError={() => handleImageError(p.id)}
                             sx={{
                               width: 60,
                               height: 60,
@@ -176,8 +144,13 @@ export default function ProductsTable({
                               height: 60,
                               borderRadius: '8px',
                               backgroundColor: '#f0f0f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
-                          />
+                          >
+                            <CoffeeIcon sx={{ fontSize: 24, color: '#ccc' }} />
+                          </Box>
                         )}
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontSize: '14px', fontWeight: 600, mb: 0.5, wordBreak: 'break-word' }}>
@@ -234,8 +207,8 @@ export default function ProductsTable({
             })
           )}
           </Box>
+          <PaginationControl page={page} totalPages={calculatedTotalPages} onPageChange={onPageChange} variant={variant} />
         </Paper>
-        <PaginationControl page={page} totalPages={calculatedTotalPages} onPageChange={onPageChange} variant={variant} />
       </Box>
     );
   }
@@ -295,7 +268,7 @@ export default function ProductsTable({
               const isSelected = selectedIds.includes(p.id);
               return (
                 <TableRow
-                  key={p.id}
+                  key={`${p.type}-${p.id}`}
                   sx={{
                     backgroundColor: isSelected ? '#f5e8ddff' : '#ffffff',
                     '&:hover': { 
@@ -321,11 +294,12 @@ export default function ProductsTable({
                     />
                   </TableCell>
                   <TableCell>
-                    {p.image ? (
+                    {p.image && !imageErrors[p.id] ? (
                       <Box
                         component="img"
                         src={p.image}
                         alt={p.name}
+                        onError={() => handleImageError(p.id)}
                         sx={{
                           width: { xs: 32, md: 40 },
                           height: { xs: 32, md: 40 },
@@ -345,7 +319,9 @@ export default function ProductsTable({
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
-                      />
+                      >
+                        <CoffeeIcon sx={{ fontSize: { xs: 16, md: 20 }, color: '#ccc' }} />
+                      </Box>
                     )}
                   </TableCell>
                   <TableCell sx={{ fontSize: { xs: '12px', md: '14px' }, fontWeight: 500 }}>{p.name}</TableCell>
@@ -384,7 +360,7 @@ export default function ProductsTable({
           )}
         </TableBody>
       </Table>
-      <PaginationControl page={page} totalPages={totalPages} onPageChange={onPageChange} variant={variant} />
+      <PaginationControl page={page} totalPages={calculatedTotalPages} onPageChange={onPageChange} variant={variant} />
     </TableContainer>
   );
 }

@@ -101,14 +101,24 @@ export const createOrder = createAsyncThunk(
           )
         })),
         customer_data: orderData.customer_data,
-        discount_code: orderData.discount_code,
+        discount_code: orderData.discount_code 
+          ? (typeof orderData.discount_code === 'number' 
+              ? orderData.discount_code 
+              : (typeof orderData.discount_code === 'string' && !isNaN(Number(orderData.discount_code))
+                  ? Number(orderData.discount_code)
+                  : orderData.discount_code))
+          : null,
         // basket_id: Number(basketId)
       };
 
+      console.log("📤 Sending order payload:", JSON.stringify(payload, null, 2));
       const response = await apiWithAuth.post("/orders/create/", payload);
       dispatch(clearBasketState());
       return response.data;
     } catch (err) {
+      console.error("❌ Order creation error:", err);
+      console.error("❌ Error response:", err.response?.data);
+      console.error("❌ Error status:", err.response?.status);
       return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
     }
   }

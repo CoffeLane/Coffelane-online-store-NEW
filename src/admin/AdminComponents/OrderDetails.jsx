@@ -1,28 +1,55 @@
-import React from 'react';
-import { Box, Typography, Divider, Avatar, Chip, Stack } from '@mui/material';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle'; 
+import React, { useState } from 'react';
+import { Box, Typography, Divider, Avatar, Chip, Stack, IconButton } from '@mui/material';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import CoffeeIcon from '@mui/icons-material/Coffee';
+import CloseIcon from '@mui/icons-material/Close';
 import { h6, h3, h4, h5, h7 } from "../../styles/typographyStyles.jsx";
 
 
-export default function OrderDetails({ order }) {
+export default function OrderDetails({ order, onClose }) {
   if (!order) return null;
 
   const { originalOrder } = order;
+  const [imageErrors, setImageErrors] = useState({});
+
+  const handleImageError = (itemIndex) => {
+    setImageErrors(prev => ({ ...prev, [itemIndex]: true }));
+  };
 
   return (
-    <Box sx={{ p: 3, borderRadius: 3, bgcolor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+    <Box sx={{ p: 3, borderRadius: 3, bgcolor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
+      {onClose && (
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            color: '#666',
+            '&:hover': {
+              backgroundColor: '#f5f5f5',
+              color: '#333'
+            }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      )}
       <Typography mb={2} sx={{ ...h3 }}>Order #{order.ID}</Typography>
       
       <Stack direction="row" spacing={1} mb={2} alignItems="center" justifyContent="space-between">
         <Chip 
-          label={order.status.toUpperCase()}
+          label={order.status}
           sx={{
             ...h6,
             bgcolor: 
-              order.status === 'processing' ? '#FFE47A' : 
-              order.status === 'delivered' ? '#7AF48C' : '#E0E0E0',
+              order.status === 'Delivered' ? '#7AF48C' :
+              order.status === 'Processing' ? '#FFE47A' :
+              order.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
             color: '#3E3027',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            fontSize: '14px',
+            textTransform: 'none'
           }}
         />
         <Typography sx={{ ...h6, color: '#666' }}>{order.date}</Typography>
@@ -58,24 +85,41 @@ export default function OrderDetails({ order }) {
 
       <Divider sx={{ mb: 2 }} />
 
-      <Typography sx={{ ...h4 }} mb={3}>Order items ({order.items})</Typography>
+      <Typography sx={{ ...h3, fontSize: '1.5rem', fontWeight: 'bold' }} mb={3}>Order items ({order.items})</Typography>
 
-      <Stack spacing={3}>
+      <Stack spacing={4}>
         {order.itemsList.map((item, idx) => (
-          <Stack key={idx} direction="row" spacing={2} alignItems="center">
-            <Box 
-              component="img" 
-              src={item.image} 
-              alt={item.name} 
-              sx={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 2, bgcolor: '#f5f5f5' }} 
-            />
+          <Stack key={idx} direction="row" spacing={3} alignItems="center">
+            {item.image && !imageErrors[idx] && !item.image.includes('placeholder') ? (
+              <Box 
+                component="img" 
+                src={item.image} 
+                alt={item.name}
+                onError={() => handleImageError(idx)}
+                sx={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 2, bgcolor: '#f5f5f5' }} 
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 2,
+                  backgroundColor: '#f5f5f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CoffeeIcon sx={{ fontSize: 40, color: '#ccc' }} />
+              </Box>
+            )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ ...h5, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Typography sx={{ ...h4, mb: 1, fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {item.name}
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography sx={{ ...h6, color: '#777' }}>{item.quantity} pcs</Typography>
-                <Typography sx={{ ...h6, fontWeight: 'bold' }}>${item.price.toFixed(2)}</Typography>
+                <Typography sx={{ ...h5, color: '#777', fontSize: '1rem' }}>{item.quantity} pcs</Typography>
+                <Typography sx={{ ...h5, fontWeight: 'bold', fontSize: '1rem' }}>${item.price.toFixed(2)}</Typography>
               </Box>
             </Box>
           </Stack>

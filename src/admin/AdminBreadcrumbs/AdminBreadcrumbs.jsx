@@ -10,6 +10,7 @@ export default function AdminBreadcrumbs() {
     products: 'Products',
     add: 'Add Product',
     edit: 'Edit Product',
+    editOrder: 'Edit Order',
     orders: 'Orders',
     account: 'My Account',
   };
@@ -20,7 +21,11 @@ export default function AdminBreadcrumbs() {
     segments = ['admin', ...segments];
   }
 
-  if (segments.length >= 4 && segments[2] === 'edit') {
+  if (segments.length >= 4 && segments[2] === 'orders' && segments[3] === 'edit') {
+    segments = ['admin', 'orders', 'edit'];
+  }
+
+  if (segments.length >= 4 && segments[2] === 'edit' && segments[1] === 'products') {
     segments = segments.slice(0, 3);
   }
 

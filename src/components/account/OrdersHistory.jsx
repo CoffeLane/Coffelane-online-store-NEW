@@ -11,6 +11,7 @@ import deliveredImg from "../../assets/images/status/delivered.png";
 import deliveringImg from "../../assets/images/status/delivering.png";
 import cancelledImg from "../../assets/images/status/cancelled.png";
 import { useNavigate } from "react-router-dom";
+import { default as api } from "../../store/api/axios.js";
 
 export default function OrderHistory() {
   const theme = useTheme();
@@ -19,11 +20,129 @@ export default function OrderHistory() {
   const dispatch = useDispatch();
   const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
+  const [photoCache, setPhotoCache] = useState(new Map()); // Кэш для фото продуктов/аксессуаров
+  const [imageErrors, setImageErrors] = useState({}); // Ошибки загрузки изображений
 
 
   useEffect(() => {
     dispatch(fetchUserOrders({ page: 1, size: 20 }));
   }, [dispatch]);
+
+  // Загрузка фото для всех продуктов/аксессуаров в заказах
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    const loadPhotos = async () => {
+      // Собираем все уникальные ID продуктов и аксессуаров
+      const productIds = new Set();
+      const accessoryIds = new Set();
+
+      orders.forEach(order => {
+        (order.positions || []).forEach(position => {
+          if (position.product?.id) {
+            productIds.add(position.product.id);
+          }
+          if (position.accessory?.id) {
+            accessoryIds.add(position.accessory.id);
+          }
+        });
+      });
+
+      // Проверяем, какие фото уже загружены
+      setPhotoCache(prevCache => {
+        const photoPromises = [];
+        
+        // Загружаем фото продуктов
+        productIds.forEach(productId => {
+          if (!prevCache.has(`product-${productId}`)) {
+            photoPromises.push(
+              api.get(`/products/${productId}`)
+                .then(response => {
+                  const product = response.data;
+                  let photoUrl = null;
+                  
+                  // Извлекаем фото из различных полей
+                  if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
+                    const firstPhoto = product.photos_url[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  } else if (product.product_photos && Array.isArray(product.product_photos) && product.product_photos.length > 0) {
+                    const firstPhoto = product.product_photos[0];
+                    if (firstPhoto.photo) {
+                      photoUrl = typeof firstPhoto.photo === 'string' ? firstPhoto.photo : (firstPhoto.photo.url || firstPhoto.photo.photo_url);
+                    } else {
+                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
+                    }
+                  }
+                  
+                  // Если URL относительный, добавляем базовый URL
+                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
+                    const baseUrl = 'https://onlinestore-928b.onrender.com';
+                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+                  }
+                  
+                  return { key: `product-${productId}`, photoUrl: photoUrl || null };
+                })
+                .catch(err => {
+                  console.warn(`Failed to load photo for product ${productId}:`, err);
+                  return { key: `product-${productId}`, photoUrl: null };
+                })
+            );
+          }
+        });
+
+        // Загружаем фото аксессуаров
+        accessoryIds.forEach(accessoryId => {
+          if (!prevCache.has(`accessory-${accessoryId}`)) {
+            photoPromises.push(
+              api.get(`/accessories/${accessoryId}`)
+                .then(response => {
+                  const accessory = response.data;
+                  let photoUrl = null;
+                  
+                  // Извлекаем фото из различных полей
+                  if (accessory.photos_url && Array.isArray(accessory.photos_url) && accessory.photos_url.length > 0) {
+                    const firstPhoto = accessory.photos_url[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  } else if (accessory.accessory_photos && Array.isArray(accessory.accessory_photos) && accessory.accessory_photos.length > 0) {
+                    const firstPhoto = accessory.accessory_photos[0];
+                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                  }
+                  
+                  // Если URL относительный, добавляем базовый URL
+                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
+                    const baseUrl = 'https://onlinestore-928b.onrender.com';
+                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+                  }
+                  
+                  return { key: `accessory-${accessoryId}`, photoUrl: photoUrl || null };
+                })
+                .catch(err => {
+                  console.warn(`Failed to load photo for accessory ${accessoryId}:`, err);
+                  return { key: `accessory-${accessoryId}`, photoUrl: null };
+                })
+            );
+          }
+        });
+
+        // Ждем загрузки всех фото и обновляем кэш
+        if (photoPromises.length > 0) {
+          Promise.all(photoPromises).then(results => {
+            setPhotoCache(currentCache => {
+              const newCache = new Map(currentCache);
+              results.forEach(({ key, photoUrl }) => {
+                newCache.set(key, photoUrl);
+              });
+              return newCache;
+            });
+          });
+        }
+        
+        return prevCache; // Возвращаем текущий кэш без изменений
+      });
+    };
+
+    loadPhotos();
+  }, [orders]);
 
   const location = useLocation();
 
@@ -45,21 +164,27 @@ export default function OrderHistory() {
     processing: deliveringImg,
     delivered: deliveredImg,
     delivering: deliveringImg,
+    in_transit: deliveringImg,
     cancelled: cancelledImg,
+    canceled: cancelledImg, 
   };
 
   const statusLabels = {
-    processing: "Preparing order",
+    processing: "Processing",
     delivered: "Delivered",
-    delivering: "On its way",
+    delivering: "Delivered",
+    in_transit: "Delivered",
     cancelled: "Cancelled",
+    canceled: "Cancelled",
   };
 
   const statusColors = {
-    processing: "#FFA500",
-    delivered: "#4CAF50",
-    delivering: "#2196F3",
-    cancelled: "#F44336",
+    processing: "#FFE47A",
+    delivered: "#7AF48C",
+    delivering: "#7AF48C",
+    in_transit: "#7AF48C",
+    cancelled: "#FD8888",
+    canceled: "#FD8888",
   };
 
   if (loading) {
@@ -149,11 +274,43 @@ export default function OrderHistory() {
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3, pt: 2, borderTop: "1px solid #E0E0E0" }}>
                 {order.positions?.map((pos, index) => {
                   const item = pos.product || pos.accessory;
+                  
+                  // Получаем фото из кэша
+                  let photoUrl = null;
+                  if (pos.product?.id) {
+                    photoUrl = photoCache.get(`product-${pos.product.id}`);
+                  } else if (pos.accessory?.id) {
+                    photoUrl = photoCache.get(`accessory-${pos.accessory.id}`);
+                  }
+                  
+                  // Если нет в кэше, пробуем получить из данных позиции
+                  if (!photoUrl && item) {
+                    if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
+                      const firstPhoto = item.photos_url[0];
+                      photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+                    } else if (item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
+                      const firstPhoto = item.product_photos[0];
+                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
+                    } else if (item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
+                      const firstPhoto = item.accessory_photos[0];
+                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
+                    }
+                  }
+                  
+                  // Если URL относительный, добавляем базовый URL
+                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
+                    const baseUrl = 'https://onlinestore-928b.onrender.com';
+                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+                  }
+                  
+                  const imageKey = `${order.id}-${index}`;
+                  const hasImageError = imageErrors[imageKey];
+                  
                   return (
                     <Box key={index} sx={{ display: "flex", alignItems: "center", gap: isMobile ? 2 : 3 }}>
                       <Box sx={{
-                        width: isMobile ? 60 : 80,
-                        height: isMobile ? 60 : 80,
+                        width: isMobile ? 50 : 60,
+                        height: isMobile ? 50 : 60,
                         flexShrink: 0,
                         borderRadius: "12px",
                         backgroundColor: "#F5F5F5",
@@ -162,10 +319,15 @@ export default function OrderHistory() {
                         alignItems: "center",
                         overflow: "hidden"
                       }}>
-                        {item?.photos_url?.[0]?.url ? (
-                          <Box component="img" src={item.photos_url[0].url} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        {photoUrl && !hasImageError ? (
+                          <Box 
+                            component="img" 
+                            src={photoUrl} 
+                            onError={() => setImageErrors(prev => ({ ...prev, [imageKey]: true }))}
+                            sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
+                          />
                         ) : (
-                          <CoffeeIcon sx={{ color: "#CCC", fontSize: isMobile ? 30 : 40 }} />
+                          <CoffeeIcon sx={{ color: "#CCC", fontSize: isMobile ? 25 : 30 }} />
                         )}
                       </Box>
 
