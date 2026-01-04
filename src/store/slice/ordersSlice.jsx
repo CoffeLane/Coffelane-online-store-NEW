@@ -56,6 +56,75 @@ const processOrderResponse = (data, page, size) => {
 
 //  * Создание нового заказа
 
+// export const createOrder = createAsyncThunk(
+//   "orders/createOrder",
+//   async (orderData, { rejectWithValue, dispatch }) => {
+//     try {
+//       for (const item of orderData.positions) {
+//         try {
+//           await dispatch(addItemToBasket({
+//             product_id: item.product_id,
+//             supply_id: item.supply_id,
+//             accessory_id: item.accessory_id,
+//             quantity: item.quantity
+//           })).unwrap();
+//         } catch (addError) {
+//           dispatch(clearBasketState());
+//           await dispatch(addItemToBasket({
+//             product_id: item.product_id,
+//             supply_id: item.supply_id,
+//             accessory_id: item.accessory_id,
+//             quantity: item.quantity
+//           })).unwrap();
+//         }
+//       }
+
+//       const basketRes = await dispatch(getActiveBasket()).unwrap();
+//       const basketId = basketRes?.id;
+//       if (!basketId) throw new Error("Не удалось получить ID корзины");
+
+//       const formatPhone = (phone) => {
+//         const digits = String(phone).replace(/\D/g, "");
+//         return digits.startsWith("38") ? `+${digits}` : `+38${digits}`;
+//       };
+
+//       const payload = {
+//         billing_details: {
+//           ...orderData.billing_details,
+//           phone_number: formatPhone(orderData.billing_details.phone_number)
+//         },
+//         positions: orderData.positions.map(p => ({
+//           quantity: Number(p.quantity),
+//           ...(p.accessory_id
+//             ? { accessory_id: Number(p.accessory_id) }
+//             : { product_id: Number(p.product_id), supply_id: Number(p.supply_id) }
+//           )
+//         })),
+//         customer_data: orderData.customer_data,
+//         discount_code: orderData.discount_code 
+//           ? (typeof orderData.discount_code === 'number' 
+//               ? orderData.discount_code 
+//               : (typeof orderData.discount_code === 'string' && !isNaN(Number(orderData.discount_code))
+//                   ? Number(orderData.discount_code)
+//                   : orderData.discount_code))
+//           : null,
+//         // basket_id: Number(basketId)
+//       };
+
+//       console.log("📤 Sending order payload:", JSON.stringify(payload, null, 2));
+//       const response = await apiWithAuth.post("/orders/create/", payload);
+//       dispatch(clearBasketState());
+//       return response.data;
+//     } catch (err) {
+//       console.error("❌ Order creation error:", err);
+//       console.error("❌ Error response:", err.response?.data);
+//       console.error("❌ Error status:", err.response?.status);
+//       return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
+//     }
+//   }
+// );
+
+
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
   async (orderData, { rejectWithValue, dispatch }) => {
@@ -101,28 +170,19 @@ export const createOrder = createAsyncThunk(
           )
         })),
         customer_data: orderData.customer_data,
-        discount_code: orderData.discount_code 
-          ? (typeof orderData.discount_code === 'number' 
-              ? orderData.discount_code 
-              : (typeof orderData.discount_code === 'string' && !isNaN(Number(orderData.discount_code))
-                  ? Number(orderData.discount_code)
-                  : orderData.discount_code))
-          : null,
+        discount_code: orderData.discount_code,
         // basket_id: Number(basketId)
       };
 
-      console.log("📤 Sending order payload:", JSON.stringify(payload, null, 2));
       const response = await apiWithAuth.post("/orders/create/", payload);
       dispatch(clearBasketState());
       return response.data;
     } catch (err) {
-      console.error("❌ Order creation error:", err);
-      console.error("❌ Error response:", err.response?.data);
-      console.error("❌ Error status:", err.response?.status);
       return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
     }
   }
 );
+
 
 // //  * Детали конкретного заказа
 

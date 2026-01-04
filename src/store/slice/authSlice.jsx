@@ -315,39 +315,67 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
+// export const logoutUser = createAsyncThunk(
+//   "auth/logout",
+//   async (_, { dispatch }) => {
+//     // 1. Достаем токен и ОЧЕНЬ тщательно чистим его
+//     const rawRefresh = localStorage.getItem("refresh");
+
+//     // Если токена нет совсем, просто чистим локально и выходим
+//     if (!rawRefresh) {
+//       dispatch(clearAuthState());
+//       dispatch(clearCart());
+//       dispatch(clearFavorites());
+//       dispatch(clearBasketState());
+//       return;
+//     }
+
+//     const cleanRefresh = rawRefresh.replace(/^"+|"+$/g, "");
+
+//     try {
+//       // 2. Пытаемся уведомить сервер
+//       await apiWithAuth.post("/auth/logout", { refresh: cleanRefresh });
+//     } catch (serverError) {
+//       // Если 400 или 401 — серверу этот токен уже не важен
+//       console.warn("Server-side logout failed, proceeding with local cleanup", serverError.response?.data);
+//     } finally {
+//       // 3. САМОЕ ВАЖНОЕ: Что бы ни случилось на сервере, чистим браузер
+//       localStorage.clear(); // Удаляет всё: access, refresh, isAdmin, userAvatar
+
+//       dispatch(clearAuthState());
+//       dispatch(clearCart());
+//       dispatch(clearFavorites());
+//       dispatch(clearBasketState());
+
+//       // Перенаправление на главную (опционально, если не срабатывает автоматически)
+//       window.location.href = '/';
+//     }
+//   }
+// );
+
 export const logoutUser = createAsyncThunk(
   "auth/logout",
   async (_, { dispatch }) => {
-    // 1. Достаем токен и ОЧЕНЬ тщательно чистим его
     const rawRefresh = localStorage.getItem("refresh");
-
-    // Если токена нет совсем, просто чистим локально и выходим
-    if (!rawRefresh) {
-      dispatch(clearAuthState());
-      dispatch(clearCart());
-      dispatch(clearFavorites());
-      dispatch(clearBasketState());
-      return;
-    }
-
-    const cleanRefresh = rawRefresh.replace(/^"+|"+$/g, "");
+    const cleanRefresh = rawRefresh ? rawRefresh.replace(/^"+|"+$/g, "") : null;
 
     try {
-      // 2. Пытаемся уведомить сервер
-      await apiWithAuth.post("/auth/logout", { refresh: cleanRefresh });
+      // Если токен есть, пробуем уведомить сервер
+      if (cleanRefresh) {
+        await apiWithAuth.post("/auth/logout", { refresh: cleanRefresh });
+      }
     } catch (serverError) {
-      // Если 400 или 401 — серверу этот токен уже не важен
-      console.warn("Server-side logout failed, proceeding with local cleanup", serverError.response?.data);
+      console.warn("Server-side logout failed, proceeding with local cleanup");
     } finally {
-      // 3. САМОЕ ВАЖНОЕ: Что бы ни случилось на сервере, чистим браузер
-      localStorage.clear(); // Удаляет всё: access, refresh, isAdmin, userAvatar
+      // САМОЕ ВАЖНОЕ: Чистим всё ВСЕГДА, независимо от успеха API
+      localStorage.clear(); 
 
       dispatch(clearAuthState());
       dispatch(clearCart());
       dispatch(clearFavorites());
       dispatch(clearBasketState());
 
-      // Перенаправление на главную (опционально, если не срабатывает автоматически)
+      // Перезагрузка гарантирует остановку всех фоновых fetchProfile
       window.location.href = '/';
     }
   }
@@ -455,35 +483,49 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-       // 1. Очищуємо токени від лапок ПЕРЕД збереженням
-      const cleanAccess = action.payload.token?.replace(/^"+|"+$/g, "");
-      // Якщо refresh приходить окремо (залежить від вашого API)
-      const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
+        // 1. Очищуємо токени від лапок ПЕРЕД збереженням
+        const cleanAccess = action.payload.token?.replace(/^"+|"+$/g, "");
+        // Якщо refresh приходить окремо (залежить від вашого API)
+        const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
 
-      state.token = cleanAccess;
-      state.user = action.payload.user;
-      state.profile = action.payload.profile;
-      state.email = action.payload.email || null;
-      state.tokenInvalid = false;
+        state.token = cleanAccess;
+        state.user = action.payload.user;
+        state.profile = action.payload.profile;
+        state.email = action.payload.email || null;
+        state.tokenInvalid = false;
 
-      // 2. Зберігаємо чисті рядки в localStorage
-      if (cleanAccess) localStorage.setItem("access", cleanAccess);
-      if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
-      
-      if (action.payload.user?.avatar) {
-        localStorage.setItem('userAvatar', action.payload.user.avatar);
-      }
-      
-      if (action.payload.isAdmin) {
-        state.isAdmin = true;
-        localStorage.setItem("isAdmin", "true");
-      }
-    })
+        // 2. Зберігаємо чисті рядки в localStorage
+        if (cleanAccess) localStorage.setItem("access", cleanAccess);
+        if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
+
+        if (action.payload.user?.avatar) {
+          localStorage.setItem('userAvatar', action.payload.user.avatar);
+        }
+
+        if (action.payload.isAdmin) {
+          state.isAdmin = true;
+          localStorage.setItem("isAdmin", "true");
+        }
+      })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.loading = false;
+        const cleanAccess = action.payload.access?.replace(/^"+|"+$/g, "");
+        const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
 
+        state.token = cleanAccess;
+        state.user = action.payload.user;
+        state.email = action.payload.user?.email;
+        state.isAdmin = action.payload.isAdmin;
+
+        // ОБЯЗАТЕЛЬНО сохраняем в localStorage, чтобы logout мог их найти и удалить
+        if (cleanAccess) localStorage.setItem("access", cleanAccess);
+        if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
+        if (action.payload.isAdmin) localStorage.setItem("isAdmin", "true");
+      })
       // FETCH PROFILE
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.loading = false;

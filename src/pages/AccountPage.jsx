@@ -101,10 +101,10 @@ export default function AccountPage() {
   }, [dispatch]);
 
   const handleLogout = async () => {
-    // console.log("▶ LOGOUT CLICK");
+    console.log("▶ LOGOUT CLICK");
     const result = await dispatch(logoutUser());
      navigate("/");
-    // console.log("LOGOUT RESULT:", result);
+    console.log("LOGOUT RESULT:", result);
   };
 
   return (
