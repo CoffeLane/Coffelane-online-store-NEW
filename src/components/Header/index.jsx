@@ -188,9 +188,6 @@ function Header() {
     const favoritesCount = favoriteItems ? favoriteItems.length : 0;
     const hasFavorites = favoritesCount > 0;
 
-    // console.log("Header - favoriteItems:", favoriteItems);
-    // console.log("Header - favoritesCount:", favoritesCount);
-
     const goToFavorites = () => {
         if (user) {
             navigate('/favourite');

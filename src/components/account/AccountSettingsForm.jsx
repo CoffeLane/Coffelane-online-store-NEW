@@ -31,7 +31,6 @@ export default function AccountSettingsForm() {
     repeatNewPassword: false,
   });
 
-  // Заполнение email при загрузке
   useEffect(() => {
     if (userEmail) {
       setFormData((prev) => ({ ...prev, email: userEmail }));

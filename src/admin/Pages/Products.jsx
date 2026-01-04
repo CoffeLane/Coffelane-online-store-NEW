@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Box, Divider, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import Search from '../../components/Search/index.jsx';
@@ -9,7 +9,7 @@ import { checkboxStyles } from '../../styles/inputStyles.jsx';
 import hideIcon from '../../assets/admin/hide.svg';
 import deleteIcon from '../../assets/admin/delete.svg';
 import ProductsTable from '../AdminComponents/Dashboard/ProductsTable.jsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../store/api/axios.js';
 import { apiWithAuth } from '../../store/api/axios.js';
 
@@ -21,9 +21,41 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState('Category');
 
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Обновляем список продуктов при монтировании и при изменении страницы
   useEffect(() => {
     fetchAllProducts(page);
+  }, [page]);
+
+  // Обновляем список продуктов, если пришли с флагом refresh
+  useEffect(() => {
+    if (location.state?.refresh) {
+      // Увеличиваем задержку, чтобы дать время серверу обработать фото
+      // Фото могут обрабатываться асинхронно на сервере, особенно для новых продуктов
+      const timer = setTimeout(() => {
+        fetchAllProducts(page);
+        // Очищаем state, чтобы не обновлять при каждом рендере
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 5000); // Увеличено до 5 секунд, чтобы дать время серверу обработать и сохранить фото
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
+
+  // Прокручиваем в начало таблицы при изменении страницы (работает для мобильной и десктопной версии)
+  useEffect(() => {
+    // Используем небольшую задержку, чтобы дать время для обновления DOM
+    const timer = setTimeout(() => {
+      const tableTop = document.getElementById('products-table-top');
+      if (tableTop) {
+        tableTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // Если элемент не найден, прокручиваем к началу страницы
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [page]);
 
   // Сбрасываем страницу при изменении категории и загружаем все продукты для фильтрации
@@ -37,6 +69,8 @@ export default function Products() {
 
   const fetchAllProducts = async (pageNumber = 1) => {
     try {
+      // Используем публичный эндпоинт для получения продуктов
+      // Админский эндпоинт может не возвращать фото или иметь другую структуру
       const productsRes = await api.get('/products', { params: { page: pageNumber } });
       const accessoriesRes = await api.get('/accessories');
 
@@ -47,6 +81,39 @@ export default function Products() {
       setProducts(combined);
       setTotalPages(productsRes.data.total_pages);
       setSelectedIds([]);
+      
+      // Отладочное логирование для проверки структуры данных
+      if (combined.length > 0) {
+        const productWithPhotos = combined.find(p => p.type === 'product' && (p.photos_url?.length > 0 || p.product_photos?.length > 0));
+        if (productWithPhotos) {
+          console.log("📸 Example product with photos:", {
+            id: productWithPhotos.id,
+            name: productWithPhotos.name,
+            photos_url: productWithPhotos.photos_url,
+            product_photos: productWithPhotos.product_photos
+          });
+        }
+        
+        // Логируем продукты без фото для отладки
+        const productsWithoutPhotos = combined.filter(p => 
+          p.type === 'product' && 
+          (!p.photos_url || p.photos_url.length === 0) && 
+          (!p.product_photos || p.product_photos.length === 0)
+        );
+        if (productsWithoutPhotos.length > 0) {
+          console.log(`⚠️ Found ${productsWithoutPhotos.length} products without photos`);
+          productsWithoutPhotos.forEach(p => {
+            console.log(`⚠️ Product ${p.id} (${p.name}) has no photo:`, {
+              photos_url: p.photos_url,
+              product_photos: p.product_photos,
+              hasPhotosUrl: !!p.photos_url,
+              hasProductPhotos: !!p.product_photos,
+              photosUrlLength: p.photos_url?.length || 0,
+              productPhotosLength: p.product_photos?.length || 0
+            });
+          });
+        }
+      }
     } catch (error) {
 // console.error('Error loading products/accessories:', error);
     }
@@ -84,12 +151,47 @@ export default function Products() {
   const adminProducts = products.map(item => {
     // Обрабатываем фото для продуктов и аксессуаров
     let imageUrl = null;
+    
+    // Проверяем разные варианты структуры фото
     if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
-      imageUrl = item.photos_url[0]?.url || item.photos_url[0];
+      const firstPhoto = item.photos_url[0];
+      imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
     } else if (item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
-      imageUrl = item.accessory_photos[0]?.url || item.accessory_photos[0];
+      const firstPhoto = item.accessory_photos[0];
+      imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
     } else if (item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
-      imageUrl = item.product_photos[0]?.url || item.product_photos[0];
+      const firstPhoto = item.product_photos[0];
+      // product_photos может содержать объект с полем photo (строка или объект)
+      // Согласно документации: ProductPhoto{id, photo}
+      if (firstPhoto.photo) {
+        // photo может быть строкой (URL) или объектом
+        if (typeof firstPhoto.photo === 'string') {
+          imageUrl = firstPhoto.photo;
+        } else if (firstPhoto.photo.url) {
+          imageUrl = firstPhoto.photo.url;
+        } else if (firstPhoto.photo.photo_url) {
+          imageUrl = firstPhoto.photo.photo_url;
+        }
+      } else {
+        imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+      }
+    }
+    
+    // Если URL относительный, добавляем базовый URL
+    if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+    }
+    
+    // Отладочное логирование для продуктов без фото (только для новых продуктов)
+    if (!imageUrl && item.type === 'product' && item.id >= 2) {
+      console.log(`⚠️ Product ${item.id} (${item.name}) has no photo:`, {
+        photos_url: item.photos_url,
+        product_photos: item.product_photos,
+        hasPhotosUrl: !!item.photos_url,
+        hasProductPhotos: !!item.product_photos,
+        photosUrlLength: item.photos_url?.length || 0,
+        productPhotosLength: item.product_photos?.length || 0
+      });
     }
     
     return {
@@ -105,6 +207,15 @@ export default function Products() {
   });
 
   const allSelected = selectedIds.length === adminProducts.length;
+
+  const filteredProducts = useMemo(() => {
+    if (categoryFilter === 'Category' || !categoryFilter) return adminProducts;
+    return adminProducts.filter(p => {
+      const productCategory = (p.category || '').trim();
+      const filterCategory = categoryFilter.trim();
+      return productCategory.toLowerCase() === filterCategory.toLowerCase();
+    });
+  }, [adminProducts, categoryFilter]);
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
@@ -182,6 +293,7 @@ export default function Products() {
         </Box>
       </Box>
 
+      <Box id="products-table-top" />
       <ProductsTable
         onRefresh={fetchAllProducts}
         products={adminProducts}
@@ -193,7 +305,9 @@ export default function Products() {
         checkboxStyles={checkboxStyles}
         page={page}
         totalPages={totalPages}
-        onPageChange={(e, newPage) => setPage(newPage)}
+        onPageChange={(e, newPage) => {
+          setPage(newPage);
+        }}
         variant="admin"
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}

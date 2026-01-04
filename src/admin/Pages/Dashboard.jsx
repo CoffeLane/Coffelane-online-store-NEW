@@ -39,20 +39,38 @@ export default function Dashboard() {
 
       setProducts(combined);
     } catch (error) {
-      // console.error('Error loading products:', error);
+      console.error('Error loading products:', error);
     }
   };
 
-  const adminProducts = products.map(item => ({
-    id: item.id,
-    image: item.photos_url?.[0]?.url || item.accessory_photos?.[0]?.url || null,
-    name: item.name,
-    category: item.brand || item.category || 'Other',
-    price: item.supplies?.[0]?.price || item.price || 0,
-    stock: item.supplies?.[0]?.quantity || item.quantity || 0,
-    status: (item.supplies?.[0]?.quantity || item.quantity || 0) > 0 ? 'Active' : 'Out of stock',
-    type: item.type
-  }));
+  const adminProducts = products.map(item => {
+    // Обрабатываем фото для продуктов и аксессуаров
+    let imageUrl = null;
+    
+    if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
+      const firstPhoto = item.photos_url[0];
+      imageUrl = firstPhoto?.url || firstPhoto?.photo || firstPhoto;
+    } else if (item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
+      const firstPhoto = item.accessory_photos[0];
+      imageUrl = firstPhoto?.url || firstPhoto?.photo || firstPhoto;
+    }
+    
+    // Если URL относительный, добавляем базовый URL
+    if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+    }
+    
+    return {
+      id: item.id,
+      image: imageUrl,
+      name: item.name,
+      category: item.brand || item.category || 'Other',
+      price: item.supplies?.[0]?.price || item.price || 0,
+      stock: item.supplies?.[0]?.quantity || item.quantity || 0,
+      status: (item.supplies?.[0]?.quantity || item.quantity || 0) > 0 ? 'Active' : 'Out of stock',
+      type: item.type
+    };
+  });
 
   const rowsPerPage = 5;
   const totalPages = Math.ceil(adminProducts.length / rowsPerPage);
@@ -116,8 +134,6 @@ export default function Dashboard() {
       </Box>
 
       <RevenueChart />
-
-      {}
       <ProductsTable
         products={paginatedProducts}
         selectedIds={selectedIds}

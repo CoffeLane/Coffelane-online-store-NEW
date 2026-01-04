@@ -72,8 +72,6 @@ export default function AddToCartButtons({ product, quantity }) {
                     Checkout now
                 </Button>
             </Box>
-
-            {}
         </>
     );
 }

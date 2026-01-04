@@ -95,7 +95,6 @@ export default function PersonalInfoForm({ user }) {
             const refreshResult = await dispatch(refreshAccessToken());
             if (refreshAccessToken.fulfilled.match(refreshResult)) {
               const newToken = refreshResult.payload.access;
-              // ИСПРАВЛЕНО: используем новый экземпляр с новым токеном
               const retryApi = apiWithAuth(newToken);
               await retryApi.patch("/users/update", updateData);
               

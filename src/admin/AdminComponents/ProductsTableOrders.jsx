@@ -17,7 +17,6 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                     overflow: 'hidden',
                     mb: 2
                 }}>
-                    {/* Заголовок таблицы */}
                     <Box sx={{ 
                         backgroundColor: '#EAD9C9',
                         px: 2,
@@ -33,7 +32,6 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                         </Typography>
                     </Box>
                     
-                    {/* Контейнер с карточками */}
                     <Box sx={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
@@ -51,14 +49,12 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                 return (
                                     <Card
                                         key={p.id}
-                                        onClick={() => onRowClick(p)}
                                         sx={{
                                             borderRadius: '12px',
                                             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
                                             border: isSelected ? '2px solid #A4795B' : '1px solid #e0e0e0',
                                             backgroundColor: isSelected ? '#f5e8dd' : '#ffffff',
                                             transition: 'all 0.2s ease',
-                                            cursor: 'pointer',
                                             '&:hover': {
                                                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                                                 borderColor: isSelected ? '#A4795B' : '#d0d0d0',
@@ -78,7 +74,12 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                                     {p.customer}
                                                 </Typography>
                                             </Box>
-                                            <ActionsMenu id={p.id} type="order" />
+                                            <ActionsMenu id={p.id} type="order" onViewOrder={(orderId) => {
+                                                const order = products.find(o => o.id === orderId);
+                                                if (order && onRowClick) {
+                                                    onRowClick(order);
+                                                }
+                                            }} />
                                         </Box>
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                                             <Box>
@@ -107,7 +108,7 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                                     sx={{
                                                         backgroundColor:
                                                             p.status === 'Delivered' ? '#7AF48C' :
-                                                                p.status === 'Pending' ? '#FFE47A' :
+                                                                p.status === 'Processing' ? '#FFE47A' :
                                                                     p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                         color: '#3E3027',
                                                         fontWeight: 600,
@@ -176,7 +177,6 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                 <TableRow 
                                     key={p.id} 
                                     sx={{ 
-                                        cursor: 'pointer', 
                                         backgroundColor: isSelected ? '#f5e8dd' : '#ffffff',
                                         '&:hover': { 
                                             backgroundColor: isSelected ? '#f5e8dd' : '#f8f2ed',
@@ -188,8 +188,7 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                         '&:last-child': {
                                             borderBottom: 'none',
                                         }
-                                    }} 
-                                    onClick={() => onRowClick(p)}
+                                    }}
                                 >
                                     <TableCell sx={{ fontSize: { xs: '12px', md: '14px' }, fontWeight: 600, color: '#16675C' }}>#{p.ID}</TableCell>
                                     <TableCell sx={{ fontSize: { xs: '12px', md: '14px' }, fontWeight: 500 }}>{p.customer}</TableCell>
@@ -203,7 +202,7 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                             sx={{
                                                 backgroundColor:
                                                     p.status === 'Delivered' ? '#7AF48C' :
-                                                        p.status === 'Pending' ? '#FFE47A' :
+                                                        p.status === 'Processing' ? '#FFE47A' :
                                                             p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                 color: '#3E3027',
                                                 fontWeight: 600,
@@ -213,7 +212,12 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                             }}
                                         />
                                     </TableCell>
-                                    <TableCell><ActionsMenu id={p.id} type="order" /></TableCell>
+                                    <TableCell><ActionsMenu id={p.id} type="order" onViewOrder={(orderId) => {
+                                        const order = products.find(o => o.id === orderId);
+                                        if (order && onRowClick) {
+                                            onRowClick(order);
+                                        }
+                                    }} /></TableCell>
                                 </TableRow>
                             );
                         })

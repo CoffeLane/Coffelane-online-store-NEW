@@ -1,7 +1,7 @@
 import { Box, Paper, List, ListItem, ListItemText, ListItemIcon, ListItemButton, AppBar, Toolbar, IconButton, Tooltip, Avatar, Drawer, useMediaQuery, useTheme } from '@mui/material';
-import { Outlet, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useEffect, useMemo, useState } from 'react';
+import {  useMemo, useState } from 'react';
 import { logoutUser, setAdminMode } from '../../store/slice/authSlice';
 import logo from '../../assets/images/header/logo.svg';
 import dashboard from '../../assets/admin/dashboard.svg'
@@ -25,21 +25,17 @@ export default function AdminLayout() {
   const { user: authUser, email } = useSelector((state) => state.auth);
   const isAdmin = useSelector((state) => state.auth.isAdmin);
 
-  // Получаем инициалы для дефолтной аватарки
   const userInitials = useMemo(() => {
     const firstName = authUser?.first_name || '';
     const lastName = authUser?.last_name || '';
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'A';
   }, [authUser?.first_name, authUser?.last_name]);
 
-  // Получаем аватарку из authUser или localStorage (обновляется автоматически после изменения в MyAccountAdmin)
   const avatar = useMemo(() => {
-    // Сначала проверяем authUser
     const authAvatar = authUser?.avatar || authUser?.profile?.avatar;
     if (authAvatar) {
       return authAvatar;
     }
-    // Если в authUser нет аватарки, проверяем localStorage
     const savedAvatar = localStorage.getItem('userAvatar');
     return savedAvatar || null;
   }, [authUser?.avatar, authUser?.profile?.avatar]);
@@ -53,7 +49,6 @@ export default function AdminLayout() {
     navigate('/');
   };
 
-  // Формируем объект user из данных Redux store (с сервера)
   const user = {
     firstName: authUser?.first_name || 'Admin',
     lastName: authUser?.last_name || 'User',
@@ -200,7 +195,6 @@ export default function AdminLayout() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', background: "linear-gradient(to bottom, #FFFFFF, #EAD9C9)" }}>
-      {/* Header с иконкой шестеренки */}
       <AppBar position="static" sx={{ backgroundColor: '#EAD9C9', boxShadow: 'none', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

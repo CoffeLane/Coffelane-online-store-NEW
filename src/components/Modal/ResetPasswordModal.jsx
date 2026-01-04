@@ -7,9 +7,11 @@ import { inputStyles } from "../../styles/inputStyles.jsx";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import CloseIcon from "@mui/icons-material/Close";
 import api from "../../store/api/axios.js";
+import { useNavigate } from "react-router-dom";
 import { validatePassword } from "../utils/validation/validatePasswords.jsx";
 
 export default function ResetPasswordModal({ open, handleClose, setSuccessModalOpen, token }) {
+    const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [password, setPassword] = useState("");
@@ -42,21 +44,37 @@ export default function ResetPasswordModal({ open, handleClose, setSuccessModalO
     };
 
     const handleSubmit = async () => {
-        if (!validate()) return;
+    if (!validate()) return;
 
-        setLoading(true);
-        setServerError("");
-        try {
-            await api.post(`/auth/recovery_password/${token}`, { password });
-            handleClose(); 
-            setSuccessModalOpen(true); 
-        } catch (error) {
-            // console.error("Error resetting password:", error);
-            setServerError(error.response?.data?.message || "Server error. Try again later.");
-        } finally {
-            setLoading(false);
+    setLoading(true);
+    setServerError("");
+    try {
+        const cleanToken = token?.replace(/^"+|"+$/g, "");
+        const response = await api.post(`/auth/recovery_password/${cleanToken}`, { 
+            password: password 
+        });
+
+        console.log("Password changed successfully:", response.data);
+        handleClose(); 
+        setErrors({});
+        navigate("/", { replace: true });
+        setSuccessModalOpen(true); 
+    } catch (error) {
+        console.error("Full error object:", error);
+        const serverData = error.response?.data;
+        let message = "Server error. Try again later.";
+
+        if (serverData) {
+            message = serverData.password ? `Password: ${serverData.password}` : 
+                      serverData.detail ? serverData.detail : 
+                      JSON.stringify(serverData);
         }
-    };
+
+        setServerError(message);
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
         <Dialog open={open} onClose={handleClose}
@@ -123,7 +141,7 @@ export default function ResetPasswordModal({ open, handleClose, setSuccessModalO
                 />
 
                 <Button sx={{ ...btnStyles, width: "100%", textTransform: "none" }} onClick={handleSubmit} disabled={loading}>
-                    {loading ? <CircularProgress size={24} /> : "Reset Password"}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : "Reset Password"}
                 </Button>
             </Box>
         </Dialog>

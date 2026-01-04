@@ -29,7 +29,7 @@ export default function ProductCardPage() {
     }
   }, [selectedProduct]);
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: '#A4795B' }}/></Box>;
   if (!selectedProduct) return <Box sx={{ py: 10, textAlign: 'center' }}>Product not found</Box>;
 
   const recommended = items.filter((p) => String(p.id) !== String(id)).slice(0, 3);
@@ -43,12 +43,11 @@ export default function ProductCardPage() {
         justifyContent: "center",
         gap: { xs: 4, md: 8 }
       }}>
-        {/* СЛАЙДЕР СТРОГО ПО ЦЕНТРУ */}
+
         <Box sx={{ width: { xs: "100%", md: "450px" }, display: 'flex', justifyContent: 'center' }}>
           <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
         </Box>
 
-        {/* ИНФОРМАЦИЯ */}
         <Box sx={{ flex: 1, maxWidth: { xs: "100%", md: 550 }, width: "100%" }}>
           <ProductInfo 
             product={selectedProduct} 

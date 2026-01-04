@@ -1,9 +1,8 @@
 import { patterns } from "./validatorsPatterns.jsx";
 
-// нормализация: убираем пробелы, скобки, дефисы
 const normalizePhone = (phone) => phone.replace(/[()\s-]/g, "");
 
-// проверка strict E.164
+// strict E.164
 const e164Regex = /^\+[1-9]\d{7,14}$/;
 
 const isValidPhone = (phone) => e164Regex.test(normalizePhone(phone));

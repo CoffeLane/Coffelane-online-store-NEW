@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiWithAuth } from '../../store/api/axios.js';
 
-export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh }) {
+export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh, onViewOrder }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -21,9 +21,10 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
     const handleEdit = () => {
         handleClose();
         if (type === 'product') {
-            navigate(`/admin/products/edit/${id}`);
+            const productTypeParam = productType === 'accessory' ? 'accessory' : 'product';
+            navigate(`/admin/products/edit/${id}?type=${productTypeParam}`);
         } else if (type === 'order') {
-            navigate(`/admin/orders`);
+            navigate(`/admin/orders/edit/${id}`);
         }
     };
 
@@ -35,7 +36,11 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 : `/coffee/product/${id}`;
             navigate(path);
         } else if (type === 'order') {
-            navigate(`/admin/orders`);
+            if (onViewOrder) {
+                onViewOrder(id);
+            } else {
+                navigate(`/admin/orders`);
+            }
         }
     };
 
@@ -50,7 +55,7 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
             if (type === 'product') {
                 await apiWithAuth.delete(`/products/${id}/deletion`);
             } else if (type === 'order') {
-                await apiWithAuth.delete(`/orders/${id}/deletion`);
+                await apiWithAuth.delete(`/orders/delete/${id}/`);
             }
 
             // console.log(`✅ ${type} deleted successfully`);
@@ -62,7 +67,7 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 window.location.reload();
             }
         } catch (error) {
-            // console.error(`❌ Error deleting ${type}:`, error.response?.data || error.message);
+            console.error(`Error deleting ${type}:`, error.response?.data || error.message);
             const errorMessage = error.response?.data?.detail || 
                                error.response?.data?.message || 
                                `Error when deleting ${type}. Please try again.`;
@@ -92,7 +97,7 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 window.location.reload();
             }
         } catch (error) {
-            // console.error("❌ Error hiding product:", error.response?.data || error.message);
+            console.error("Error hiding product:", error.response?.data || error.message);
             const errorMessage = error.response?.data?.detail || 
                                error.response?.data?.message || 
                                "Error when hiding product. Please try again.";
@@ -149,21 +154,59 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 )}
             </Menu>
 
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={() => !loading && setDeleteDialogOpen(false)}
-            >
-                <DialogTitle>Confirm Delete</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
+            <Dialog open={deleteDialogOpen} onClose={() => !loading && setDeleteDialogOpen(false)}
+                PaperProps={{sx: { borderRadius: '24px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', minWidth: '400px', maxWidth: '500px'}}}>
+                <DialogTitle sx={{  backgroundColor: '#EAD9C9', color: '#3E3027', fontWeight: 600, fontSize: '18px', borderBottom: '2px solid #D4C4B5', py: 2, px: 3}}>
+                    Confirm Delete
+                </DialogTitle>
+                <DialogContent sx={{ p: 3 }}>
+                    <DialogContentText sx={{  color: '#666', fontSize: '15px', lineHeight: 1.6}}>
                         Are you sure you want to delete this {type}? This action cannot be undone.
                     </DialogContentText>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
+                <DialogActions sx={{  p: 2.5, px: 3, borderTop: '1px solid #f0f0f0', gap: 1.5}}>
+                    <Button  onClick={() => setDeleteDialogOpen(false)}  disabled={loading}
+                        sx={{
+                            borderRadius: '12px',
+                            px: 3,
+                            py: 1,
+                            textTransform: 'none',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#666',
+                            border: '1px solid #e0e0e0',
+                            backgroundColor: '#fff',
+                            '&:hover': {
+                                backgroundColor: '#f5f5f5',
+                                borderColor: '#d0d0d0'
+                            },
+                            '&:disabled': {
+                                color: '#999',
+                                borderColor: '#e0e0e0'
+                            }
+                        }}
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleDeleteConfirm} color="error" disabled={loading}>
+                    <Button  onClick={handleDeleteConfirm}  disabled={loading}
+                        sx={{
+                            borderRadius: '12px',
+                            px: 3,
+                            py: 1,
+                            textTransform: 'none',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#fff',
+                            backgroundColor: '#FD8888',
+                            '&:hover': {
+                                backgroundColor: '#fc6d6d'
+                            },
+                            '&:disabled': {
+                                backgroundColor: '#fccccc',
+                                color: '#fff'
+                            }
+                        }}
+                    >
                         {loading ? "Deleting..." : "Delete"}
                     </Button>
                 </DialogActions>

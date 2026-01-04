@@ -23,7 +23,37 @@ import CoffeeIcon from '@mui/icons-material/Coffee';
 // Вспомогательный компонент для изображений с обработкой ошибок (как в CoffeeCardData)
 const FavoriteProductImage = ({ item, isMobile }) => {
   const [hasError, setHasError] = React.useState(false);
-  const imageUrl = item.photos_url?.[0]?.url;
+  
+  // Извлекаем фото из различных полей (как в других компонентах)
+  let imageUrl = null;
+  
+  // Проверяем photos_url
+  if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
+    const firstPhoto = item.photos_url[0];
+    imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+  }
+  
+  // Проверяем product_photos (для продуктов)
+  if (!imageUrl && item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
+    const firstPhoto = item.product_photos[0];
+    if (firstPhoto.photo) {
+      imageUrl = typeof firstPhoto.photo === 'string' ? firstPhoto.photo : (firstPhoto.photo.url || firstPhoto.photo.photo_url);
+    } else {
+      imageUrl = firstPhoto?.url || firstPhoto?.photo || null;
+    }
+  }
+  
+  // Проверяем accessory_photos (для аксессуаров)
+  if (!imageUrl && item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
+    const firstPhoto = item.accessory_photos[0];
+    imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+  }
+  
+  // Если URL относительный, добавляем базовый URL
+  if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http') && !imageUrl.startsWith('blob:')) {
+    const baseUrl = 'https://onlinestore-928b.onrender.com';
+    imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
+  }
 
   if (!imageUrl || hasError) {
     return (
@@ -70,7 +100,7 @@ export default function FavouritePage() {
   const hasLoadedRef = useRef(false);
   const modalOpenedRef = useRef(false);
 
-  // Загрузка данных и проверка авторизации
+
   useEffect(() => {
     if (!token || !user) {
       if (!token && !modalOpenedRef.current) {
@@ -86,7 +116,6 @@ export default function FavouritePage() {
     }
   }, [token, user, dispatch]);
 
-  // Мапа для быстрой проверки состояния "избранное"
   const favoritesMap = useMemo(() => {
     return favorites.reduce((acc, item) => {
       acc[String(item.id)] = true;
@@ -94,7 +123,6 @@ export default function FavouritePage() {
     }, {});
   }, [favorites]);
 
-  // Список всех избранных с защитой от пустых данных
   const allFavorites = useMemo(() => {
     if (!favorites || favorites.length === 0) return [];
     return [...favorites];
@@ -141,7 +169,7 @@ export default function FavouritePage() {
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-        <CircularProgress sx={{ color: "#16675C" }} />
+        <CircularProgress   sx={{ color: '#A4795B' }}/>
       </Box>
     );
   }
@@ -201,7 +229,6 @@ export default function FavouritePage() {
                   />
                 </Box>
 
-                {/* Контент */}
                 <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '8px !important' }}>
                   <Box sx={{ height: { xs: 70, md: 88 }, overflow: "hidden" }}>
                     <Typography 

@@ -20,6 +20,7 @@ import { formatPhone, formatCardNumber, formatExpiry } from "../components/utils
 import { CircularProgress } from "@mui/material";
 import api, { apiWithAuth } from "../store/api/axios.js";
 import { formatPrice } from "../components/utils/priceUtils.jsx";
+import { fetchProfile } from "../store/slice/authSlice.jsx";
 
 export default function CheckoutPage() {
   const items = useSelector(selectCartItems);
@@ -101,6 +102,7 @@ export default function CheckoutPage() {
 
       setTimeout(async () => {
         try {
+          console.log("🔄 Retrying order with data:", pendingOrderDataRef.current);
           const result = await dispatch(createOrder(orderData));
           if (result.meta.requestStatus === "fulfilled") {
             const order = result.payload;
@@ -108,13 +110,11 @@ export default function CheckoutPage() {
 
             const orderId = order.id || order.order_id || order.order_number;
 
-            // === ДОБАВЬТЕ ЭТОТ БЛОК ДЛЯ СКИДКИ ===
             if (discountCode?.code && orderId) {
               try {
                 await apiWithAuth.get(`/discount-codes/${discountCode.code}/${orderId}/`);
-                console.log("✅ Discount applied after auto-retry");
               } catch (e) {
-                console.error("❌ Discount retry failed", e);
+                console.error(" Discount retry failed", e);
               }
             }
 
@@ -131,7 +131,7 @@ export default function CheckoutPage() {
             });
           }
         } catch (error) {
-          console.error("❌ Error retrying order after login:", error);
+          console.error("Error retrying order after login:", error);
         }
       }, 500);
     }
@@ -147,7 +147,7 @@ export default function CheckoutPage() {
     const accessToken = token || localStorage.getItem("access");
 
     if (!accessToken || !user) {
-      console.warn("⚠️ User not authenticated, opening login modal");
+      console.warn("User not authenticated, opening login modal");
       setOpenLogin(true);
       setErrors({ submit: "Please log in to complete your order." });
       return;
@@ -253,10 +253,13 @@ export default function CheckoutPage() {
       },
       positions: orderItems,
       order_notes: "",
-      customer_data: { email: email.trim() }
+      customer_data: { email: email.trim() },
+      // НЕ отправляем discount_code при создании заказа - применяем его позже через отдельный эндпоинт
+      // discount_code будет применен после создания заказа через /discount-codes/{code}/{order_id}/
+      discount_code: null
     };
 
-    console.log("📤 Sending Order Data:", orderData);
+    console.log("📤 Данные заказа на отправку:", orderData);
     pendingOrderDataRef.current = orderData;
 
     try {
@@ -264,28 +267,20 @@ export default function CheckoutPage() {
 
       if (result.meta.requestStatus === "fulfilled") {
         const order = result.payload;
-        const orderId = order.id || order.order_number || order.number || order.order_id;
+        console.log("✅ Order created successfully:", order);
 
-        // Если у нас есть примененный (через заглушку) промокод
-        if (discountCode && orderId) {
+        // Скидка 
+        if (discountCode?.code && order.id) {
           try {
-            console.log(`🔗 Привязываем скидку ${discountCode.code} к заказу ${orderId}`);
-
-            // Используем apiWithAuth, так как это GET запрос по вашей документации
-            await apiWithAuth.get(`/discount-codes/${discountCode.code}/${orderId}/`);
-
-            console.log("✅ Скидка успешно применена на бэкенде");
-          } catch (discountError) {
-            console.error("❌ Не удалось применить скидку на сервере:", discountError);
+            console.log("⏳ Activating discount...");
+            await apiWithAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`);
+            console.log("✅ Discount applied to database");
+          } catch (e) {
+            console.warn("Discount activation failed:", e);
           }
         }
-        // Скидка (опционально)
-        // if (discountCode?.code && order.id) {
-
-        //   await apiWithAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`).catch(e => console.warn("Discount fail", e));
-        // }
-
         dispatch(clearCart());
+        await dispatch(fetchProfile());
         navigate("/order_successful", {
           state: {
             orderNumber: order.id || order.order_number,
@@ -312,43 +307,6 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleApplyDiscount = async () => {
-    if (!discount.trim()) {
-      setDiscountError("Please enter a discount code");
-      return;
-    }
-
-    setDiscountLoading(true);
-    setDiscountError("");
-
-    // Имитируем задержку ответа от сервера (1 секунда)
-    setTimeout(() => {
-      // ПРОВЕРКА: Если ты ввел Sun10, мы "притворяемся", что сервер ответил успехом
-      if (discount.trim().toLowerCase() === "sun10") {
-        const mockData = {
-          code: "Sun10",
-          discount_percent: "10.00", // Скидка 10%
-          is_valid: "true"
-        };
-
-        console.log("✅ Mock Discount applied:", mockData);
-
-        const percent = parseFloat(mockData.discount_percent);
-        setDiscountAmount(total * (percent / 100));
-        setDiscountCode(mockData);
-        setDiscountError("");
-      } else {
-        // Для любого другого слова — имитируем ошибку 404
-        setDiscountError("Invalid or expired discount code (Mock)");
-        setDiscountAmount(0);
-        setDiscountCode(null);
-      }
-      setDiscountLoading(false);
-    }, 1000);
-  };
-
-
-
   const handleQuantityChange = (key, change, cartItem) => {
     const { product, quantity } = cartItem;
     const supplyId = product.selectedSupplyId;
@@ -358,55 +316,60 @@ export default function CheckoutPage() {
 
   const handleRemove = (key) => dispatch(removeFromCart(key));
 
-  // const handleApplyDiscount = async () => {
-  //   if (!discount.trim()) {
-  //     setDiscountError("Please enter a discount code");
-  //     return;
-  //   }
+  const handleApplyDiscount = async () => {
+    if (!discount.trim()) {
+      setDiscountError("Please enter a discount code");
+      return;
+    }
 
-  //   setDiscountLoading(true);
-  //   setDiscountError("");
-  //   setDiscountAmount(0);
-  //   setDiscountCode(null);
+    setDiscountLoading(true);
+    setDiscountError("");
+    setDiscountAmount(0);
+    setDiscountCode(null);
 
-  //   try {
-  //     const response = await api.get(`/discount-codes/${discount.trim()}/`);
-  //     const discountData = response.data;
+    try {
+      const response = await api.get(`/discount-codes/${discount.trim()}/`);
+      const discountData = response.data;
 
-  //     console.log(" Discount code fetched:", discountData);
+      // ДИВИМОСЬ У КОНСОЛЬ: перевір, чи є тут id (наприклад, 1, 2, 3...)
+      console.log("🔍 Full Discount Data:", discountData);
+      console.log("🔍 Discount ID:", discountData.id);
+      console.log("🔍 Discount Code:", discountData.code);
 
-  //     let calculatedDiscount = 0;
+     
 
-  //     if (discountData.discount_percent) {
+      let calculatedDiscount = 0;
 
-  //       calculatedDiscount = total * (discountData.discount_percent / 100);
-  //     } else if (discountData.discount_amount) {
+      if (discountData.discount_percent) {
 
-  //       calculatedDiscount = Math.min(discountData.discount_amount, total);
-  //     }
+        calculatedDiscount = total * (discountData.discount_percent / 100);
+      } else if (discountData.discount_amount) {
 
-  //     setDiscountAmount(calculatedDiscount);
-  //     setDiscountCode(discountData);
-  //     setDiscountError("");
-  //   } catch (err) {
-  //     console.error(" Discount code error:", err.response?.data || err.message);
-  //     const errorMsg = err.response?.data?.detail ||
-  //       err.response?.data?.message ||
-  //       "Invalid or expired discount code";
-  //     setDiscountError(errorMsg);
-  //     setDiscountAmount(0);
-  //     setDiscountCode(null);
-  //   } finally {
-  //     setDiscountLoading(false);
-  //   }
-  // };
+        calculatedDiscount = Math.min(discountData.discount_amount, total);
+      }
+
+      setDiscountAmount(calculatedDiscount);
+      setDiscountCode(discountData);
+      setDiscountError("");
+    } catch (err) {
+      console.error(" Discount code error:", err.response?.data || err.message);
+      const errorMsg = err.response?.data?.detail ||
+        err.response?.data?.message ||
+        "Invalid or expired discount code";
+      setDiscountError(errorMsg);
+      setDiscountAmount(0);
+      setDiscountCode(null);
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
 
   return (
     <Grid sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, md: 4 } }}>
       <Typography sx={{ ...titlePage, textAlign: "center", mb: { xs: 2, md: 3 }, fontSize: { xs: '24px', md: '32px' } }}>Checkout page</Typography>
       <Box sx={{ display: "flex", flexDirection: { xs: 'column', lg: 'row' }, flexWrap: { xs: 'wrap', lg: 'nowrap' }, gap: { xs: 2, md: 4 } }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 1, lg: 1 } }}>
-          {/* CartSummary на мобилке сверху */}
+
           <Box sx={{ display: { xs: "block", lg: "none" } }}>
             <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
           </Box>
@@ -447,7 +410,6 @@ export default function CheckoutPage() {
             btnCart={btnCart}
           />
 
-          {/* Кнопка Complete payment на мобилке после PaymentForm */}
           <Box sx={{ display: { xs: "block", lg: "none" }, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 1, mb: 2 }}>
               <TextField
@@ -520,12 +482,10 @@ export default function CheckoutPage() {
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: { xs: "100%", lg: "50%" }, order: { xs: 2, lg: 2 } }}>
-          {/* CartSummary на десктопе */}
+
           <Box sx={{ display: { xs: "none", lg: "block" } }}>
             <CartSummary items={items} handleRemove={handleRemove} handleQuantityChange={handleQuantityChange} icondelete={icondelete} />
           </Box>
-
-          {/* Кнопка Complete payment на десктопе в правой колонке */}
           <Box sx={{ display: { xs: "none", lg: "block" }, flex: 1, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 1, mb: 2 }}>
               <TextField

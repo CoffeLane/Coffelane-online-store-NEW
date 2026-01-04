@@ -96,7 +96,7 @@ export default function AccessoriesPage() {
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress />
+            <CircularProgress sx={{ color: '#A4795B' }}/>
           </Box>
         ) : (
           <>

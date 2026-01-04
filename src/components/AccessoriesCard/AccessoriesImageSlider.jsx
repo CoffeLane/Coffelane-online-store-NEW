@@ -2,18 +2,32 @@ import { useState } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CoffeeIcon from '@mui/icons-material/Coffee'; // Импортируем иконку
+import CoffeeIcon from '@mui/icons-material/Coffee'; 
 
 export default function AccessoriesImageSlider({ photos = [], productName }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const photoUrls = photos.filter((photo) => photo.url).map((photo) => photo.url);
+  
+  const photoUrls = photos
+    .map(photo => {
+      if (typeof photo === 'string') {
+        return photo.startsWith('http') ? photo : `https://onlinestore-928b.onrender.com${photo.startsWith('/') ? '' : '/'}${photo}`;
+      }
+      const photoUrl = photo.url || photo.photo || photo.photo_url || photo.image_url || null;
+      if (photoUrl && typeof photoUrl === 'string') {
+        if (!photoUrl.startsWith('http')) {
+          return `https://onlinestore-928b.onrender.com${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+        }
+        return photoUrl;
+      }
+      return null;
+    })
+    .filter(url => url !== null);
 
   const handlePrev = () =>
     setSelectedIndex((prev) => (prev === 0 ? photoUrls.length - 1 : prev - 1));
   const handleNext = () =>
     setSelectedIndex((prev) => (prev === photoUrls.length - 1 ? 0 : prev + 1));
 
-  // Блок-заглушка, если фото нет
   if (!photoUrls.length) {
     return (
       <Box sx={{ 
@@ -36,7 +50,7 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
   return (
     <Box sx={{ mt: { xs: 2, md: 4 }, maxWidth: { xs: "100%", md: 700 }, mx: "auto", px: { xs: 1, md: 0 } }}>
       <Box sx={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-        {/* Кнопки навигации показываем только если фото больше одного */}
+
         {photoUrls.length > 1 && (
           <IconButton 
             onClick={handlePrev} 
@@ -91,7 +105,6 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
         )}
       </Box>
 
-      {/* Превью (миниатюры) показываем только если фото больше одного */}
       {photoUrls.length > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap", px: { xs: 1, md: 0 } }}>
           {photoUrls.map((img, index) => (

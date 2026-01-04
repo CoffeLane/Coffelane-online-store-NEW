@@ -12,7 +12,7 @@ export const getActiveBasket = createAsyncThunk(
         return rejectWithValue("No access token");
       }
     
-      const response = await apiWithAuth.get("/basket");
+      const response = await apiWithAuth.get("/basket/");
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -68,15 +68,10 @@ export const updateBasketItem = createAsyncThunk(
 // Удалить товар из корзины
 export const deleteBasketItem = createAsyncThunk(
   "basket/deleteItem",
-  async (id, { rejectWithValue, getState }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const token = state.auth?.token || localStorage.getItem("access");
-      if (!token) {
-        return rejectWithValue("No access token");
-      }
-     
-      await apiWithAuth.delete(`/basket/delete/${id}/`);
+      // Исправленный URL согласно вашему бэкенду
+      await apiWithAuth.delete(`/basket/delete/basket_item/${id}/`);
       return id;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -87,15 +82,12 @@ export const deleteBasketItem = createAsyncThunk(
 // Очистить корзину
 export const clearBasket = createAsyncThunk(
   "basket/clearBasket",
-  async (_, { rejectWithValue, getState }) => {
+  async (basketId, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const token = state.auth?.token || localStorage.getItem("access");
-      if (!token) {
-        return rejectWithValue("No access token");
-      }
-
-      await apiWithAuth.delete("/basket/clear/");
+      if (!basketId) return rejectWithValue("No basket ID provided");
+      
+      // Исправленный URL согласно вашему бэкенду
+      await apiWithAuth.delete(`/basket/clear/${basketId}/`);
       return true;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
