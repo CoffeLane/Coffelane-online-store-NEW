@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import logo from '../../assets/images/header/logo.svg';
 import { Box, Button, Grid, Tooltip, IconButton, Alert, Drawer, useMediaQuery, useTheme } from '@mui/material';
 import account from '../../assets/icons/account.svg';
@@ -36,7 +36,7 @@ function Header() {
     const [modalParams, setModalParams] = useState({ initialScreen: null, recoveryToken: null });
     const [returnPath, setReturnPath] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [showMobileSearch, setShowMobileSearch] = useState(false);
+    // const [showMobileSearch, setShowMobileSearch] = useState(false);
     const cartCount = useSelector(selectCartCount);
     const cartItems = useSelector(selectCartItems);
     const orderCompleted = useSelector((state) => state.cart.orderCompleted);
@@ -48,20 +48,7 @@ function Header() {
     const user = useSelector((state) => state.auth.user);
     const isAdmin = useSelector((state) => state.auth.isAdmin);
     // console.log("Header - user:", useSelector((state) => state.auth.user));
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            if (searchInput.trim()) {
-                // console.log(' Dispatching search for:', searchInput);
-                dispatch(searchAll(searchInput));
-                setShowSearchDropdown(true);
-            } else {
-                dispatch(clearSearch());
-                setShowSearchDropdown(false);
-            }
-        }, 300);
-
-        return () => clearTimeout(timeoutId);
-    }, [searchInput, dispatch]);
+    
 
 
     useEffect(() => {
@@ -206,10 +193,20 @@ function Header() {
         }
     };
 
+   
     const handleCloseSearch = () => {
-        setShowSearchDropdown(false);
-    };
+  setShowSearchDropdown(false);
+  setSearchInput('');
+  dispatch(clearSearch());
+};
 
+    const handleSearchChange = useCallback(
+  (value) => {
+    dispatch(searchAll(value));
+  },
+  [dispatch]
+    );
+    
     return (
         <Box sx={{ flexGrow: 1 }}>
             <TopLine />
@@ -239,13 +236,25 @@ function Header() {
                                 sx={{ width: { xs: '100px', sm: '120px' }, height: 'auto', cursor: 'pointer' }} />
                         </Link>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-                            <IconButton
+                            {/* <IconButton
                                 onClick={() => setShowMobileSearch(!showMobileSearch)}
                                 sx={{ color: '#3E3027', p: { xs: 0.5, sm: 1 } }}
                             >
                                 <Box component="img" src={Search} alt="search-icon"
                                     sx={{ width: '20px', height: '20px' }} />
-                            </IconButton>
+                            </IconButton> */}
+                                             <IconButton
+    onClick={() => {
+      setShowSearchDropdown(true);
+      if (searchInput.trim()) {
+        dispatch(searchAll(searchInput));
+      }
+    }}
+    sx={{ color: '#3E3027', p: { xs: 0.5, sm: 1 } }}
+  >
+    <Box component="img" src={Search} alt="search-icon"
+      sx={{ width: '20px', height: '20px' }} />
+  </IconButton>
                             <Box sx={{ px: { xs: 0, sm: 1 }, py: { xs: 0.5, sm: 1 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <CurrencySwitcher />
                             </Box>
@@ -302,54 +311,28 @@ function Header() {
                         </Box>
                     </Box>
 
-                    {showMobileSearch && (
-                        <Box sx={{ mt: 1, mb: 1 }}>
-                            <form onSubmit={handleSearchSubmit}>
+{/*             
                                 <Box
                                     sx={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        bgcolor: 'rgba(255,255,255,0.5)',
-                                        borderRadius: '8px',
-                                        px: 2,
-                                        py: 0.5,
+                                    
+                                        gap: { xs: 0.5, sm: 1 }
                                     }}
-                                >
-                                    <input
-                                        type="text"
-                                        placeholder="Search products..."
-                                        value={searchInput}
-                                        onChange={(e) => setSearchInput(e.target.value)}
-                                        onFocus={() => searchInput.trim() && setShowSearchDropdown(true)}
-                                        style={{
-                                            border: 'none',
-                                            background: 'transparent',
-                                            outline: 'none',
-                                            flex: 1,
-                                            fontSize: '14px',
-                                        }}
-                                    />
-                                    <Button
-                                        type="submit"
-                                        disableRipple
-                                        sx={{ minWidth: 0, padding: 0, ml: 1 }}
-                                    >
-                                        <Box component="img" src={Search} alt="search-icon"
-                                            sx={{ width: '18px', height: '18px' }} />
-                                    </Button>
-                                </Box>
-                            </form>
+                    >
+        
+                                 
+                                </Box> */}
                             {showSearchDropdown && (
                                 <SearchDropdown
                                     results={results}
                                     loading={loading}
                                     query={searchInput}
-                                    onClose={handleCloseSearch}
+                            onClose={handleCloseSearch}
+                              onSearchChange={handleSearchChange}
                                 />
                             )}
-                        </Box>
-                    )}
-
+                     
                     <Drawer
                         anchor="left"
                         open={mobileMenuOpen}
@@ -477,8 +460,8 @@ function Header() {
                         <Navbar />
                     </Grid>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 2 } }}>
-                        <Box sx={{ position: 'relative' }}>
-                            <form onSubmit={handleSearchSubmit}>
+                        {/* <Box sx={{ position: 'relative' }}> */}
+                            {/* <form onSubmit={handleSearchSubmit}>
                                 <Box
                                     sx={{
                                         display: 'flex',
@@ -517,17 +500,33 @@ function Header() {
                                             sx={{ width: '20px', height: '20px' }} />
                                     </Button>
                                 </Box>
-                            </form>
+                            </form> */}
+                                <IconButton
+  onClick={() => {
+    setShowSearchDropdown(true);
+  }}
+  sx={{
+    color: '#3E3027',
+    p: 0.5,
+    '&:hover': {
+      bgcolor: 'rgba(0,0,0,0.04)',
+    }
+  }}
+>
+  <Box component="img" src={Search} alt="search-icon"
+    sx={{ width: '24px', height: '24px' }} />
+</IconButton>
 
                             {showSearchDropdown && (
                                 <SearchDropdown
                                     results={results}
                                     loading={loading}
                                     query={searchInput}
-                                    onClose={handleCloseSearch}
+                                        onClose={handleCloseSearch}
+                                         onSearchChange={handleSearchChange}
                                 />
                             )}
-                        </Box>
+                        {/* </Box> */}
                         <CurrencySwitcher />
                         <Button onClick={goToFavorites} disableRipple sx={{ cursor: 'pointer', minWidth: 0, padding: 0, backgroundColor: "transparent", border: "none", position: "relative" }}>
                             {hasFavorites ? (

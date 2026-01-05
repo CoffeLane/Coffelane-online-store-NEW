@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import NoResults from '../../assets/icons/cute-barista-cat-mascot--wearing-a-coffee-shop-apr.svg';
+import NoResults from '../../assets/icons/cute-barista-cat-mascot-wearing-a-coffee-shop-apr.svg';
 
 export const LoadingState = () => (
   <Box sx={{ textAlign: 'center', py: 4 }}>
