@@ -9,32 +9,25 @@ import OrderDetails from '../AdminComponents/OrderDetails.jsx';
 import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
 import { apiWithAuth, default as api } from '../../store/api/axios.js';
 
-// Константи для зображень
 const PRODUCT_PLACEHOLDER = 'https://via.placeholder.com/150?text=No+Product';
 
 export default function Orders() {
   const dispatch = useDispatch();
-
-  // Отримуємо дані з Redux
   const { orders, loading, error, count } = useSelector((state) => state.orders);
-
+console.log('Orders from Redux store:', orders);
   const [page, setPage] = useState(1);
   const rowsPerPage = 20;
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [photoCache, setPhotoCache] = useState(new Map()); // Кэш для фото продуктов/аксессуаров
+  const [photoCache, setPhotoCache] = useState(new Map()); 
 
-  // Завантаження замовлень
   useEffect(() => {
-    // Додаємо ordering=-id щоб нові були зверху (якщо бекенд підтримує)
     dispatch(fetchOrders({ page, size: rowsPerPage, ordering: '-id' }));
   }, [dispatch, page]);
 
-  // Загрузка фото для всех продуктов/аксессуаров в заказах
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
     const loadPhotos = async () => {
-      // Собираем все уникальные ID продуктов и аксессуаров
       const productIds = new Set();
       const accessoryIds = new Set();
 
@@ -49,11 +42,9 @@ export default function Orders() {
         });
       });
 
-      // Проверяем, какие фото уже загружены
       setPhotoCache(prevCache => {
         const photoPromises = [];
         
-        // Загружаем фото продуктов
         productIds.forEach(productId => {
           if (!prevCache.has(`product-${productId}`)) {
             photoPromises.push(
@@ -62,7 +53,6 @@ export default function Orders() {
                   const product = response.data;
                   let photoUrl = null;
                   
-                  // Извлекаем фото из различных полей
                   if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
                     const firstPhoto = product.photos_url[0];
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
@@ -75,7 +65,6 @@ export default function Orders() {
                     }
                   }
                   
-                  // Если URL относительный, добавляем базовый URL
                   if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                     const baseUrl = 'https://onlinestore-928b.onrender.com';
                     photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -91,7 +80,6 @@ export default function Orders() {
           }
         });
 
-        // Загружаем фото аксессуаров
         accessoryIds.forEach(accessoryId => {
           if (!prevCache.has(`accessory-${accessoryId}`)) {
             photoPromises.push(
@@ -100,7 +88,6 @@ export default function Orders() {
                   const accessory = response.data;
                   let photoUrl = null;
                   
-                  // Извлекаем фото из различных полей
                   if (accessory.photos_url && Array.isArray(accessory.photos_url) && accessory.photos_url.length > 0) {
                     const firstPhoto = accessory.photos_url[0];
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
@@ -109,7 +96,6 @@ export default function Orders() {
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
                   }
                   
-                  // Если URL относительный, добавляем базовый URL
                   if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                     const baseUrl = 'https://onlinestore-928b.onrender.com';
                     photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -125,7 +111,6 @@ export default function Orders() {
           }
         });
 
-        // Ждем загрузки всех фото и обновляем кэш
         if (photoPromises.length > 0) {
           Promise.all(photoPromises).then(results => {
             setPhotoCache(currentCache => {
@@ -138,20 +123,18 @@ export default function Orders() {
           });
         }
         
-        return prevCache; // Возвращаем текущий кэш без изменений
+        return prevCache; 
       });
     };
 
     loadPhotos();
   }, [orders]);
 
-  // Трансформація даних під формат таблиці та деталей
   const transformedOrders = (orders || [])
-    .slice() // Створюємо копію для безпечного сортування на фронті, якщо бекенд не відсортував
+    .slice()
     .sort((a, b) => b.id - a.id) 
     .map((order) => {
       
-      // 1. Форматування дати
       const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
@@ -160,16 +143,13 @@ export default function Orders() {
           : date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
       };
 
-      // 2. Ім'я клієнта (беремо з кореня об'єкта згідно з твоїм JSON)
       const customerName = order.first_name && order.last_name
         ? `${order.first_name} ${order.last_name}`
         : `Customer #${order.customer || 'N/A'}`;
 
-      // 3. Список товарів (itemsList)
       const itemsList = (order.positions || []).map((position) => {
         const itemData = position.product || position.accessory || {};
         
-        // Получаем фото из кэша или используем placeholder
         let photoUrl = PRODUCT_PLACEHOLDER;
         
         if (position.product?.id) {
@@ -188,10 +168,8 @@ export default function Orders() {
         };
       });
 
-      // 4. Загальна кількість одиниць товару
       const totalItemsCount = itemsList.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
-      // Маппинг статусов для отображения
       const statusLabels = {
         processing: 'Processing',
         delivered: 'Delivered',
@@ -210,12 +188,12 @@ export default function Orders() {
         status: displayStatus,
         date: formatDate(order.created_at),
         customer: customerName,
-        customerPhoto: order.customer_data?.avatar || null, // Передаємо null, якщо немає фото (OrderDetails обробить це)
+        customerPhoto: order.customer_data?.avatar || null, 
         customerId: String(order.customer || 'N/A'),
         itemsList: itemsList,
         total: order.order_amount || 0,
         items: totalItemsCount,
-        originalOrder: order, // Зберігаємо все замовлення для OrderDetails (адреса, телефон тощо)
+        originalOrder: order, 
       };
     });
 
@@ -230,7 +208,6 @@ export default function Orders() {
     setSelectedOrder(order);
   };
 
-  // Стан завантаження
   if (loading && orders.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
@@ -239,7 +216,6 @@ export default function Orders() {
     );
   }
 
-  // Стан помилки
   if (error && orders.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
@@ -252,29 +228,10 @@ export default function Orders() {
   }
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: { xs: 'column', lg: 'row' }, 
-      width: '100%', 
-      gap: { xs: 2, md: 3 }, 
-      my: { xs: 2, md: 3 } 
-    }}>
-      {/* Ліва частина: Таблиця */}
-      <Box sx={{ 
-        flex: selectedOrder ? { xs: 'none', lg: '2 1 0%' } : '1 1 100%', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minWidth: 0, 
-        transition: 'flex 0.3s ease', 
-        width: { xs: '100%', lg: 'auto' } 
-      }}>
-        <Box mb={3} sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' }, 
-          justifyContent: 'space-between', 
-          alignItems: { xs: 'flex-start', sm: 'center' }, 
-          gap: { xs: 2, sm: 0 } 
-        }}>
+    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, width: '100%', gap: { xs: 2, md: 3 }, my: { xs: 2, md: 3 } }}>
+    
+      <Box sx={{ flex: selectedOrder ? { xs: 'none', lg: '2 1 0%' } : '1 1 100%', display: 'flex', flexDirection: 'column', minWidth: 0, transition: 'flex 0.3s ease', width: { xs: '100%', lg: 'auto' } }}>
+        <Box mb={3} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 2, sm: 0 } }}>
           <AdminBreadcrumbs />
           <Box display="flex" gap={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Search />
@@ -295,15 +252,8 @@ export default function Orders() {
         </Box>
       </Box>
 
-      {/* Права частина: Деталі замовлення */}
       {selectedOrder && (
-        <Box sx={{ 
-          width: { xs: '100%', lg: 400 }, 
-          minWidth: { xs: '100%', lg: 350 }, 
-          maxWidth: { xs: '100%', lg: 450 }, 
-          display: 'flex', 
-          flexDirection: 'column'
-        }}>
+        <Box sx={{ width: { xs: '100%', lg: 400 }, minWidth: { xs: '100%', lg: 350 }, maxWidth: { xs: '100%', lg: 450 }, display: 'flex', flexDirection: 'column'}}>
           <OrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} />
         </Box>
       )}

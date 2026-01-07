@@ -36,20 +36,21 @@ export default function PaymentForm({ step, cardName, setCardName, cardNumber, s
           id="cardName"
           fullWidth
           margin="normal"
-          placeholder="Name of card holder"
+          label="Name of card holder"
           value={cardName}
           onChange={handleFieldChange(setCardName, "cardName")}
           error={!!errors.cardName}
           helperText={errors.cardName}
           sx={{ ...inputStyles }}
           slotProps={{ formHelperText: { sx: helperTextRed } }}
+          required
         />
 
         <TextField
           id="cardNumber"
           fullWidth
           margin="normal"
-          placeholder="Credit card number"
+          label="Credit card number"
           value={cardNumber}
           onChange={handleFieldChange(setCardNumber, "cardNumber", formatCardNumber)}
           error={!!errors.cardNumber}
@@ -57,13 +58,14 @@ export default function PaymentForm({ step, cardName, setCardName, cardNumber, s
           sx={{ ...inputStyles }}
           slotProps={{ formHelperText: { sx: helperTextRed } }}
           inputProps={{ maxLength: 19 }}
+          required
         />
 
         <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={1} mt={1}>
           <TextField
             id="expiry"
             fullWidth
-            placeholder="Expire date (MM/YY)"
+            label="Expire date (MM/YY)"
             value={expiry}
             onChange={handleFieldChange(setExpiry, "expiry", formatExpiry)}
             error={!!errors.expiry}
@@ -71,12 +73,13 @@ export default function PaymentForm({ step, cardName, setCardName, cardNumber, s
             sx={{ ...inputStyles }}
             inputProps={{ maxLength: 5 }}
             slotProps={{ formHelperText: { sx: helperTextRed } }}
+            required
           />
 
           <TextField
             id="cvv"
             fullWidth
-            placeholder="CVV"
+            label="CVV"
             type={showCvv ? "text" : "password"}   
             value={cvv}
             onChange={handleFieldChange(setCvv, "cvv", (val) =>
@@ -87,6 +90,7 @@ export default function PaymentForm({ step, cardName, setCardName, cardNumber, s
             sx={{ ...inputStyles }}
             inputProps={{ maxLength: 3 }}
             slotProps={{ formHelperText: { sx: helperTextRed } }}
+            required
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">

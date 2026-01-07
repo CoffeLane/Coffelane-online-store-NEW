@@ -31,8 +31,6 @@ export default function AccountPage() {
   const location = useLocation();
   const dispatch = useDispatch();
   const auth = useSelector((state) => state.auth);
-  
-  // console.log("▶ AccountPage. auth:", auth);
 
   let userEmail = null;
 
@@ -64,12 +62,6 @@ export default function AccountPage() {
     ? { ...auth.user, email: userEmail || "" }
     : null;
 
-// console.log("▶ AccountPage. userData:", userData);
-// console.log("▶ AccountPage. userEmail:", userEmail);
-// console.log("▶ AccountPage. auth.user:", auth.user);
-// console.log("▶ AccountPage. auth.profile:", auth.profile);
-// console.log("▶ AccountPage. auth.email:", auth.email);
-
   const getTabIndexFromPath = () => {
     const path = location.pathname.split("/").pop();
     const index = tabPaths.indexOf(path);
@@ -95,16 +87,14 @@ export default function AccountPage() {
     const token = localStorage.getItem("access");
 
     if (token && !auth.tokenInvalid && !auth.loading) {
-      // console.log("▶ AccountPage - Fetching profile to ensure we have current user data...");
       dispatch(fetchProfile());
     }
-  }, [dispatch]);
+  }, [dispatch, auth.tokenInvalid, auth.loading]);
 
   const handleLogout = async () => {
     console.log("▶ LOGOUT CLICK");
     const result = await dispatch(logoutUser());
      navigate("/");
-    console.log("LOGOUT RESULT:", result);
   };
 
   return (
@@ -129,15 +119,17 @@ export default function AccountPage() {
                   flexDirection: { xs: "row", md: "column" },
                   justifyContent: { xs: "center", md: "flex-start" },
                   alignItems: { xs: "center", md: "flex-start" },
+                  gap: { xs: 0.5, md: 0 },
                 },
                 "& .MuiTab-root": {
                   ...h5,
                   textTransform: "none",
                   alignItems: { xs: "center", md: "flex-start" },
                   justifyContent: { xs: "center", md: "flex-start" },
-                  py: { xs: 1, md: 2 },
-                  fontSize: { xs: '12px', md: '16px' },
-                  minHeight: { xs: 48, md: 72 },
+                  py: { xs: 0.75, md: 2 },
+                  px: { xs: 1, md: 2 },
+                  fontSize: { xs: '11px', md: '16px' },
+                  minHeight: { xs: 40, md: 72 },
                   width: { xs: "auto", md: "100%" },
                   maxWidth: { xs: "none", md: "100%" },
                 },

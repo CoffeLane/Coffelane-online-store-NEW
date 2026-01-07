@@ -24,9 +24,8 @@ export default function OrderEdit() {
   const [success, setSuccess] = useState(false);
   const [order, setOrder] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
-  const [photoCache, setPhotoCache] = useState(new Map()); // Кэш для фото продуктов/аксессуаров
+  const [photoCache, setPhotoCache] = useState(new Map()); 
 
-  // Form fields
   const [status, setStatus] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
 
@@ -36,13 +35,11 @@ export default function OrderEdit() {
         setLoading(true);
         setError('');
         
-        // Сначала пробуем найти заказ в списке заказов из Redux
         let orderData = null;
         if (orders && orders.length > 0) {
           orderData = orders.find(o => o.id === Number(id));
         }
         
-        // Если не нашли в Redux, загружаем список заказов и ищем нужный
         if (!orderData) {
           const listResponse = await apiWithAuth.get('/orders/admin-list/', { params: { page: 1, size: 100 } });
           const allOrders = listResponse.data?.data || listResponse.data?.results || [];
@@ -54,17 +51,14 @@ export default function OrderEdit() {
         }
         
         setOrder(orderData);
-        // Статус может быть с заглавной буквы, приводим к нижнему регистру для API
-        // Также конвертируем значения для совместимости с бэкендом
+
         let orderStatus = (orderData.status || '').toLowerCase();
         if (orderStatus === 'delivering') {
           orderStatus = 'in_transit';
         }
-        // Оставляем "cancelled" как есть, не конвертируем в "canceled"
+
         setStatus(orderStatus);
         setOrderNotes(orderData.order_notes || '');
-        
-        // Логируем структуру данных для отладки
       } catch (err) {
         console.error('Error fetching order:', err);
         setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to load order');
@@ -78,7 +72,6 @@ export default function OrderEdit() {
     }
   }, [id, orders, dispatch]);
 
-  // Загрузка фото для всех продуктов/аксессуаров в заказе
   useEffect(() => {
     if (!order || !order.positions || order.positions.length === 0) return;
 
@@ -98,7 +91,6 @@ export default function OrderEdit() {
       setPhotoCache(prevCache => {
         const photoPromises = [];
         
-        // Загружаем фото продуктов
         productIds.forEach(productId => {
           if (!prevCache.has(`product-${productId}`)) {
             photoPromises.push(
@@ -134,7 +126,6 @@ export default function OrderEdit() {
           }
         });
 
-        // Загружаем фото аксессуаров
         accessoryIds.forEach(accessoryId => {
           if (!prevCache.has(`accessory-${accessoryId}`)) {
             photoPromises.push(
@@ -204,10 +195,9 @@ export default function OrderEdit() {
       console.log('📋 Order notes:', orderNotes);
       console.log('📋 Update data being sent:', JSON.stringify(updateData));
 
-      // Используем правильный эндпоинт /orders/update/{id}/
       const response = await apiWithAuth.patch(`/orders/update/${id}/`, updateData);
-
       console.log('✅ Order updated successfully:', response.data);
+
       setSuccess(true);
       setTimeout(() => {
         navigate('/admin/orders');
@@ -217,7 +207,6 @@ export default function OrderEdit() {
       const errorDetails = err.response?.data;
       console.error('Error details:', errorDetails);
       
-      // Логируем полную структуру ошибки для отладки
       if (errorDetails?.status && Array.isArray(errorDetails.status)) {
         console.error('Status validation errors:', errorDetails.status);
         errorDetails.status.forEach((msg, index) => {
@@ -225,7 +214,6 @@ export default function OrderEdit() {
         });
       }
       
-      // Извлекаем детальное сообщение об ошибке
       let errorMessage = 'Failed to update order';
       if (errorDetails) {
         if (errorDetails.detail) {
@@ -233,7 +221,6 @@ export default function OrderEdit() {
         } else if (errorDetails.message) {
           errorMessage = errorDetails.message;
         } else if (errorDetails.status && Array.isArray(errorDetails.status)) {
-          // Если ошибка в поле status, показываем первое сообщение
           errorMessage = errorDetails.status[0] || 'Invalid status value';
           console.error('Status error message:', errorMessage);
         } else if (typeof errorDetails === 'string') {
@@ -285,7 +272,6 @@ export default function OrderEdit() {
       {order && (
         <Paper sx={{ p: 3, borderRadius: '24px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)' }}>
           <Stack spacing={3}>
-            {/* Order Info */}
             <Box>
               <Typography sx={{ ...h5, mb: 3, fontWeight: 600, color: '#3E3027' }}>Order Information</Typography>
               <Grid container spacing={2}>
@@ -481,7 +467,6 @@ export default function OrderEdit() {
                         const itemData = position.product || position.accessory || {};
                         const itemName = itemData.name || position.product?.name || position.accessory?.name || 'Unknown item';
                         
-                        // Количество из product/accessory.quantity или position.quantity
                         const quantity = Number(
                           position.product?.quantity || 
                           position.accessory?.quantity || 
@@ -489,14 +474,12 @@ export default function OrderEdit() {
                           1
                         );
                         
-                        // Общая цена позиции из product/accessory.total_price
                         const totalPrice = Number(
                           position.product?.total_price || 
                           position.accessory?.total_price || 
                           0
                         );
                         
-                        // Цена за единицу: либо из product/accessory.price, либо вычисляем из totalPrice / quantity
                         const price = quantity > 0 && totalPrice > 0
                           ? Number((totalPrice / quantity).toFixed(2))
                           : Number(
@@ -506,17 +489,14 @@ export default function OrderEdit() {
                               0
                             );
                         
-                        // Получаем фото товара из кэша или из данных позиции
                         let photoUrl = null;
                         
-                        // Сначала пробуем получить из кэша
                         if (position.product?.id) {
                           photoUrl = photoCache.get(`product-${position.product.id}`);
                         } else if (position.accessory?.id) {
                           photoUrl = photoCache.get(`accessory-${position.accessory.id}`);
                         }
                         
-                        // Если нет в кэше, пробуем получить из данных позиции
                         if (!photoUrl) {
                           const itemData = position.product || position.accessory || {};
                           if (itemData.photos_url && Array.isArray(itemData.photos_url) && itemData.photos_url.length > 0) {
@@ -530,8 +510,7 @@ export default function OrderEdit() {
                             photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
                           }
                         }
-                        
-                        // Если URL относительный, добавляем базовый URL
+                      
                         if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                           const baseUrl = 'https://onlinestore-928b.onrender.com';
                           photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -604,7 +583,6 @@ export default function OrderEdit() {
 
             <Divider />
 
-            {/* Status */}
             <Box>
               <Typography sx={{ ...h5, mb: 2, fontWeight: 600 }}>Status</Typography>
               <FormControl fullWidth>
@@ -633,7 +611,6 @@ export default function OrderEdit() {
 
             <Divider />
 
-            {/* Order Notes */}
             <Box>
               <Typography sx={{ ...h5, mb: 2, fontWeight: 600 }}>Order Notes</Typography>
               <TextField
@@ -660,7 +637,6 @@ export default function OrderEdit() {
               />
             </Box>
 
-            {/* Action Buttons */}
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 2 }}>
               <Button
                 variant="outlined"

@@ -58,14 +58,15 @@ const FavoriteProductImage = ({ item, isMobile }) => {
   if (!imageUrl || hasError) {
     return (
       <Box sx={{ 
-        width: "100%", height: "100%", 
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", 
-        bgcolor: "#F9F9F9", borderRadius: "16px", gap: 1,
-        border: "1px solid #EEE"
+        width: "100%", 
+        height: "100%", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        bgcolor: "#f5f5f5",
+        borderRadius: "12px"
       }}>
-        <CoffeeIcon sx={{ color: "#16675C", fontSize: isMobile ? 40 : 60, opacity: 0.4 }} />
-        <Typography sx={{ fontSize: '12px', color: '#999', fontWeight: 600 }}>No Image</Typography>
+        <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
       </Box>
     );
   }
@@ -138,8 +139,22 @@ export default function FavouritePage() {
   };
 
   const handleAddToCart = (item) => {
+    if (!token) {
+      setLoginOpen(true);
+      return;
+    }
+    
     const isProduct = item.type === "product";
     const supply = isProduct ? item.supplies?.[0] : null;
+    
+    // Проверка наличия товара
+    const isOutOfStock = isProduct 
+      ? (!supply || Number(supply.quantity || 0) <= 0)
+      : ((item.quantity !== undefined ? Number(item.quantity) : 0) <= 0);
+    
+    if (isOutOfStock) {
+      return; // Не добавляем товар, если его нет в наличии
+    }
     
     dispatch(addToCart({
       product: {
@@ -205,13 +220,32 @@ export default function FavouritePage() {
             const price = isProduct
               ? (supply ? getPrice(supply, currency) : getProductPrice(item, currency))
               : getProductPrice(item, currency);
+            
+            // Проверка наличия товара
+            let isOutOfStock = false;
+            if (isProduct) {
+              // Для продуктов проверяем quantity в supplies
+              if (!item.supplies || item.supplies.length === 0) {
+                isOutOfStock = true;
+              } else if (!supply) {
+                isOutOfStock = true;
+              } else {
+                const supplyQuantity = supply.quantity !== undefined && supply.quantity !== null ? Number(supply.quantity) : 0;
+                isOutOfStock = supplyQuantity <= 0;
+              }
+            } else {
+              // Для аксессуаров проверяем quantity
+              const itemQuantity = item.quantity !== undefined && item.quantity !== null ? Number(item.quantity) : 0;
+              isOutOfStock = itemQuantity <= 0;
+            }
 
             return (
               <Card key={cartKey} sx={{ 
                 width: { xs: "100%", sm: 280, md: 300 }, 
                 height: { xs: "auto", md: 480 }, 
                 display: "flex", flexDirection: "column", 
-                borderRadius: "24px", p: { xs: 1.5, md: 2 }, boxShadow: 2 
+                borderRadius: "24px", p: { xs: 1.5, md: 2 }, boxShadow: 2,
+                opacity: isOutOfStock ? 0.7 : 1
               }}>
           
                 <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 250 }, mb: { xs: 1.5, md: 2 } }}>
@@ -248,15 +282,24 @@ export default function FavouritePage() {
 
                   <Button
                     variant="contained"
+                    disabled={isOutOfStock}
                     onClick={() => handleAddToCart(item)}
                     sx={{ 
                       ...(isInCart ? btnInCart : btnCart),
                       fontSize: { xs: "12px", md: "14px" },
-                      py: 1
+                      py: 1,
+                      ...(isOutOfStock && {
+                        backgroundColor: "#999999 !important",
+                        color: "#FFFFFF !important",
+                        cursor: "not-allowed",
+                        "&:hover": {
+                          backgroundColor: "#999999 !important",
+                        }
+                      })
                     }}
-                    endIcon={<Box component="img" src={isInCart ? incart : shopping} sx={{ width: 22, height: 22 }} />}
+                    endIcon={!isOutOfStock && <Box component="img" src={isInCart ? incart : shopping} sx={{ width: 22, height: 22 }} />}
                   >
-                    {isInCart ? "In cart" : "Add to bag"}
+                    {isOutOfStock ? "Sold Out" : (isInCart ? "In cart" : "Add to bag")}
                   </Button>
                 </CardContent>
               </Card>

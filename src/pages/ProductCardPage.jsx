@@ -45,7 +45,16 @@ export default function ProductCardPage() {
       }}>
 
         <Box sx={{ width: { xs: "100%", md: "450px" }, display: 'flex', justifyContent: 'center' }}>
-          <ProductImageSlider photos={selectedProduct.photos_url} productName={selectedProduct.name} />
+          <ProductImageSlider 
+            photos={
+              (selectedProduct.photos_url && selectedProduct.photos_url.length > 0) 
+                ? selectedProduct.photos_url 
+                : (selectedProduct.product_photos && selectedProduct.product_photos.length > 0)
+                  ? selectedProduct.product_photos
+                  : []
+            } 
+            productName={selectedProduct.name} 
+          />
         </Box>
 
         <Box sx={{ flex: 1, maxWidth: { xs: "100%", md: 550 }, width: "100%" }}>

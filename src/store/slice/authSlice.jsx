@@ -173,36 +173,6 @@ export const loginWithGoogle = createAsyncThunk(
 );
 
 
-export const refreshAccessToken = createAsyncThunk(
-  "auth/refreshToken",
-  async (_, { rejectWithValue }) => {
-    try {
-      const refreshToken = localStorage.getItem("refresh");
-      if (!refreshToken) {
-        return rejectWithValue("No refresh token");
-      }
-
-      const res = await api.post("/auth/refresh", {
-        refresh: refreshToken.replace(/^"|"$/g, ""),
-      });
-
-      const { access, refresh: newRefresh } = res.data;
-
-      if (access) {
-        localStorage.setItem("access", access);
-        if (newRefresh) {
-          localStorage.setItem("refresh", newRefresh);
-        }
-        return { access, refresh: newRefresh };
-      }
-
-      return rejectWithValue("No access token in refresh response");
-    } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
-    }
-  }
-);
-
 export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
   async (_, { rejectWithValue }) => {
@@ -367,16 +337,43 @@ export const logoutUser = createAsyncThunk(
     } catch (serverError) {
       console.warn("Server-side logout failed, proceeding with local cleanup");
     } finally {
-      // САМОЕ ВАЖНОЕ: Чистим всё ВСЕГДА, независимо от успеха API
-      localStorage.clear(); 
+      // Устанавливаем флаг в sessionStorage для очистки при следующей загрузке
+      sessionStorage.setItem("logoutFlag", "true");
 
+      // Сначала очищаем state через dispatch
       dispatch(clearAuthState());
       dispatch(clearCart());
       dispatch(clearFavorites());
       dispatch(clearBasketState());
 
-      // Перезагрузка гарантирует остановку всех фоновых fetchProfile
-      window.location.href = '/';
+      // Удаляем из localStorage сразу
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      localStorage.removeItem("persist:auth");
+      localStorage.removeItem("persist:cart");
+      localStorage.removeItem("persist:favorites");
+      localStorage.removeItem("persist:products");
+      localStorage.removeItem("persist:basket");
+      localStorage.removeItem("isAdmin");
+      localStorage.removeItem("userAvatar");
+      localStorage.removeItem("avatarUploaded");
+
+      // Удаляем еще раз с задержкой на случай, если Redux Persist успел сохранить обратно
+      setTimeout(() => {
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        localStorage.removeItem("persist:auth");
+        localStorage.removeItem("persist:cart");
+        localStorage.removeItem("persist:favorites");
+        localStorage.removeItem("persist:products");
+        localStorage.removeItem("persist:basket");
+        localStorage.removeItem("isAdmin");
+        localStorage.removeItem("userAvatar");
+        localStorage.removeItem("avatarUploaded");
+
+        // Перезагрузка гарантирует остановку всех фоновых fetchProfile
+        window.location.href = '/';
+      }, 50);
     }
   }
 );
@@ -448,8 +445,17 @@ const authSlice = createSlice({
       state.changePasswordSuccess = false;
     },
     tokenRefreshedFromInterceptor: (state, action) => {
-      state.token = action.payload.access?.replace(/^"+|"+$/g, "");
+      const cleanAccess = action.payload.access?.replace(/^"+|"+$/g, "");
+      const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
+      state.token = cleanAccess;
       state.tokenInvalid = false;
+      // Сохраняем токены в localStorage для надежности
+      if (cleanAccess) {
+        localStorage.setItem("access", cleanAccess);
+      }
+      if (cleanRefresh) {
+        localStorage.setItem("refresh", cleanRefresh);
+      }
     },
     setAdminMode: (state, action) => {
       if (state.isAdmin === action.payload) return;
@@ -549,20 +555,6 @@ const authSlice = createSlice({
           token: null,
           isAdmin: false
         };
-      })
-
-      // REFRESH TOKEN
-      .addCase(refreshAccessToken.fulfilled, (state, action) => {
-        const cleanAccess = action.payload.access?.replace(/^"+|"+$/g, "");
-        const cleanRefresh = action.payload.refresh?.replace(/^"+|"+$/g, "");
-        state.token = cleanAccess;
-        state.tokenInvalid = false;
-
-        if (cleanAccess) localStorage.setItem("access", cleanAccess);
-        if (cleanRefresh) localStorage.setItem("refresh", cleanRefresh);
-      })
-      .addCase(refreshAccessToken.rejected, (state) => {
-        state.tokenInvalid = true;
       })
 
       // CHANGE PASSWORD

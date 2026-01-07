@@ -17,8 +17,7 @@ export default function ProductEdit() {
   const [searchParams] = useSearchParams();
   const isAdmin = useSelector((state) => state.auth.isAdmin);
   
-  // Получаем тип продукта из URL параметра, если он есть
-  const urlProductType = searchParams.get('type'); // 'product' или 'accessory'
+  const urlProductType = searchParams.get('type'); 
 
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState("");
@@ -36,19 +35,15 @@ export default function ProductEdit() {
   const coverRef = useRef(null);
   const fetchingRef = useRef(false);
   const fetchedIdRef = useRef(null);
-  const initialPhotoIdsRef = useRef([]); // Сохраняем исходные фото ID при загрузке продукта
+  const initialPhotoIdsRef = useRef([]); 
   
-  // Синхронизируем ref с состоянием cover
-  // НО не перезаписываем, если coverRef уже содержит файл (чтобы не потерять file при асинхронных обновлениях)
   useEffect(() => {
-    // Если coverRef содержит file, а cover state не содержит file, не перезаписываем
-    // Это защищает от потери file при асинхронных обновлениях state
     if (coverRef.current?.file && !cover?.file) {
-      // coverRef содержит file, но cover state потерял его - не перезаписываем
       return;
     }
     coverRef.current = cover;
   }, [cover]);
+
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [debugLogs, setDebugLogs] = useState([]);
   const [logsDialogOpen, setLogsDialogOpen] = useState(false);
@@ -69,14 +64,12 @@ export default function ProductEdit() {
     };
     setDebugLogs(prev => {
       const newLogs = [...prev, logEntry];
-      // Сохраняем в localStorage для просмотра позже
-      localStorage.setItem('productEditDebugLogs', JSON.stringify(newLogs.slice(-50))); // Последние 50 логов
+      localStorage.setItem('productEditDebugLogs', JSON.stringify(newLogs.slice(-50))); 
       return newLogs;
     });
     console.log(`[${logEntry.timestamp}] ${message}`, data || '');
   };
 
-  // Загружаем логи из localStorage при монтировании
   useEffect(() => {
     const savedLogs = localStorage.getItem('productEditDebugLogs');
     if (savedLogs) {
@@ -99,15 +92,12 @@ export default function ProductEdit() {
     return nameValid && categoryValid && priceValid && weightValid;
   }, [productName, category, price, weight, productType]);
 
-  useEffect(() => {
-    const fetchProduct = async () => {
+  const fetchProduct = React.useCallback(async () => {
       if (fetchingRef.current && fetchedIdRef.current === id) {
-        // console.log("⏸️ Already fetching this product, skipping...");
         return;
       }
       
       if (fetchedIdRef.current === id && !fetchingRef.current) {
-        // console.log("⏸️ Product already loaded, skipping...");
         return;
       }
       
@@ -117,43 +107,32 @@ export default function ProductEdit() {
         let response;
         let lastError = null;
         
-        // Пробуем загрузить продукт или аксессуар
-        // Если в URL есть параметр type, используем его для определения типа
         let loadedSuccessfully = false;
         
-        // Если в URL указан тип, загружаем соответствующий тип
         if (urlProductType === 'accessory') {
-          // Загружаем аксессуар
           try {
             response = await apiWithAuth.get(`/accessories/${id}`);
             setProductType('accessory');
             loadedSuccessfully = true;
-            // console.log(`✅ Accessory loaded via /accessories/${id}`);
           } catch (eAccessory) {
             throw eAccessory;
           }
         } else if (urlProductType === 'product') {
-          // Загружаем продукт (сначала пробуем публичный эндпоинт, потом админский)
           try {
             response = await apiWithAuth.get(`/products/${id}`);
             setProductType('product');
             loadedSuccessfully = true;
-            // console.log(`✅ Product loaded via /products/${id}`);
           } catch (e1) {
             if (e1.response?.status === 404 || e1.response?.status === 403) {
-              // Если публичный не работает, пробуем админский (но он может не поддерживать GET)
               try {
                 response = await apiWithAuth.get(`/products/product/${id}`);
                 setProductType('product');
                 loadedSuccessfully = true;
-                // console.log(`✅ Product loaded via /products/product/${id}`);
               } catch (e2) {
-                // Если админский тоже не работает, пробуем публичный API без авторизации
                 try {
                   response = await api.get(`/products/${id}`);
                   setProductType('product');
                   loadedSuccessfully = true;
-                  // console.log(`✅ Product loaded via public /products/${id}`);
                 } catch (e3) {
                   throw e3;
                 }
@@ -163,32 +142,23 @@ export default function ProductEdit() {
             }
           }
         } else {
-          // Если тип не указан, пробуем оба варианта (старая логика для обратной совместимости)
-          // Сначала пробуем аксессуар, так как для продуктов может быть 403
           try {
             response = await apiWithAuth.get(`/accessories/${id}`);
             setProductType('accessory');
             loadedSuccessfully = true;
-            // console.log(`✅ Accessory loaded via /accessories/${id}`);
           } catch (eAccessory) {
-            // Если это не аксессуар (404), пробуем продукт
             if (eAccessory.response?.status === 404) {
-              // Пробуем обычный эндпоинт для продуктов
               try {
                 response = await apiWithAuth.get(`/products/${id}`);
                 setProductType('product');
                 loadedSuccessfully = true;
-                // console.log(`✅ Product loaded via /products/${id}`);
               } catch (e1) {
-                // Если обычный не работает, пробуем админский
                 if (e1.response?.status === 404 || e1.response?.status === 403) {
                   try {
                     response = await apiWithAuth.get(`/products/product/${id}`);
                     setProductType('product');
                     loadedSuccessfully = true;
-                    // console.log(`✅ Product loaded via /products/product/${id}`);
                   } catch (e2) {
-                    // Если ничего не сработало, выбрасываем ошибку
                     throw e2;
                   }
                 } else {
@@ -196,19 +166,16 @@ export default function ProductEdit() {
                 }
               }
             } else {
-              // Если ошибка не 404, пробуем продукт
               try {
                 response = await apiWithAuth.get(`/products/${id}`);
                 setProductType('product');
                 loadedSuccessfully = true;
-                // console.log(`✅ Product loaded via /products/${id}`);
               } catch (e1) {
                 if (e1.response?.status === 404 || e1.response?.status === 403) {
                   try {
                     response = await apiWithAuth.get(`/products/product/${id}`);
                     setProductType('product');
                     loadedSuccessfully = true;
-                    // console.log(`✅ Product loaded via /products/product/${id}`);
                   } catch (e2) {
                     throw e2;
                   }
@@ -226,17 +193,6 @@ export default function ProductEdit() {
           throw new Error("Product data is empty");
         }
 
-        // console.log("📦 Product data structure:", {
-        //   name: product.name,
-        //   category: product.category,
-        //   price: product.price,
-        //   weight: product.weight,
-        //   supplies: product.supplies,
-        //   brand: product.brand,
-        //   firstSupply: product.supplies?.[0],
-        //   fullProduct: product
-        // });
-
         let productPrice = "";
         if (product.supplies && Array.isArray(product.supplies) && product.supplies.length > 0) {
           const supplyPrice = product.supplies[0].price;
@@ -253,7 +209,6 @@ export default function ProductEdit() {
 
         let productCategory = product.category || product.brand || "";
         
-        // Для веса проверяем разные варианты
         let productWeight = "";
         if (product.weight) {
           productWeight = product.weight.toString();
@@ -266,40 +221,36 @@ export default function ProductEdit() {
 
         setProductName(product.name || "");
         setCategory(productCategory || "");
-        // Для продуктов stock может быть в supplies[0].quantity, для аксессуаров в quantity
         let productStock = null;
         if (product.stock !== undefined && product.stock !== null) {
           productStock = product.stock;
         } else if (product.supplies && Array.isArray(product.supplies) && product.supplies.length > 0) {
-          // Для продуктов берем quantity из первого supply
           const supplyQuantity = product.supplies[0].quantity;
           if (supplyQuantity !== undefined && supplyQuantity !== null) {
             productStock = supplyQuantity;
           }
         } else if (product.quantity !== undefined && product.quantity !== null) {
-          // Для аксессуаров
           productStock = product.quantity;
         }
         setStock(productStock);
         setPrice(productPrice || "");
         setWeight(productWeight || "");
         setDescription(product.description || "");
-        // Для аксессуаров visible может быть в другом поле
-        setVisible(product.visible !== undefined ? product.visible : 
-                  (product.visible !== null ? product.visible : false));
-        // Загружаем is_special
+        
+        let productVisible = true;
+        if (product.status === 'Hidden' || product.status === 'hidden') {
+          productVisible = false;
+        } else if (product.visible !== undefined && product.visible !== null) {
+          productVisible = product.visible === true || product.visible === 'true';
+        } else if (product.status && product.status !== 'Active' && product.status !== 'active') {
+          productVisible = false;
+        }
+        setVisible(productVisible);
+        
         setIsSpecial(product.is_special === true || product.is_special === 'true' || product.isSpecial === true);
 
-        // console.log("✅ Set values:", {
-        //   name: product.name || "",
-        //   category: productCategory,
-        //   price: productPrice,
-        //   weight: productWeight,
-        //   stock: product.stock !== undefined ? product.stock : null
-        // });
-
         let imageUrls = [];
-        // Обрабатываем фото для продуктов и аксессуаров
+        
         if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
           imageUrls = product.photos_url.map(photo => {
             let photoUrl = null;
@@ -309,7 +260,6 @@ export default function ProductEdit() {
               photoUrl = photo.url || photo.photo || photo.photo_url || photo.image_url || null;
             }
             
-            // Если URL относительный, добавляем базовый URL
             if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http')) {
               const baseUrl = 'https://onlinestore-928b.onrender.com';
               photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -321,13 +271,10 @@ export default function ProductEdit() {
             };
           }).filter(img => img.url !== null);
         } else if (product.product_photos && Array.isArray(product.product_photos) && product.product_photos.length > 0) {
-          // Обрабатываем product_photos для продуктов
           imageUrls = product.product_photos.map(photo => {
             let photoUrl = null;
-            // product_photos может содержать объект с полем photo (строка или объект)
-            // Согласно документации: ProductPhoto{id, photo}
+
             if (photo.photo) {
-              // photo может быть строкой (URL) или объектом
               if (typeof photo.photo === 'string') {
                 photoUrl = photo.photo;
               } else if (photo.photo.url) {
@@ -336,11 +283,9 @@ export default function ProductEdit() {
                 photoUrl = photo.photo.photo_url;
               }
             } else {
-              // Если нет поля photo, пробуем другие варианты
               photoUrl = photo.url || photo.photo_url || photo.image_url || null;
             }
-            
-            // Если URL относительный, добавляем базовый URL
+          
             if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http')) {
               const baseUrl = 'https://onlinestore-928b.onrender.com';
               photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -360,7 +305,6 @@ export default function ProductEdit() {
               photoUrl = photo.url || photo.photo || photo.photo_url || photo.image_url || null;
             }
             
-            // Если URL относительный, добавляем базовый URL
             if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http')) {
               const baseUrl = 'https://onlinestore-928b.onrender.com';
               photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -379,8 +323,7 @@ export default function ProductEdit() {
             } else if (img && typeof img === 'object') {
               photoUrl = img.url || img.photo || img.photo_url || img.image_url || null;
             }
-            
-            // Если URL относительный, добавляем базовый URL
+
             if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http')) {
               const baseUrl = 'https://onlinestore-928b.onrender.com';
               photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
@@ -394,23 +337,23 @@ export default function ProductEdit() {
         }
 
         setImages(imageUrls);
-        // Сохраняем исходные фото ID для определения новых фото при обновлении
         initialPhotoIdsRef.current = imageUrls.filter(img => img.id).map(img => img.id);
-        console.log("📸 Initial photo IDs saved:", initialPhotoIdsRef.current);
+
+        if (imageUrls.length === 0) {
+          console.log("📸 Initial photo IDs saved: [] (no photos found in product)");
+        } else if (initialPhotoIdsRef.current.length === 0) {
+          console.log(`📸 Initial photo IDs saved: [] (found ${imageUrls.length} photos but none have IDs)`);
+        } else {
+          console.log(`📸 Initial photo IDs saved: [${initialPhotoIdsRef.current.join(', ')}] (${initialPhotoIdsRef.current.length} photos with IDs)`);
+        }
         const firstImage = imageUrls[0] || null;
         setCover(firstImage);
-        coverRef.current = firstImage; // Обновляем ref сразу
+        coverRef.current = firstImage; 
 
-        // console.log("✅ Product loaded:", { 
-        //   name: product.name, 
-        //   hasImages: imageUrls.length > 0,
-        //   imagesCount: imageUrls.length 
-        // });
       } catch (error) {
-        // console.error("❌ Error loading the product:", error.response?.data || error.message);
+        console.error("Error loading the product:", error.response?.data || error.message);
         fetchedIdRef.current = null;
         
-        // Проверяем, является ли ошибка связанной с авторизацией
         const isAuthError = error.response?.status === 401 || error.response?.status === 403;
         const isRefreshError = error.message?.includes("No refresh token") || 
                               error.response?.data?.detail?.includes("token") ||
@@ -435,8 +378,9 @@ export default function ProductEdit() {
       } finally {
         fetchingRef.current = false;
       }
-    };
+    }, [id, urlProductType]);
 
+  useEffect(() => {
     if (id) {
       fetchProduct();
     }
@@ -444,15 +388,12 @@ export default function ProductEdit() {
     return () => {
       fetchingRef.current = false;
     };
-  }, [id]);
+  }, [id, fetchProduct]);
 
-  // Функция для удаления всех битых фото (с внешних доменов, например rozetka.com.ua)
   const handleDeleteBrokenPhotos = async () => {
-    // Находим все фото с внешними URL (rozetka.com.ua и т.д.)
     const brokenPhotos = images.filter(img => {
       if (!img.url) return false;
       const url = typeof img.url === 'string' ? img.url : '';
-      // Проверяем, является ли URL внешним (не с нашего сервера)
       return url.includes('rozetka.com.ua') || 
              (url.startsWith('http') && !url.includes('onlinestore-928b.onrender.com') && !url.startsWith('blob:'));
     });
@@ -472,14 +413,12 @@ export default function ProductEdit() {
     let deletedCount = 0;
     let failedCount = 0;
 
-    // Удаляем каждое битое фото через API
     for (const photo of brokenPhotos) {
       if (photo.id) {
         try {
-          // Используем ту же логику, что и в handleDeletePhoto, но без показа уведомлений для каждого
           if (productType === 'accessory') {
             const endpoints = [
-              `/accessories/${id}/remove_photo`, // Пробуем сначала официальный endpoint
+              `/accessories/${id}/remove_photo`,
               `/accessories/${id}/photo/${photo.id}`,
               `/accessories/photo/${photo.id}`
             ];
@@ -487,8 +426,6 @@ export default function ProductEdit() {
             for (const endpoint of endpoints) {
               try {
                 if (endpoint.includes('remove_photo')) {
-                  // Согласно API: DELETE /accessories/{id}/remove_photo
-                  // Пробуем передать photo_id в теле запроса
                   await apiWithAuth.delete(endpoint, { data: { photo_id: photo.id } });
                 } else {
                   await apiWithAuth.delete(endpoint);
@@ -498,22 +435,20 @@ export default function ProductEdit() {
                 break;
               } catch (error) {
                 if (error.response?.status !== 404) {
-                  // Если это не 404, логируем ошибку, но продолжаем пробовать другие endpoints
-                  console.warn(`⚠️ Failed to delete photo ${photo.id} via ${endpoint}:`, error.response?.status, error.response?.data);
+
+                  console.warn(`Failed to delete photo ${photo.id} via ${endpoint}:`, error.response?.status, error.response?.data);
                 }
               }
             }
             if (!deleted) {
-              console.warn(`⚠️ Could not delete photo ${photo.id} from server`);
+              console.warn(`Could not delete photo ${photo.id} from server`);
               failedCount++;
             } else {
               deletedCount++;
             }
           } else {
-            // Пробуем разные варианты endpoint для удаления фото продукта
-            // Используем паттерн, похожий на /products/{id}/deletion
             const endpoints = [
-              `/products/${id}/photo/${photo.id}/deletion`, // По аналогии с /products/{id}/deletion
+              `/products/${id}/photo/${photo.id}/deletion`,
               `/products/photo/${photo.id}/deletion`,
               `/products/${id}/photo/${photo.id}`,
               `/products/product/${id}/photo/${photo.id}`,
@@ -528,13 +463,12 @@ export default function ProductEdit() {
                 break;
               } catch (error) {
                 if (error.response?.status !== 404) {
-                  // Если это не 404, логируем ошибку, но продолжаем пробовать другие endpoints
-                  console.warn(`⚠️ Failed to delete photo ${photo.id} via ${endpoint}:`, error.response?.status, error.response?.data);
+                  console.warn(`Failed to delete photo ${photo.id} via ${endpoint}:`, error.response?.status, error.response?.data);
                 }
               }
             }
             if (!deleted) {
-              console.warn(`⚠️ Could not delete photo ${photo.id} from server`);
+              console.warn(`Could not delete photo ${photo.id} from server`);
               failedCount++;
             } else {
               deletedCount++;
@@ -545,12 +479,10 @@ export default function ProductEdit() {
           failedCount++;
         }
       } else {
-        // Если фото без ID (новое, не сохраненное), просто удаляем из состояния
         deletedCount++;
       }
     }
 
-    // Удаляем все битые фото из локального состояния
     const remainingImages = images.filter(img => {
       if (!img.url) return true;
       const url = typeof img.url === 'string' ? img.url : '';
@@ -558,12 +490,9 @@ export default function ProductEdit() {
                       (url.startsWith('http') && !url.includes('onlinestore-928b.onrender.com') && !url.startsWith('blob:'));
       return !isBroken;
     });
-    
-    // Обновляем состояние сразу
+
     setImages(remainingImages);
 
-    // Если cover был битым, устанавливаем первый доступный
-    // Проверяем по ID или URL, так как brokenPhotos.includes(cover) может не сработать из-за ссылок на объекты
     let newCover = cover;
     const isCoverBroken = cover && (
       brokenPhotos.some(bp => bp.id === cover.id) ||
@@ -579,23 +508,18 @@ export default function ProductEdit() {
       console.log("🔄 Cover was broken, replaced with:", newCover);
     }
 
-    // Обновляем исходный список фото ID
     initialPhotoIdsRef.current = remainingImages.filter(img => img.id).map(img => img.id);
-    
-    // ВАЖНО: Сохраняем продукт без битых фото, чтобы они удалились с сервера
-    // Это единственный способ удалить фото, так как API не поддерживает DELETE для фото продуктов
+
     try {
       console.log("💾 Saving product without broken photos to remove them from server...");
       console.log("📸 Remaining images (will be sent to API):", remainingImages);
       showNotification("Saving product to remove broken photos from server...", "info");
       
-      // ВАЖНО: Передаем remainingImages напрямую в handleUpdateProduct,
-      // так как setImages асинхронный и состояние еще не обновилось
       await handleUpdateProduct(remainingImages);
       
       showNotification(`Successfully deleted ${deletedCount} broken photo(s) from server!`, "success");
     } catch (error) {
-      console.error("❌ Error saving product after deleting broken photos:", error);
+      console.error(" Error saving product after deleting broken photos:", error);
       if (failedCount > 0) {
         showNotification(
           `Removed ${deletedCount} broken photo(s) from preview, but failed to save to server. Please click 'Publish' to save changes.`,
@@ -615,10 +539,8 @@ export default function ProductEdit() {
   const handleDeletePhoto = async (photoId) => {
     try {
       if (productType === 'accessory') {
-        // Пробуем разные варианты endpoint для удаления фото аксессуара
-        // Начинаем с официального endpoint согласно API документации
         const endpoints = [
-          { url: `/accessories/${id}/remove_photo`, useBody: true }, // Официальный endpoint
+          { url: `/accessories/${id}/remove_photo`, useBody: true }, 
           { url: `/accessories/${id}/photo/${photoId}`, useBody: false },
           { url: `/accessories/photo/${photoId}`, useBody: false }
         ];
@@ -627,8 +549,6 @@ export default function ProductEdit() {
         for (const endpoint of endpoints) {
           try {
             if (endpoint.useBody) {
-              // Согласно API: DELETE /accessories/{id}/remove_photo
-              // Передаем photo_id в теле запроса
               await apiWithAuth.delete(endpoint.url, { data: { photo_id: photoId } });
             } else {
               await apiWithAuth.delete(endpoint.url);
@@ -638,26 +558,21 @@ export default function ProductEdit() {
             break;
           } catch (error) {
             if (error.response?.status === 404) {
-              // Пробуем следующий endpoint
               continue;
             } else {
-              // Если это не 404, выбрасываем ошибку
               throw error;
             }
           }
         }
         
         if (!deleted) {
-          // Если все варианты не работают, просто удаляем из локального состояния
-          console.warn("⚠️ Photo deletion endpoint not found. Removing from local state only.");
+          console.warn("Photo deletion endpoint not found. Removing from local state only.");
           showNotification("Photo removed from preview. Note: API endpoint for photo deletion may not be available.", "info");
         }
       } else {
-        // Пробуем разные варианты endpoint для удаления фото продукта
-        // Используем паттерн, похожий на /products/{id}/deletion
         let deleted = false;
         const endpoints = [
-          `/products/${id}/photo/${photoId}/deletion`, // По аналогии с /products/{id}/deletion
+          `/products/${id}/photo/${photoId}/deletion`,
           `/products/photo/${photoId}/deletion`,
           `/products/${id}/photo/${photoId}`,
           `/products/product/${id}/photo/${photoId}`,
@@ -671,17 +586,14 @@ export default function ProductEdit() {
             console.log(`✅ Successfully deleted photo ${photoId} via ${endpoint}`);
             break;
           } catch (error) {
-            // Если это не 404, логируем ошибку, но продолжаем пробовать другие endpoints
             if (error.response?.status !== 404) {
-              console.warn(`⚠️ Failed to delete photo ${photoId} via ${endpoint}:`, error.response?.status, error.response?.data);
+              console.warn(`Failed to delete photo ${photoId} via ${endpoint}:`, error.response?.status, error.response?.data);
             }
-            // Для 404 просто продолжаем пробовать следующий вариант
           }
         }
         
         if (!deleted) {
-          // Если все варианты не работают, просто удаляем из локального состояния
-          console.warn("⚠️ Photo deletion endpoint not found. Removing from local state only.");
+          console.warn("Photo deletion endpoint not found. Removing from local state only.");
           showNotification("Photo removed from preview. Note: API endpoint for photo deletion may not be available.", "info");
         }
       }
@@ -695,9 +607,8 @@ export default function ProductEdit() {
       });
       
       showNotification("Photo deleted successfully!", "success");
-      // console.log("✅ Photo deleted:", photoId);
     } catch (error) {
-      // console.error("❌ Error when deleting photo:", error.response?.data || error.message);
+      console.error(" Error when deleting photo:", error.response?.data || error.message);
       showNotification(error.response?.data?.detail || error.response?.data?.message || "Error deleting photo. Please try again.", "error");
     }
   };
@@ -718,50 +629,38 @@ export default function ProductEdit() {
   const handleCoverUpload = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const file = files[0]; // Берем только первый файл для cover
+      const file = files[0];
       const newCover = {
         id: null,
         url: URL.createObjectURL(file),
-        file, // Важно: сохраняем file в объекте cover
+        file, 
       };
       
       console.log("📤 New cover created:", { hasFile: !!newCover.file, fileName: newCover.file?.name, fileSize: newCover.file?.size });
       
-      // Получаем текущий cover из ref
       const currentCover = coverRef.current;
-      
-      // Если у старого cover есть id, удаляем его из images (чтобы он не отправлялся в photo_ids)
-      // Это заставит API удалить старое фото, так как оно не будет в списке существующих
+
       if (currentCover?.id) {
         console.log("🔄 Replacing cover photo, old photo ID:", currentCover.id);
-        // Удаляем старое фото из images, чтобы оно не отправлялось в photo_ids
         setImages(prev => prev.filter(img => img.id !== currentCover.id));
         
-        // Также пытаемся удалить старое фото с сервера явно
         try {
           await handleDeletePhoto(currentCover.id);
           console.log("✅ Old cover photo deleted from server");
         } catch (error) {
-          // Если не удалось удалить с сервера, продолжаем - оно не будет в photo_ids, так что должно удалиться
-          console.warn("⚠️ Could not delete old cover from server, but it will be excluded from photo_ids");
+          console.warn("Could not delete old cover from server, but it will be excluded from photo_ids");
         }
       }
-      
-      // Сначала обновляем cover и ref синхронно (ВАЖНО: до обновления images)
-      // Это гарантирует, что cover сохраняет свой file
+ 
       setCover(newCover);
-      coverRef.current = newCover; // Обновляем ref сразу
+      coverRef.current = newCover; 
       console.log("✅ Cover state updated, file preserved:", !!coverRef.current?.file);
       
-      // Затем добавляем новый cover в начало images
       setImages(prev => {
-        // Убеждаемся, что старый cover не в списке (на случай, если он был добавлен обратно)
         const filtered = prev.filter(img => !currentCover || img.id !== currentCover.id);
-        // Используем newCover напрямую, чтобы сохранить file
         return [newCover, ...filtered];
       });
       
-      // Очищаем input, чтобы можно было загрузить тот же файл снова
       e.target.value = '';
       
       showNotification("Cover photo replaced. Click 'Publish' to update the product.", "info");
@@ -769,9 +668,6 @@ export default function ProductEdit() {
   };
 
   const handleUpdateProduct = async (imagesToUse = null) => {
-    // Если передан imagesToUse, используем его вместо images из состояния
-    // Это нужно для удаления битых фото, когда состояние еще не обновилось
-    // Убеждаемся, что imagesForUpdate всегда является массивом
     const imagesForUpdate = Array.isArray(imagesToUse) ? imagesToUse : (Array.isArray(images) ? images : []);
     if (!isProductReady) {
       showNotification("Please fill in all required fields!", "warning");
@@ -779,24 +675,14 @@ export default function ProductEdit() {
     }
 
     setLoading(true);
-
-    // Для аксессуаров обрабатываем отдельно, чтобы не попасть в общий catch
     if (productType === 'accessory') {
-      // Для аксессуаров API не поддерживает обновление данных (name, category, price и т.д.)
-      // Можно обновить только фото через PUT /accessories/{id}/photo
-      
-      // Для аксессуаров отправляем все фото (и новые, и существующие)
+ 
       const newImages = imagesForUpdate.filter(img => img.file);
       const existingImages = imagesForUpdate.filter(img => img.id && !img.file && img.id !== null && img.id !== undefined);
       const hasAnyPhotos = newImages.length > 0 || existingImages.length > 0 || cover?.file || cover?.id;
       
       if (hasAnyPhotos) {
-        // Обновляем фото
         const photoFormData = new FormData();
-        
-        // Отправляем новые файлы
-        // Упрощаем: отправляем только images, без cover (cover может быть первым в images)
-        // Проверяем формат файлов - API принимает JPEG/JPG и JFIF
         const unsupportedFiles = [];
         
         newImages.forEach(img => {
@@ -825,35 +711,27 @@ export default function ProductEdit() {
           return;
         }
         
-        // Если cover - это отдельный файл, не входящий в images, добавляем его
         if (cover?.file) {
           const isCoverInImages = newImages.some(img => img.file === cover.file);
           if (!isCoverInImages) {
-            // Если cover не в images, добавляем его как первый элемент
-            // Но лучше не отправлять cover отдельно, так как API может не принимать оба поля
-            // photoFormData.append("cover", cover.file);
           }
         }
         
-        // Отправляем ID существующих фото, чтобы они сохранились
         existingImages.forEach(img => {
           if (img.id) {
             photoFormData.append("photo_ids", img.id.toString());
           }
         });
         
-        // Проверяем права доступа перед попыткой обновления
         if (!isAdmin) {
           showNotification("You don't have permission to update accessories. Please contact an administrator.", "error");
           setLoading(false);
           return;
         }
         
-        // Предупреждение о возможной проблеме с правами доступа на бэкенде
-        console.warn("⚠️ Attempting to update accessory photos. Note: If you receive a 403 error, this indicates a backend permission issue that requires backend administrator intervention.");
+        console.warn("Attempting to update accessory photos. Note: If you receive a 403 error, this indicates a backend permission issue that requires backend administrator intervention.");
         
         try {
-          // Логируем содержимое FormData для отладки
           const uploadLog = {
             accessoryId: id,
             totalImages: imagesForUpdate.length,
@@ -868,7 +746,6 @@ export default function ProductEdit() {
           console.log("📤 Uploading accessory photos:", uploadLog);
           addDebugLog("📤 Uploading accessory photos", uploadLog);
           
-          // Логируем все ключи FormData с их значениями
           const formDataContents = [];
           console.log("📋 FormData contents:");
           for (let pair of photoFormData.entries()) {
@@ -883,10 +760,8 @@ export default function ProductEdit() {
           }
           addDebugLog("📋 FormData contents", formDataContents);
           
-          // Пробуем PUT, если не работает - пробуем POST
           let photoResponse;
           try {
-            // НЕ указываем Content-Type явно - axios должен установить его автоматически с правильным boundary
             photoResponse = await apiWithAuth.put(`/accessories/${id}/photo`, photoFormData, {
               headers: {
                 'Content-Type': 'multipart/form-data',
@@ -896,10 +771,9 @@ export default function ProductEdit() {
             console.log("📊 Response status:", photoResponse.status);
             console.log("📊 Response headers:", photoResponse.headers);
           } catch (putError) {
-            // Если PUT возвращает 400, 403 или 405, пробуем POST
             if (putError.response?.status === 400 || putError.response?.status === 403 || putError.response?.status === 405) {
               console.log("⚠️ PUT failed with", putError.response?.status, ", trying POST...");
-              addDebugLog("⚠️ PUT failed, trying POST", {
+              addDebugLog("PUT failed, trying POST", {
                 status: putError.response?.status,
                 error: putError.response?.data
               });
@@ -912,17 +786,16 @@ export default function ProductEdit() {
                 console.log("✅ Accessory photos updated successfully via POST:", photoResponse.data);
                 addDebugLog("✅ Accessory photos updated successfully via POST", photoResponse.data);
               } catch (postError) {
-                // Если и POST не работает, логируем детали ошибки
-                console.error("❌ POST also failed:", postError.response?.data || postError.message);
-                addDebugLog("❌ POST also failed", {
+                console.error("POST also failed:", postError.response?.data || postError.message);
+                addDebugLog("POST also failed", {
                   status: postError.response?.status,
                   error: postError.response?.data || postError.message
                 });
                 throw postError;
               }
             } else {
-              console.error("❌ PUT failed with unexpected status:", putError.response?.status);
-              addDebugLog("❌ PUT failed", {
+              console.error("PUT failed with unexpected status:", putError.response?.status);
+              addDebugLog("PUT failed", {
                 status: putError.response?.status,
                 error: putError.response?.data || putError.message
               });
@@ -935,39 +808,32 @@ export default function ProductEdit() {
           console.log("📊 Response status:", photoResponse.status);
           addDebugLog("✅ Accessory photos response", photoResponse.data);
           
-          // Проверяем, есть ли фото в ответе
           if (!photoResponse.data?.accessory_photos || photoResponse.data.accessory_photos.length === 0) {
-            console.error("❌ API returned empty accessory_photos array. This indicates a backend issue.");
-            addDebugLog("❌ API returned empty accessory_photos array", {
+            console.error("API returned empty accessory_photos array. This indicates a backend issue.");
+            addDebugLog("API returned empty accessory_photos array", {
               status: photoResponse.status,
               response: photoResponse.data,
               warning: "Backend may not be saving photos correctly"
             });
           }
           
-          // Обновляем фото из ответа, если они есть
           if (photoResponse.data?.accessory_photos && Array.isArray(photoResponse.data.accessory_photos) && photoResponse.data.accessory_photos.length > 0) {
             const updatedPhotos = photoResponse.data.accessory_photos.map(photo => {
-              // Обрабатываем разные форматы данных от API
               let photoUrl = null;
               
               if (typeof photo === 'string') {
-                // Если photo - это строка (URL)
                 photoUrl = photo;
               } else if (photo && typeof photo === 'object') {
-                // Если photo - это объект, пробуем разные поля
                 photoUrl = photo.url || photo.photo || photo.photo_url || photo.image_url || photo.url_path || null;
               }
               
-              // Если URL относительный, добавляем базовый URL
               if (photoUrl && typeof photoUrl === 'string') {
                 if (!photoUrl.startsWith('http')) {
                   const baseUrl = 'https://onlinestore-928b.onrender.com';
                   photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
                 }
               } else {
-                // Если URL не найден, логируем предупреждение
-                console.warn("⚠️ Photo URL not found in photo object:", photo);
+                console.warn("Photo URL not found in photo object:", photo);
                 photoUrl = null;
               }
               
@@ -975,7 +841,7 @@ export default function ProductEdit() {
                 id: photo.id || photo.photo_id || null,
                 url: photoUrl,
               };
-            }).filter(photo => photo.url !== null); // Убираем фото без URL
+            }).filter(photo => photo.url !== null);
             
             console.log("✅ Photos with processed URLs:", updatedPhotos);
             setImages(updatedPhotos);
@@ -986,15 +852,13 @@ export default function ProductEdit() {
             addDebugLog("✅ Photos updated in state", updatedPhotos);
             showNotification("Photos have been updated successfully! Refresh preview page to see them.", "success");
           } else {
-            // Если фото нет в ответе, пробуем загрузить данные заново через API
-            console.warn("⚠️ No photos in response, fetching fresh data from API...");
-            addDebugLog("⚠️ No photos in response, fetching fresh data", null);
+            console.warn("No photos in response, fetching fresh data from API...");
+            addDebugLog(" No photos in response, fetching fresh data", null);
             
             try {
-              // Загружаем аксессуар заново, чтобы получить актуальные фото
               const freshResponse = await apiWithAuth.get(`/accessories/${id}`);
-              console.log("🔄 Fresh accessory data:", freshResponse.data);
-              addDebugLog("🔄 Fresh accessory data", freshResponse.data);
+              console.log("Fresh accessory data:", freshResponse.data);
+              addDebugLog("Fresh accessory data", freshResponse.data);
               
               if (freshResponse.data?.accessory_photos && Array.isArray(freshResponse.data.accessory_photos) && freshResponse.data.accessory_photos.length > 0) {
                 const freshPhotos = freshResponse.data.accessory_photos.map(photo => ({
@@ -1006,20 +870,19 @@ export default function ProductEdit() {
                   setCover(freshPhotos[0]);
                 }
                 console.log("✅ Photos loaded from fresh data:", freshPhotos);
-                addDebugLog("✅ Photos loaded from fresh data", freshPhotos);
+                addDebugLog("Photos loaded from fresh data", freshPhotos);
                 showNotification("Photos have been updated successfully!", "success");
               } else {
-                console.error("❌ Still no photos after reload. API may not be saving photos correctly.");
-                addDebugLog("❌ Still no photos after reload", freshResponse.data);
+                console.error("Still no photos after reload. API may not be saving photos correctly.");
+                addDebugLog("Still no photos after reload", freshResponse.data);
                 showNotification("Photos uploaded but not appearing. Please check API response.", "warning");
-                // Перезагружаем страницу как последний вариант
                 setTimeout(() => {
                   window.location.reload();
                 }, 2000);
               }
             } catch (fetchError) {
-              console.error("❌ Error fetching fresh data:", fetchError);
-              addDebugLog("❌ Error fetching fresh data", fetchError.response?.data || fetchError.message);
+              console.error("Error fetching fresh data:", fetchError);
+              addDebugLog("Error fetching fresh data", fetchError.response?.data || fetchError.message);
               showNotification("Photos updated, reloading page...", "info");
               setTimeout(() => {
                 window.location.reload();
@@ -1028,9 +891,9 @@ export default function ProductEdit() {
           }
           
           setLoading(false);
-          return; // Выходим из функции после успешного обновления
+          return;
         } catch (photoError) {
-          console.error("❌ Error updating accessory photos:", {
+          console.error(" Error updating accessory photos:", {
             status: photoError.response?.status,
             data: photoError.response?.data,
             message: photoError.message,
@@ -1038,7 +901,6 @@ export default function ProductEdit() {
             errorDetail: photoError.response?.data?.detail || photoError.response?.data?.message || "No error details"
           });
           
-          // Если 403, возможно проблема с правами доступа или токеном
           if (photoError.response?.status === 403) {
             const errorDetail = photoError.response?.data?.detail || photoError.response?.data?.message || photoError.response?.data?.error || "";
             console.log("🔍 403 Error details:", {
@@ -1050,10 +912,9 @@ export default function ProductEdit() {
             
             let errorMsg;
             
-            // Проверяем различные варианты сообщений об ошибке
             const errorText = errorDetail.toLowerCase();
             if (errorText.includes("permission") || errorText.includes("not allowed") || errorText.includes("forbidden") || errorText.includes("access denied")) {
-              errorMsg = `⚠️ Backend Permission Issue (403)\n\nCannot update accessory photos due to backend permission restrictions.\n\nError: "${errorDetail}"\n\n🔧 This is a BACKEND configuration issue, not a frontend problem.\n\n📋 Action Required:\nPlease contact your backend administrator to:\n\n1. ✅ Verify endpoint access:\n   - PUT /accessories/{id}/photo\n   - PATCH /accessories/{id}/photo\n\n2. ✅ Check user permissions:\n   - Your role: Admin (isAdmin: ${isAdmin})\n   - Required: Permission to update accessory photos\n\n3. ✅ Backend configuration:\n   - Ensure the endpoint is properly configured\n   - Verify permission classes/roles are set correctly\n   - Check if the endpoint requires special admin permissions\n\n💡 Note: Both PUT and PATCH methods were attempted, both returned 403.\nThis indicates the endpoint exists but is restricted by backend permissions.`;
+              errorMsg = `Backend Permission Issue (403)\n\nCannot update accessory photos due to backend permission restrictions.\n\nError: "${errorDetail}"\n\n🔧 This is a BACKEND configuration issue, not a frontend problem.\n\n📋 Action Required:\nPlease contact your backend administrator to:\n\n1. ✅ Verify endpoint access:\n   - PUT /accessories/{id}/photo\n   - PATCH /accessories/{id}/photo\n\n2. ✅ Check user permissions:\n   - Your role: Admin (isAdmin: ${isAdmin})\n   - Required: Permission to update accessory photos\n\n3. ✅ Backend configuration:\n   - Ensure the endpoint is properly configured\n   - Verify permission classes/roles are set correctly\n   - Check if the endpoint requires special admin permissions\n\n💡 Note: Both PUT and PATCH methods were attempted, both returned 403.\nThis indicates the endpoint exists but is restricted by backend permissions.`;
             } else if (errorText.includes("token") || errorText.includes("expired") || errorText.includes("session") || errorText.includes("unauthorized")) {
               errorMsg = "Your session has expired. Please try logging in again.";
             } else if (errorDetail) {
@@ -1072,24 +933,21 @@ export default function ProductEdit() {
             showNotification(errorMsg, "error");
           }
           setLoading(false);
-          return; // Выходим из функции, чтобы не попасть в общий catch
+          return;
         }
       } else {
-        // Если нет новых фото, но пользователь пытается обновить данные
+     
         showNotification("Updating accessory data (name, category, price, description, etc.) is not currently supported by the API. You can only add/remove photos through the photo management interface.", "info");
         setLoading(false);
         return;
       }
     }
 
-    // Для продуктов продолжаем обычную обработку
     try {
       const formData = new FormData();
       
       formData.append("name", productName.trim());
       formData.append("category", category);
-      // FormData автоматически конвертирует boolean в строку, но бэкенд может ожидать строку "true"/"false"
-      // Проверяем оба варианта: отправляем как строку для совместимости
       formData.append("is_special", isSpecial ? "true" : "false");
       
       if (stock !== null && stock !== undefined) {
@@ -1104,143 +962,32 @@ export default function ProductEdit() {
       }
       
       formData.append("price", priceNum.toString());
-      // Для аксессуаров вес не отправляем
       if (productType !== 'accessory' && weight && weight.trim().length > 0) {
         formData.append("weight", weight.trim());
       }
       formData.append("description", description.trim());
       formData.append("visible", visible ? "true" : "false");
+      if (!visible) {
+        formData.append("status", "Hidden");
+      } else {
+        formData.append("status", "Active");
+      }
 
-      // Добавляем изображения
-      // При обновлении продукта через PUT нужно отправлять все изображения:
-      // - Новые файлы (с полем file)
-      // - ID существующих изображений (чтобы они сохранились)
       const newImages = imagesForUpdate.filter(img => img.file);
       const existingImages = imagesForUpdate.filter(img => img.id && !img.file && img.id !== null && img.id !== undefined);
+      const currentCover = coverRef.current || cover;
+      const hasNewPhotos = newImages.length > 0 || currentCover?.file;
       
-      // Проверяем, является ли cover частью images
-      const coverInImages = cover && imagesForUpdate.some(img => {
-        if (cover.file && img.file) {
-          return cover.file === img.file;
-        }
-        if (cover.id && img.id) {
-          return cover.id === img.id;
-        }
-        return cover === img;
-      });
-      
-      // Отправляем новые файлы (исключая cover, если он будет отправлен отдельно)
-      const currentCoverForCheck = coverRef.current || cover;
-      newImages.forEach(img => {
-        // Если это cover и он будет отправлен отдельно, пропускаем его в images
-        if (currentCoverForCheck?.file && img.file === currentCoverForCheck.file) {
-          // Cover будет отправлен отдельно, пропускаем
-          return;
-        }
-        formData.append("images", img.file);
-      });
-      
-      // Отправляем ID всех существующих изображений, чтобы они сохранились
-      // ВАЖНО: исключаем старый cover ID, если он был заменен новым cover с file
-      const existingImagesToSend = existingImages.filter(img => {
-        // Если есть новый cover с file, исключаем старый cover из existingImages
-        if (currentCoverForCheck?.file && img.id === currentCoverForCheck.id) {
-          // Это старый cover, который был заменен - не отправляем его ID
-          return false;
-        }
-        return true;
-      });
-      
-      // Отправляем как массив ID
-      if (existingImagesToSend.length > 0) {
-        const existingIds = existingImagesToSend.map(img => img.id.toString());
-        console.log("📤 Sending existing photo IDs (excluding old cover):", existingIds);
-        // Пробуем разные варианты формата
-        existingIds.forEach(imgId => {
-          formData.append("photo_ids[]", imgId);
-          formData.append("image_ids[]", imgId);
-        });
-        // Также отправляем как обычный массив
-        formData.append("photo_ids", JSON.stringify(existingIds));
-        formData.append("image_ids", JSON.stringify(existingIds));
-      } else {
-        // Если imagesToUse был явно передан (не null) и массив пустой,
-        // это означает, что мы хотим удалить все фото - отправляем пустой массив
-        if (imagesToUse !== null && imagesForUpdate.length === 0 && existingImages.length === 0) {
-          console.log("📤 Explicitly removing all photos - sending empty photo_ids array");
-          formData.append("photo_ids", JSON.stringify([]));
-          formData.append("image_ids", JSON.stringify([]));
-        } else {
-          console.log("📤 No existing photo IDs to send (all were replaced or removed)");
-        }
-      }
-      
-      console.log("📸 Photo data:", {
+      console.log("📸 Photo data (will be sent separately via PUT /products/{id}/photo):", {
         totalImages: imagesForUpdate.length,
         newImagesCount: newImages.length,
         existingImagesCount: existingImages.length,
         existingImageIds: existingImages.map(img => img.id),
-        coverInImages: coverInImages,
-        coverHasFile: !!cover?.file,
-        coverHasId: !!cover?.id,
-        coverObject: cover ? { hasFile: !!cover.file, hasId: !!cover.id, id: cover.id } : null
-      });
-
-      // Обрабатываем обложку
-      // Используем coverRef.current для получения актуального значения cover
-      const currentCover = coverRef.current || cover;
-      
-      // Проверяем, является ли cover битым фото (rozetka.com.ua или другой внешний домен)
-      const isCoverBroken = currentCover?.url && typeof currentCover.url === 'string' && 
-                           (currentCover.url.includes('rozetka.com.ua') || 
-                            (currentCover.url.startsWith('http') && !currentCover.url.includes('onlinestore-928b.onrender.com') && !currentCover.url.startsWith('blob:')));
-      
-      // Проверяем, есть ли cover в imagesForUpdate (если передан список)
-      const coverInRemainingImages = imagesToUse !== null && currentCover?.id && 
-                                     imagesForUpdate.some(img => img.id === currentCover.id);
-      
-      // Детальное логирование cover перед отправкой
-      console.log("🔍 Cover state before sending:", {
-        coverRefHasFile: !!coverRef.current?.file,
-        coverStateHasFile: !!cover?.file,
-        currentCoverHasFile: !!currentCover?.file,
-        coverRefId: coverRef.current?.id,
-        coverStateId: cover?.id,
-        currentCoverId: currentCover?.id,
-        isCoverBroken: isCoverBroken,
-        coverInRemainingImages: coverInRemainingImages,
-        coverRef: coverRef.current,
-        coverState: cover,
-        currentCover: currentCover
+        hasCoverFile: !!currentCover?.file,
+        hasCoverId: !!(currentCover?.id && currentCover.id !== null && currentCover.id !== undefined),
+        hasNewPhotos: hasNewPhotos
       });
       
-      // Всегда отправляем cover отдельно, если у него есть file
-      if (currentCover?.file) {
-        // Новый файл обложки - отправляем отдельно
-        formData.append("cover", currentCover.file);
-        console.log("📤 Sending cover file:", currentCover.file.name, "size:", currentCover.file.size);
-      } else if (currentCover?.id && currentCover.id !== null && currentCover.id !== undefined && !currentCover.file) {
-        // Существующая обложка (без нового файла) - отправляем ID только если:
-        // 1. Cover не является битым фото
-        // 2. Cover есть в remainingImages (если передан список)
-        if (isCoverBroken) {
-          console.warn("⚠️ Cover is broken photo (rozetka.com.ua), not sending coverId:", currentCover.id);
-        } else if (imagesToUse !== null && !coverInRemainingImages) {
-          console.warn("⚠️ Cover not in remaining images, not sending coverId:", currentCover.id);
-        } else {
-          formData.append("coverId", currentCover.id.toString());
-          console.log("📤 Sending cover ID:", currentCover.id);
-        }
-      } else if (currentCover) {
-        console.warn("⚠️ Cover exists but has no file or id:", { 
-          hasFile: !!currentCover.file, 
-          hasId: !!currentCover.id, 
-          id: currentCover.id,
-          cover: currentCover 
-        });
-      }
-      
-      // Отладочная информация
       console.log("📤 Sending FormData:", {
         productType,
         totalImages: imagesForUpdate.length,
@@ -1252,8 +999,6 @@ export default function ProductEdit() {
         formDataKeys: Array.from(formData.keys())
       });
 
-      // Для продуктов используем PATCH вместо PUT, так как PUT требует все обязательные поля (sku, supplies, flavor_profiles)
-      // PATCH позволяет частичное обновление и работает с фото
       let response;
       const maxRetries = 2;
       let lastError = null;
@@ -1263,7 +1008,6 @@ export default function ProductEdit() {
           if (attempt > 0) {
             console.log(`🔄 Retrying request (attempt ${attempt + 1}/${maxRetries + 1})...`);
             showNotification(`Retrying request (${attempt + 1}/${maxRetries + 1})...`, "info");
-            // Небольшая задержка перед повтором
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           }
           
@@ -1271,15 +1015,13 @@ export default function ProductEdit() {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
-            timeout: 30000, // 30 секунд таймаут
+            timeout: 30000, 
           });
-          
-          // Если успешно, выходим из цикла
+  
           break;
         } catch (patchError) {
           lastError = patchError;
           
-          // Если это 502, 503, 504 или сетевые ошибки - пробуем повторить
           const isRetryableError = 
             patchError.response?.status === 502 || 
             patchError.response?.status === 503 || 
@@ -1291,11 +1033,10 @@ export default function ProductEdit() {
             patchError.message?.includes('CORS');
           
           if (isRetryableError && attempt < maxRetries) {
-            console.warn(`⚠️ Request failed with ${patchError.response?.status || patchError.code || patchError.message}, retrying...`);
-            continue; // Пробуем еще раз
+            console.warn(`Request failed with ${patchError.response?.status || patchError.code || patchError.message}, retrying...`);
+            continue; 
           }
           
-          // Если PATCH не работает, пробуем PUT (на случай, если API изменился)
           if (patchError.response?.status === 400 || patchError.response?.status === 403 || patchError.response?.status === 405) {
             console.log("⚠️ PATCH failed with", patchError.response?.status, ", trying PUT...");
             try {
@@ -1305,27 +1046,24 @@ export default function ProductEdit() {
                 },
                 timeout: 30000,
               });
-              break; // Если PUT успешен, выходим
+              break; 
             } catch (putError) {
-              // Логируем детали ошибки
               if (putError.response?.status === 400) {
-                console.error("❌ PUT also failed - Error details:", {
+                console.error("PUT also failed - Error details:", {
                   status: putError.response?.status,
                   data: putError.response?.data,
                   message: putError.response?.data?.detail || putError.response?.data?.message || putError.response?.data?.error,
                 });
-                console.error("❌ Full error response:", JSON.stringify(putError.response?.data, null, 2));
+                console.error("Full error response:", JSON.stringify(putError.response?.data, null, 2));
               }
               throw putError;
             }
           } else {
-            // Если это не повторяемая ошибка или мы исчерпали попытки, выбрасываем ошибку
             throw patchError;
           }
         }
       }
       
-      // Если после всех попыток не получилось, выбрасываем последнюю ошибку
       if (!response && lastError) {
         const errorMsg = lastError.response?.data?.detail || 
                         lastError.response?.data?.message || 
@@ -1340,6 +1078,106 @@ export default function ProductEdit() {
       console.log("📸 Response photos:", response.data?.photos);
       console.log("📸 Response images:", response.data?.images);
       console.log("📸 Full response:", JSON.stringify(response.data, null, 2));
+
+      if (hasNewPhotos && productType === 'product') {
+        console.log("📤 Uploading photos via PUT /products/{id}/photo...");
+        try {
+          const photoFormData = new FormData();
+          
+          newImages.forEach(img => {
+            if (img.file) {
+              photoFormData.append("images", img.file);
+              console.log("📤 Adding image file:", img.file.name);
+            }
+          });
+          
+          if (currentCover?.file) {
+            photoFormData.append("cover", currentCover.file);
+            console.log("📤 Adding cover file:", currentCover.file.name);
+          }
+          
+          if (existingImages.length > 0) {
+            existingImages.forEach(img => {
+              if (img.id) {
+                photoFormData.append("photo_ids", img.id.toString());
+              }
+            });
+            console.log("📤 Sending existing photo IDs:", existingImages.map(img => img.id));
+          }
+          
+          const photoResponse = await apiWithAuth.put(`/products/${id}/photo`, photoFormData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            timeout: 30000,
+          });
+          
+          console.log("✅ Photos uploaded successfully via PUT /products/{id}/photo:", photoResponse.data);
+          console.log("📸 Photo response photos_url:", photoResponse.data?.photos_url);
+          console.log("📸 Photo response product_photos:", photoResponse.data?.product_photos);
+
+          if (photoResponse.data?.photos_url || photoResponse.data?.product_photos) {
+            response.data = {
+              ...response.data,
+              photos_url: photoResponse.data.photos_url || response.data.photos_url || [],
+              product_photos: photoResponse.data.product_photos || response.data.product_photos || []
+            };
+            console.log("✅ Updated response.data with photos from PUT /products/{id}/photo");
+            console.log("📸 Updated photos_url:", response.data.photos_url);
+            console.log("📸 Updated product_photos:", response.data.product_photos);
+            
+            const hasPhotosInResponse = 
+              (response.data.photos_url && Array.isArray(response.data.photos_url) && response.data.photos_url.length > 0) ||
+              (response.data.product_photos && Array.isArray(response.data.product_photos) && response.data.product_photos.length > 0);
+            
+            if (hasPhotosInResponse) {
+              console.log("🔄 Photos found in response, reloading page in 3 seconds to update products table...");
+              showNotification("Photos uploaded successfully! Reloading page...", "success");
+              setTimeout(() => {
+                console.log("🔄 Reloading page now...");
+                window.location.reload();
+              }, 3000);
+            } else {
+              // Если фото нет в ответе, даем больше времени бэкенду обработать фото
+              console.log("⚠️ No photos in response yet, waiting 5 seconds for backend to process...");
+              showNotification("Photos uploaded, waiting for processing...", "info");
+              setTimeout(() => {
+                window.location.reload();
+              }, 5000);
+            }
+            setLoading(false);
+            return; // Выходим, не продолжаем обработку
+          } else {
+            console.warn("⚠️ PUT /products/{id}/photo returned success but no photos in response");
+            console.warn("⚠️ Photo response data:", photoResponse.data);
+            // Если фото нет в ответе, перезагружаем страницу через 3 секунды, чтобы дать время бэкенду обработать фото
+            console.log("🔄 Will reload page in 3 seconds to get updated product data...");
+            showNotification("Photos uploaded, reloading page to see changes...", "info");
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
+            setLoading(false);
+            return; // Выходим, не продолжаем обработку
+          }
+        } catch (photoError) {
+          console.error("❌ Error uploading photos via PUT /products/{id}/photo:", photoError);
+          console.error("❌ Photo upload error details:", {
+            status: photoError.response?.status,
+            data: photoError.response?.data,
+            message: photoError.message
+          });
+          // Не выбрасываем ошибку - продукт уже обновлен, фото можно загрузить позже
+          showNotification("Product updated, but photo upload failed. You can try uploading photos again.", "warning");
+        }
+      }
+      
+      // Сохраняем новые фото (которые были загружены, но еще не имеют id) перед обновлением
+      // ВАЖНО: Объявляем эти переменные ДО их использования
+      const newImagesWithFiles = imagesForUpdate.filter(img => img && img.file);
+      // Используем coverRef.current для проверки, был ли загружен новый cover (так как cover state может потерять file)
+      const hadNewCover = coverRef.current?.file || cover?.file; // Проверяем, был ли загружен новый cover
+      const newCoverFile = (coverRef.current?.file ? coverRef.current : null) || (cover?.file ? cover : null); // Сохраняем ссылку на новый cover
+      const hadNewImages = newImagesWithFiles.length > 0; // Проверяем, были ли отправлены новые фото
       
       // Обновляем фото из ответа API, если они есть
       if (response.data) {
@@ -1410,13 +1248,63 @@ export default function ProductEdit() {
             };
           }).filter(img => img.url !== null);
           console.log("✅ Found images:", imageUrls);
+        } else if (updatedProduct.product_photos && Array.isArray(updatedProduct.product_photos) && updatedProduct.product_photos.length > 0) {
+          // Обрабатываем product_photos для продуктов
+          imageUrls = updatedProduct.product_photos.map(photo => {
+            let photoUrl = null;
+            // product_photos может содержать объект с полем photo (строка или объект)
+            if (photo.photo) {
+              if (typeof photo.photo === 'string') {
+                photoUrl = photo.photo;
+              } else if (photo.photo.url) {
+                photoUrl = photo.photo.url;
+              } else if (photo.photo.photo_url) {
+                photoUrl = photo.photo.photo_url;
+              }
+            } else {
+              photoUrl = photo.url || photo.photo_url || photo.image_url || null;
+            }
+            
+            // Если URL относительный, добавляем базовый URL
+            if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http')) {
+              const baseUrl = 'https://onlinestore-928b.onrender.com';
+              photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
+            }
+            
+            return {
+              id: photo.id || photo.photo_id || null,
+              url: photoUrl,
+            };
+          }).filter(img => img.url !== null);
+          console.log("✅ Found product_photos:", imageUrls);
         }
         
-        // Сохраняем новые фото (которые были загружены, но еще не имеют id) перед обновлением
-        const newImagesWithFiles = images.filter(img => img && img.file);
-        // Используем coverRef.current для проверки, был ли загружен новый cover (так как cover state может потерять file)
-        const hadNewCover = coverRef.current?.file || cover?.file; // Проверяем, был ли загружен новый cover
-        const newCoverFile = (coverRef.current?.file ? coverRef.current : null) || (cover?.file ? cover : null); // Сохраняем ссылку на новый cover
+        // Если фото нет в ответе, но были отправлены новые фото, перезагружаем страницу
+        console.log("🔍 Checking if reload is needed:", {
+          imageUrlsLength: imageUrls?.length || 0,
+          newImagesWithFilesLength: newImagesWithFiles.length,
+          hadNewCover: !!hadNewCover,
+          shouldReload: (!imageUrls || imageUrls.length === 0) && (newImagesWithFiles.length > 0 || hadNewCover)
+        });
+        
+        if ((!imageUrls || imageUrls.length === 0) && (newImagesWithFiles.length > 0 || hadNewCover)) {
+          console.warn("⚠️ New photos were sent but no photos found in API response! Reloading page to get fresh data...");
+          console.warn("⚠️ Details:", {
+            imageUrls: imageUrls,
+            imageUrlsLength: imageUrls?.length || 0,
+            newImagesWithFiles: newImagesWithFiles.length,
+            hadNewCover: hadNewCover,
+            responseData: response.data
+          });
+          showNotification("Product updated, reloading to get photos...", "info");
+          setLoading(false);
+          // Увеличиваем время ожидания, чтобы дать бэкенду время обработать фото
+          setTimeout(() => {
+            console.log("🔄 Reloading page now...");
+            window.location.reload();
+          }, 3000); // Увеличено с 1500 до 3000 мс
+          return;
+        }
         
         // Используем исходный список фото ID (которые были при загрузке продукта)
         // Это правильный способ определить, какие фото новые, а какие старые
@@ -1449,18 +1337,20 @@ export default function ProductEdit() {
             oldPhotosFromAPI: oldPhotosFromAPI.map(p => ({ id: p.id, url: p.url?.substring(0, 50) }))
           });
           
-          // Если мы отправляли новый cover, но его нет в ответе API, перезагружаем страницу
-          // Проверяем: если был отправлен новый cover, но в ответе нет новых фото, значит API еще не обработал загрузку
+          // Если мы отправляли новые фото (cover или images), но их нет в ответе API, перезагружаем страницу
+          // Проверяем: если были отправлены новые фото, но в ответе нет новых фото, значит API еще не обработал загрузку
           console.log("🔍 Checking if reload is needed:", {
             hadNewCover: !!hadNewCover,
-            hadNewCoverType: typeof hadNewCover,
+            hadNewImages: hadNewImages,
+            newImagesCount: newImagesWithFiles.length,
             newPhotosFromAPICount: newPhotosFromAPI.length,
-            willReload: hadNewCover && newPhotosFromAPI.length === 0
+            willReload: (hadNewCover || hadNewImages) && newPhotosFromAPICount === 0
           });
           
-          if (hadNewCover) {
+          if (hadNewCover || hadNewImages) {
             if (newPhotosFromAPI.length === 0) {
-              console.warn("⚠️ New cover was sent but no new photos found in API response! Reloading page to get fresh data...");
+              const photoType = hadNewCover ? "cover" : "images";
+              console.warn(`⚠️ New ${photoType} was sent but no new photos found in API response! Reloading page to get fresh data...`);
               console.warn("⚠️ Reload will happen in 1.5 seconds...");
               showNotification("Product updated, reloading to get photos...", "info");
               setLoading(false);
@@ -1470,10 +1360,10 @@ export default function ProductEdit() {
               }, 1500);
               return; // Выходим, не обновляем состояние
             } else {
-              console.log("✅ New cover found in API response:", newPhotosFromAPI[0]);
+              console.log(`✅ New photos found in API response: ${newPhotosFromAPI.length} photo(s)`);
             }
           } else {
-            console.log("ℹ️ No new cover was sent, skipping reload check");
+            console.log("ℹ️ No new photos were sent, skipping reload check");
           }
           
           // Объединяем новые фото из API с новыми фото, которые были загружены локально
@@ -1594,6 +1484,9 @@ export default function ProductEdit() {
           }
           
           showNotification("The product has been updated successfully!", "success");
+          fetchingRef.current = false;
+          fetchedIdRef.current = null;
+          fetchProduct();
         } else {
           // Если фото нет в ответе, но мы отправляли новые фото, возможно API не вернул их сразу
           // Проверяем, были ли новые фото
@@ -1606,10 +1499,16 @@ export default function ProductEdit() {
           } else {
             // Если новых фото не было, просто обновляем без перезагрузки
             showNotification("The product has been updated successfully!", "success");
+            fetchingRef.current = false;
+            fetchedIdRef.current = null;
+            fetchProduct();
           }
         }
       } else {
         showNotification("The product has been updated successfully!", "success");
+        fetchingRef.current = false;
+        fetchedIdRef.current = null;
+        fetchProduct();
       }
     } catch (error) {
       console.error("❌ Error when updating the product:", error);
@@ -1619,6 +1518,31 @@ export default function ProductEdit() {
         status: error.response?.status,
         stack: error.stack
       });
+      
+      // Обработка ошибки 401 (Unauthorized) - токен истек
+      // Axios interceptor должен автоматически попытаться обновить токен через refresh token
+      // Если refresh token валиден, токены обновятся автоматически и запрос повторится
+      // Если и refresh token истек, interceptor отправит событие 'tokenExpired'
+      if (error.response?.status === 401) {
+        const errorDetail = error.response?.data?.detail || error.response?.data?.message || '';
+        // Проверяем, не пытался ли interceptor обновить токен (если _retry установлен, значит попытка была)
+        const wasRetryAttempted = error.config?._retry === true;
+        
+        if (errorDetail.includes('Token is expired') || errorDetail.includes('token_not_valid')) {
+          // Если это была попытка обновления токена (refresh token тоже истек)
+          if (wasRetryAttempted) {
+            showNotification("Your session has expired. Please log in again to continue.", "warning");
+            setLoading(false);
+            return;
+          }
+          // Если это первая попытка, interceptor должен попытаться обновить токен автоматически
+          // Не показываем ошибку, так как токены должны обновиться автоматически
+          // Если обновление не удалось, interceptor отправит событие tokenExpired
+          setLoading(false);
+          return;
+        }
+      }
+      
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.message || 
                           error.response?.data?.error ||

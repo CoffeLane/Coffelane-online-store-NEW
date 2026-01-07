@@ -44,7 +44,6 @@ export default function Dashboard() {
   };
 
   const adminProducts = products.map(item => {
-    // Обрабатываем фото для продуктов и аксессуаров
     let imageUrl = null;
     
     if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
@@ -55,7 +54,6 @@ export default function Dashboard() {
       imageUrl = firstPhoto?.url || firstPhoto?.photo || firstPhoto;
     }
     
-    // Если URL относительный, добавляем базовый URL
     if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }

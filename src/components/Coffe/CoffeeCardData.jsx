@@ -19,28 +19,14 @@ const ProductImage = ({ src, alt }) => {
 
   if (!src || error) {
     return (
-      <Box sx={{ 
-        width: "100%", 
-        height: "100%", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        bgcolor: "#f5f5f5",
-        borderRadius: "12px"
-      }}>
+      <Box sx={{  width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center",  bgcolor: "#f5f5f5", borderRadius: "12px"}}>
         <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
       </Box>
     );
   }
 
   return (
-    <CardMedia
-      component="img"
-      image={src}
-      alt={alt}
-      onError={() => setError(true)}
-      sx={{ width: "100%", height: "100%", objectFit: "contain" }}
-    />
+    <CardMedia component="img" image={src} alt={alt} onError={() => setError(true)} sx={{ width: "100%", height: "100%", objectFit: "contain" }}/>
   );
 };
 
@@ -61,33 +47,11 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
         const mainPhoto = item.photos_url?.[0]?.url;
 
         return (
-          <Card key={cartKey} sx={{
-            width: isRecommended ? { xs: "100%", sm: "280px", md: "300px" } : { xs: "100%", sm: "280px", md: "300px" },
-            maxWidth: isRecommended ? "360px" : "none",
-            minHeight: { xs: '360px', md: '480px' },
-            display: "flex", 
-            flexDirection: "column", 
-            borderRadius: "24px", 
-            p: 2, 
-            boxShadow: 2,
-            opacity: isOutOfStock ? 0.7 : 1,
-          }}>
-
+          <Card key={cartKey} sx={{ width: isRecommended ? { xs: "100%", sm: "280px", md: "300px" } : { xs: "100%", sm: "280px", md: "300px" }, maxWidth: isRecommended ? "360px" : "none", minHeight: { xs: '360px', md: '480px' }, display: "flex",  flexDirection: "column",  borderRadius: "24px", p: 2,  boxShadow: 2,}}>
             <Box sx={{ position: "relative", width: "100%", height: { xs: 160, md: 250 }, mb: 1 }}>
               <ProductImage src={mainPhoto} alt={item.name} />
-              <Box 
-                component="img" 
-                src={favorites?.[itemId] ? favoriteActive : favorite}
-                sx={{ 
-                  position: "absolute", 
-                  top: 0, 
-                  right: 0, 
-                  width: 28, 
-                  height: 28, 
-                  cursor: "pointer", 
-                  zIndex: 5,
-                  p: 0.5
-                }}
+              <Box  component="img"  src={favorites?.[itemId] ? favoriteActive : favorite}
+                sx={{ position: "absolute", top: 0, right: 0, width: 28, height: 28, cursor: "pointer", zIndex: 5, p: 0.5}}
                 onClick={(e) => {
                   e.stopPropagation(); 
                   onToggleFavorite(item);
@@ -98,14 +62,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
             <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: '0 !important' }}>
               <Typography 
                 onClick={() => navigate(`/coffee/product/${item.id}`)} 
-                sx={{ 
-                  ...h4, 
-                  cursor: "pointer", 
-                  fontSize: { xs: '15px', md: '18px' }, 
-                  mb: 1,
-                  '&:hover': { color: '#16675C' }
-                }}
-              >
+                sx={{ ...h4, cursor: "pointer", fontSize: { xs: '15px', md: '18px' }, mb: 1, '&:hover': { color: '#16675C' }}}>
                 {item.name}
               </Typography>
               
@@ -118,10 +75,7 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
                   {supply ? formatPrice(getPrice(supply, currency), currency) : formatPrice(0, currency)}
                 </Typography>
                 
-                <Button 
-                  variant="contained" 
-                  fullWidth 
-                  disabled={isOutOfStock}
+                <Button variant="contained" fullWidth disabled={isOutOfStock}
                   onClick={() => dispatch(addToCart({ 
                     product: { ...item, price: supply?.price, selectedSupplyId: supply?.id }, 
                     quantity: 1 

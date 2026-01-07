@@ -14,7 +14,7 @@ export default function RecommendedAccessories({ products }) {
     if (token || localStorage.getItem("access")) dispatch(fetchFavorites());
   }, [dispatch, token]);
 
-  const favoritesMap = useMemo(() => 
+  const favoritesMap = useMemo(() =>
     favorites.reduce((acc, item) => ({ ...acc, [String(item.id)]: true }), {}), [favorites]
   );
 
@@ -22,15 +22,16 @@ export default function RecommendedAccessories({ products }) {
 
   return (
     <Box sx={{ mt: { xs: 6, md: 10 }, px: { xs: 1, md: 0 } }}>
-      <Typography sx={{ ...h3, textAlign: 'center', mb: 4, fontSize: { xs: '24px', md: '32px' } }}>
+      <Typography sx={{ ...h3, textAlign: 'center', mb: { xs: 4, md: 4 }, fontSize: { xs: '24px', md: '32px' } }}>
         You also might like
       </Typography>
+
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <AccessoriesCardData 
-          products={products} 
+        <AccessoriesCardData
+          products={products}
           favorites={favoritesMap}
           onToggleFavorite={(item) => dispatch(toggleFavoriteItem({ itemType: "accessory", itemId: item.id, itemData: item }))}
-          isRecommended={true} 
+          isRecommended={true}
         />
       </Box>
     </Box>

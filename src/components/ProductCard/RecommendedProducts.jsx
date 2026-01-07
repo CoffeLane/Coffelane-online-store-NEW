@@ -33,13 +33,8 @@ export default function RecommendedProducts({ products }) {
   if (!products || products.length === 0) return null;
 
   return (
-    <Box sx={{ px: { xs: 1, md: 0 } }}>
-      <Typography sx={{ 
-        ...h3, 
-        textAlign: 'center', 
-        mb: { xs: 2, md: 4 },
-        fontSize: { xs: '24px', md: '32px' }
-      }}>
+    <Box sx={{ mt: { xs: 6, md: 10 }, px: { xs: 1, md: 0 } }}>
+      <Typography sx={{ ...h3, textAlign: 'center', mb: { xs: 4, md: 4 }, fontSize: { xs: '24px', md: '32px' } }}>
         You also might like
       </Typography>
       <Box sx={{ 

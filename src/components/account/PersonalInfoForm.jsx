@@ -6,7 +6,7 @@ import { btnStyles } from "../../styles/btnStyles.jsx";
 import { formatPhone } from "../../components/utils/formatters.jsx";
 import { validateProfile } from "../../components/utils/validation/validateProfile.jsx";
 import { apiWithAuth } from "../../store/api/axios.js";
-import { fetchProfile, refreshAccessToken } from "../../store/slice/authSlice.jsx";
+import { fetchProfile } from "../../store/slice/authSlice.jsx";
 import { normalizePhone } from "../../components/utils/validation/validateProfile.jsx";
 
 export default function PersonalInfoForm({ user }) {
@@ -92,17 +92,9 @@ export default function PersonalInfoForm({ user }) {
           dispatch(fetchProfile());
         } catch (error) {
           if (error.response?.status === 401) {
-            const refreshResult = await dispatch(refreshAccessToken());
-            if (refreshAccessToken.fulfilled.match(refreshResult)) {
-              const newToken = refreshResult.payload.access;
-              const retryApi = apiWithAuth(newToken);
-              await retryApi.patch("/users/update", updateData);
-              
-              setLeftSuccess("Personal info saved!");
-              dispatch(fetchProfile());
-            } else {
-              setLeftErrors({ submit: "Your session has expired. Please log in again." });
-            }
+            // Интерцептор уже попытался обновить токен
+            // Если все еще 401, значит сессия истекла
+            setLeftErrors({ submit: "Your session has expired. Please log in again." });
           } else {
             const data = error.response?.data;
             if (data?.profile?.phone_number) {
@@ -157,16 +149,9 @@ export default function PersonalInfoForm({ user }) {
           dispatch(fetchProfile());
         } catch (error) {
           if (error.response?.status === 401) {
-            const refreshResult = await dispatch(refreshAccessToken());
-            if (refreshAccessToken.fulfilled.match(refreshResult)) {
-              const newToken = refreshResult.payload.access;
-              const retryApi = apiWithAuth(newToken);
-              await retryApi.patch("/users/update", updateData);
-              setRightSuccess("Address saved!");
-              dispatch(fetchProfile());
-            } else {
-              setRightErrors({ submit: "Session expired." });
-            }
+            // Интерцептор уже попытался обновить токен
+            // Если все еще 401, значит сессия истекла
+            setRightErrors({ submit: "Session expired." });
           } else {
             setRightErrors({ submit: error.response?.data?.message || "Failed to save address" });
           }

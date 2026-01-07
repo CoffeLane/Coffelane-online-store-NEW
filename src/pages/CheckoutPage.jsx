@@ -21,6 +21,7 @@ import { CircularProgress } from "@mui/material";
 import api, { apiWithAuth } from "../store/api/axios.js";
 import { formatPrice } from "../components/utils/priceUtils.jsx";
 import { fetchProfile } from "../store/slice/authSlice.jsx";
+import { fetchUserOrders } from "../store/slice/ordersSlice.jsx";
 
 export default function CheckoutPage() {
   const items = useSelector(selectCartItems);
@@ -97,7 +98,7 @@ export default function CheckoutPage() {
     if (user && token && pendingOrderDataRef.current && openLogin) {
       console.log("✅ User logged in, retrying order creation...");
       const orderData = pendingOrderDataRef.current;
-      pendingOrderDataRef.current = null;
+      // pendingOrderDataRef.current = null;
       setOpenLogin(false);
 
       setTimeout(async () => {
@@ -153,21 +154,12 @@ export default function CheckoutPage() {
       return;
     }
 
-    // === 1️⃣ Проверка контактных данных ===
     const contactErrors = validateContact({
-      firstName,
-      lastName,
-      email,
-      phone,
-      street,
-      region,
-      state,
-      zip,
-      country
+      firstName, lastName, email, phone, street, region, state, zip, country
     });
 
     const newErrors = { ...contactErrors };
-
+    
     if (!cardName.trim()) newErrors.cardName = "Card holder name required";
     else if (!/^[A-Za-z]+([ '-][A-Za-z]+)*$/.test(cardName))
       newErrors.cardName = "Invalid card name. Please enter first and last name.";
@@ -188,54 +180,6 @@ export default function CheckoutPage() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    // === 2️⃣ Формирование позиций заказа ===
-    console.log("🔍 [CHECKOUT] Processing items for API...");
-
-    const orderItems = items.map(([key, item]) => {
-      const product = item.product;
-      if (!product) return null;
-
-      const productId = product.id || product.product_id || product._id;
-      const isAccessory = product.isAccessory ||
-        product.type === 'accessory' ||
-        (!product.supplies || product.supplies.length === 0) && !key.includes('-');
-
-      // Базовая структура
-      const position = { quantity: item.quantity || 1 };
-
-      if (isAccessory) {
-        // Для аксессуаров бэкенд ждет только accessory_id
-        position.accessory_id = Number(productId);
-      } else {
-        // ДЛЯ КОФЕ: Бэкенд ТРЕБУЕТ и product_id, и supply_id вместе
-        position.product_id = Number(productId);
-
-        let supplyId = product.selectedSupplyId;
-
-        // Если в объекте нет supplyId, вытаскиваем из ключа "130-392"
-        if (!supplyId && String(key).includes('-')) {
-          const extractedId = parseInt(String(key).split('-')[1]);
-          if (!isNaN(extractedId)) supplyId = extractedId;
-        }
-
-        // Если всё равно нет, берем первый доступный ID из массива supplies
-        if (!supplyId && product.supplies?.length > 0) {
-          const validSupply = product.supplies.find(s => s.id !== 'default' && typeof s.id === 'number');
-          supplyId = validSupply ? validSupply.id : product.supplies[0].id;
-        }
-
-        position.supply_id = Number(supplyId);
-      }
-
-      return position;
-    }).filter(Boolean);
-
-    if (orderItems.length === 0) {
-      setErrors({ submit: "Your cart is empty." });
-      return;
-    }
-
-    // === 3️⃣ Формирование финального объекта для API ===
     const cleanPhone = phone.replace(/\D/g, "");
     const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`;
 
@@ -243,67 +187,44 @@ export default function CheckoutPage() {
       billing_details: {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        country: country || null,
-        state: state || null,
-        region: region || null,
-        street_name: street || null,
-        apartment_number: apartment || null,
-        zip_code: zip || null,
+        country, state, region,
+        street_name: street,
+        apartment_number: apartment,
+        zip_code: zip,
         phone_number: formattedPhone
       },
-      positions: orderItems,
       order_notes: "",
       customer_data: { email: email.trim() },
-      // НЕ отправляем discount_code при создании заказа - применяем его позже через отдельный эндпоинт
-      // discount_code будет применен после создания заказа через /discount-codes/{code}/{order_id}/
-      discount_code: null
+      discount_code: discountCode?.code || null,
     };
 
-    console.log("📤 Данные заказа на отправку:", orderData);
     pendingOrderDataRef.current = orderData;
 
     try {
-      const result = await dispatch(createOrder(orderData));
+      const order = await dispatch(createOrder(orderData)).unwrap();
 
-      if (result.meta.requestStatus === "fulfilled") {
-        const order = result.payload;
-        console.log("✅ Order created successfully:", order);
+      dispatch(clearCart());
+      await dispatch(fetchProfile());
 
-        // Скидка 
-        if (discountCode?.code && order.id) {
-          try {
-            console.log("⏳ Activating discount...");
-            await apiWithAuth.get(`/discount-codes/${discountCode.code}/${order.id}/`);
-            console.log("✅ Discount applied to database");
-          } catch (e) {
-            console.warn("Discount activation failed:", e);
-          }
+      navigate("/order_successful", {
+        state: {
+          orderNumber: order.id,
+          email: email.trim(),
+          total: order.total_price || total,
+          orderId: order.id
         }
-        dispatch(clearCart());
-        await dispatch(fetchProfile());
-        navigate("/order_successful", {
-          state: {
-            orderNumber: order.id || order.order_number,
-            email,
-            firstName,
-            lastName,
-            total: (total - discountAmount).toFixed(2),
-            orderId: order.id
-          }
-        });
-      } else {
-        // ПРОВЕРКА НА REFRESH/LOGIN
-        if (result.payload?.requiresLogin) {
-          setOpenLogin(true);
-          return;
-        }
+      });
 
-        const backendError = result.payload?.error || result.payload?.detail || "Order creation failed";
-        setErrors({ submit: typeof backendError === 'object' ? JSON.stringify(backendError) : backendError });
-      }
-    } catch (error) {
-      console.error(" Checkout Error:", error);
-      setErrors({ submit: "Unexpected error occurred." });
+    } catch (backendError) {
+      console.error("Error creating order:", backendError);
+
+      let errorMessage = "Order creation failed";
+      if (backendError?.non_field_errors) errorMessage = backendError.non_field_errors[0];
+      else if (backendError?.discount_code) errorMessage = `Promo code: ${backendError.discount_code[0]}`;
+      else if (backendError?.detail) errorMessage = backendError.detail;
+      else if (typeof backendError === 'string') errorMessage = backendError;
+
+      setErrors({ submit: errorMessage });
     }
   };
 
@@ -330,14 +251,6 @@ export default function CheckoutPage() {
     try {
       const response = await api.get(`/discount-codes/${discount.trim()}/`);
       const discountData = response.data;
-
-      // ДИВИМОСЬ У КОНСОЛЬ: перевір, чи є тут id (наприклад, 1, 2, 3...)
-      console.log("🔍 Full Discount Data:", discountData);
-      console.log("🔍 Discount ID:", discountData.id);
-      console.log("🔍 Discount Code:", discountData.code);
-
-     
-
       let calculatedDiscount = 0;
 
       if (discountData.discount_percent) {
@@ -412,22 +325,12 @@ export default function CheckoutPage() {
 
           <Box sx={{ display: { xs: "block", lg: "none" }, backgroundColor: "#fff", p: { xs: 2, md: 3 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 1, mb: 2 }}>
-              <TextField
-                fullWidth
-                placeholder="Discount code"
-                value={discount}
+              <TextField fullWidth placeholder="Discount code" value={discount}
                 onChange={(e) => {
                   setDiscount(e.target.value);
                   setDiscountError("");
-                }}
-                error={!!discountError}
-                sx={{ ...inputStyles }}
-              />
-              <Button
-                onClick={handleApplyDiscount}
-                disabled={discountLoading}
-                sx={{ ...btnStyles, textTransform: "none", width: { xs: '100%', sm: 127 }, height: { xs: 44, md: 52 }, minWidth: { xs: 'auto', sm: 127 } }}
-              >
+                }} error={!!discountError} sx={{ ...inputStyles }} />
+              <Button onClick={handleApplyDiscount} disabled={discountLoading} sx={{ ...btnStyles, textTransform: "none", width: { xs: '100%', sm: 127 }, height: { xs: 44, md: 52 }, minWidth: { xs: 'auto', sm: 127 } }}>
                 {discountLoading ? <CircularProgress size={20} color="inherit" /> : "Apply"}
               </Button>
             </Box>
@@ -441,15 +344,12 @@ export default function CheckoutPage() {
                 <Typography sx={{ color: "#09d05fff", fontSize: "14px", fontWeight: 600 }}>
                   Discount code "{discountCode.code}" applied!
                 </Typography>
-                <Button
-                  size="small"
+                <Button size="small" sx={{ color: "red", textTransform: "none", minWidth: "auto" }}
                   onClick={() => {
                     setDiscountCode(null);
                     setDiscountAmount(0);
                     setDiscount("");
-                  }}
-                  sx={{ color: "red", textTransform: "none", minWidth: "auto" }}
-                >
+                  }} >
                   Remove
                 </Button>
               </Box>
@@ -460,12 +360,11 @@ export default function CheckoutPage() {
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total - discountAmount, currency)}</Typography></Box>
 
             <Divider sx={{ my: { xs: 2, md: 3 }, borderColor: "#3E3027" }} />
-            <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label="I agree to the Privacy Policy and Terms of Use." sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />
+            <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label={<span>I agree to the Privacy Policy and Terms of Use. <span style={{ color: "#d32f2f" }}>*</span></span>} sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />
             {errors.agreed && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.agreed}</Typography>)}
             {errors.submit && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.submit}</Typography>)}
             <Button
-              fullWidth
-              sx={{ ...btnCart, mt: { xs: 2, md: 3 }, fontSize: { xs: '12px', md: '14px' }, py: { xs: 1, md: 1.5 } }}
+              fullWidth sx={{ ...btnCart, mt: { xs: 2, md: 3 }, fontSize: { xs: '12px', md: '14px' }, py: { xs: 1, md: 1.5 } }}
               onClick={handleCompletePayment}
               disabled={isCreatingOrder || items.length === 0}
             >
@@ -536,7 +435,7 @@ export default function CheckoutPage() {
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>Total:</Typography><Typography sx={{ ...h5, fontSize: { xs: '14px', md: '16px' } }}>{formatPrice(total - discountAmount, currency)}</Typography></Box>
 
             <Divider sx={{ my: { xs: 2, md: 3 }, borderColor: "#3E3027" }} />
-            <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label="I agree to the Privacy Policy and Terms of Use." sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />
+            <FormControlLabel control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />} label={<span>I agree to the Privacy Policy and Terms of Use. <span style={{ color: "#d32f2f" }}>*</span></span>} sx={{ ...h6, ...checkboxStyles, fontSize: { xs: '12px', md: '14px' } }} />
             {errors.agreed && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.agreed}</Typography>)}
             {errors.submit && (<Typography sx={{ ...helperTextRed, mt: 0.5, fontSize: { xs: '11px', md: '12px' } }}>{errors.submit}</Typography>)}
             <Button

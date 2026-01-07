@@ -20,20 +20,21 @@ export default function OrderHistory() {
   const dispatch = useDispatch();
   const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
-  const [photoCache, setPhotoCache] = useState(new Map()); // Кэш для фото продуктов/аксессуаров
-  const [imageErrors, setImageErrors] = useState({}); // Ошибки загрузки изображений
+  const [photoCache, setPhotoCache] = useState(new Map()); 
+  const [imageErrors, setImageErrors] = useState({}); 
 
 
   useEffect(() => {
-    dispatch(fetchUserOrders({ page: 1, size: 20 }));
+    const token = localStorage.getItem("access");
+    if (token) {
+      dispatch(fetchUserOrders({ page: 1, size: 30 }));
+    }
   }, [dispatch]);
 
-  // Загрузка фото для всех продуктов/аксессуаров в заказах
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
     const loadPhotos = async () => {
-      // Собираем все уникальные ID продуктов и аксессуаров
       const productIds = new Set();
       const accessoryIds = new Set();
 
@@ -48,11 +49,9 @@ export default function OrderHistory() {
         });
       });
 
-      // Проверяем, какие фото уже загружены
       setPhotoCache(prevCache => {
         const photoPromises = [];
-        
-        // Загружаем фото продуктов
+
         productIds.forEach(productId => {
           if (!prevCache.has(`product-${productId}`)) {
             photoPromises.push(
@@ -60,8 +59,7 @@ export default function OrderHistory() {
                 .then(response => {
                   const product = response.data;
                   let photoUrl = null;
-                  
-                  // Извлекаем фото из различных полей
+
                   if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
                     const firstPhoto = product.photos_url[0];
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
@@ -73,13 +71,12 @@ export default function OrderHistory() {
                       photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
                     }
                   }
-                  
-                  // Если URL относительный, добавляем базовый URL
+
                   if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                     const baseUrl = 'https://onlinestore-928b.onrender.com';
                     photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
                   }
-                  
+
                   return { key: `product-${productId}`, photoUrl: photoUrl || null };
                 })
                 .catch(err => {
@@ -90,7 +87,6 @@ export default function OrderHistory() {
           }
         });
 
-        // Загружаем фото аксессуаров
         accessoryIds.forEach(accessoryId => {
           if (!prevCache.has(`accessory-${accessoryId}`)) {
             photoPromises.push(
@@ -98,8 +94,7 @@ export default function OrderHistory() {
                 .then(response => {
                   const accessory = response.data;
                   let photoUrl = null;
-                  
-                  // Извлекаем фото из различных полей
+
                   if (accessory.photos_url && Array.isArray(accessory.photos_url) && accessory.photos_url.length > 0) {
                     const firstPhoto = accessory.photos_url[0];
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
@@ -107,13 +102,12 @@ export default function OrderHistory() {
                     const firstPhoto = accessory.accessory_photos[0];
                     photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
                   }
-                  
-                  // Если URL относительный, добавляем базовый URL
+
                   if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                     const baseUrl = 'https://onlinestore-928b.onrender.com';
                     photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
                   }
-                  
+
                   return { key: `accessory-${accessoryId}`, photoUrl: photoUrl || null };
                 })
                 .catch(err => {
@@ -124,7 +118,6 @@ export default function OrderHistory() {
           }
         });
 
-        // Ждем загрузки всех фото и обновляем кэш
         if (photoPromises.length > 0) {
           Promise.all(photoPromises).then(results => {
             setPhotoCache(currentCache => {
@@ -136,8 +129,8 @@ export default function OrderHistory() {
             });
           });
         }
-        
-        return prevCache; // Возвращаем текущий кэш без изменений
+
+        return prevCache;
       });
     };
 
@@ -163,10 +156,11 @@ export default function OrderHistory() {
   const statusImages = {
     processing: deliveringImg,
     delivered: deliveredImg,
-    delivering: deliveringImg,
+    shipping: deliveringImg,
+    preparing: deliveringImg,
     in_transit: deliveringImg,
     cancelled: cancelledImg,
-    canceled: cancelledImg, 
+    canceled: cancelledImg,
   };
 
   const statusLabels = {
@@ -179,10 +173,10 @@ export default function OrderHistory() {
   };
 
   const statusColors = {
-    processing: "#FFE47A",
-    delivered: "#7AF48C",
-    delivering: "#7AF48C",
-    in_transit: "#7AF48C",
+    processing: "#f5c407",
+    delivered: "#46d95b",
+    delivering: "#46d95b",
+    in_transit: "#46d95b",
     cancelled: "#FD8888",
     canceled: "#FD8888",
   };
@@ -198,7 +192,6 @@ export default function OrderHistory() {
   if (error) {
     return <Alert severity="error">{typeof error === 'string' ? error : 'Failed to load orders.'}</Alert>;
   }
-
 
   const ordersList = Array.isArray(orders) ? [...orders].sort((a, b) => b.id - a.id) : [];
 
@@ -218,26 +211,27 @@ export default function OrderHistory() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: isMobile ? 1 : 0 }}>
       {ordersList.map(order => {
-        const totalAmount = Array.isArray(order.positions)
-          ? order.positions?.reduce((sum, p) => {
-            const price = p.product?.total_price || p.accessory?.total_price || p.price || 0;
-            return sum + (price * (p.quantity || 1));
-          }, 0).toFixed(2) : "0.00";
+        const totalAmount =
+          order.order_amount && !isNaN(Number(order.order_amount))
+            ? Number(order.order_amount).toFixed(2)
+            : Array.isArray(order.positions)
+              ? order.positions.reduce((sum, p) => {
+                const unitPrice =
+                  Number(
+                    p.price ??
+                    p.product?.price ??
+                    p.accessory?.price ??
+                    p.product?.total_price ??
+                    0
+                  );
+                return sum + unitPrice * (p.quantity || 1);
+              }, 0).toFixed(2)
+              : "0.00";
 
         return (
           <Box key={order.id} id={`order-${order.id}`} sx={{ border: "1px solid #E0E0E0", borderRadius: isMobile ? "16px" : "24px", p: isMobile ? 2 : 3 }}>
-            <Box sx={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              justifyContent: "space-between",
-              gap: isMobile ? 2 : 0
-            }}>
-              <Box sx={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)",
-                gap: isMobile ? 2 : 4,
-                flexGrow: 1
-              }}>
+            <Box sx={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", gap: isMobile ? 2 : 0}}>
+              <Box sx={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)", gap: isMobile ? 2 : 4, flexGrow: 1}}>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Order number</Typography>
                   <Typography sx={{ fontWeight: 600 }}>№ {order.id}</Typography>
@@ -261,11 +255,7 @@ export default function OrderHistory() {
                 </Box>
               </Box>
 
-              <Button
-                fullWidth={isMobile}
-                sx={openOrderId === order.id ? { ...btnInCart, mt: isMobile ? 1 : 0 } : { ...btnCart, mt: isMobile ? 1 : 0 }}
-                onClick={() => toggleOrder(order.id)}
-              >
+              <Button fullWidth={isMobile} sx={openOrderId === order.id ? { ...btnInCart, mt: isMobile ? 1 : 0 } : { ...btnCart, mt: isMobile ? 1 : 0 }} onClick={() => toggleOrder(order.id)}>
                 {openOrderId === order.id ? "Hide details" : "View order"}
               </Button>
             </Box>
@@ -274,16 +264,16 @@ export default function OrderHistory() {
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3, pt: 2, borderTop: "1px solid #E0E0E0" }}>
                 {order.positions?.map((pos, index) => {
                   const item = pos.product || pos.accessory;
-                  
-                  // Получаем фото из кэша
+                  const qty = pos.quantity || 1;
+                  const unitPrice = Number(pos.price ?? item?.price ?? item?.total_price ?? 0);
+                  const displayPrice = (unitPrice * qty).toFixed(2);
                   let photoUrl = null;
                   if (pos.product?.id) {
                     photoUrl = photoCache.get(`product-${pos.product.id}`);
                   } else if (pos.accessory?.id) {
                     photoUrl = photoCache.get(`accessory-${pos.accessory.id}`);
                   }
-                  
-                  // Если нет в кэше, пробуем получить из данных позиции
+
                   if (!photoUrl && item) {
                     if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
                       const firstPhoto = item.photos_url[0];
@@ -296,36 +286,20 @@ export default function OrderHistory() {
                       photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
                     }
                   }
-                  
-                  // Если URL относительный, добавляем базовый URL
+
                   if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
                     const baseUrl = 'https://onlinestore-928b.onrender.com';
                     photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
                   }
-                  
+
                   const imageKey = `${order.id}-${index}`;
                   const hasImageError = imageErrors[imageKey];
-                  
+
                   return (
                     <Box key={index} sx={{ display: "flex", alignItems: "center", gap: isMobile ? 2 : 3 }}>
-                      <Box sx={{
-                        width: isMobile ? 50 : 60,
-                        height: isMobile ? 50 : 60,
-                        flexShrink: 0,
-                        borderRadius: "12px",
-                        backgroundColor: "#F5F5F5",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        overflow: "hidden"
-                      }}>
+                      <Box sx={{ width: isMobile ? 50 : 60, height: isMobile ? 50 : 60, flexShrink: 0, borderRadius: "12px", backgroundColor: "#F5F5F5", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
                         {photoUrl && !hasImageError ? (
-                          <Box 
-                            component="img" 
-                            src={photoUrl} 
-                            onError={() => setImageErrors(prev => ({ ...prev, [imageKey]: true }))}
-                            sx={{ width: "100%", height: "100%", objectFit: "contain" }} 
-                          />
+                          <Box component="img" src={photoUrl} onError={() => setImageErrors(prev => ({ ...prev, [imageKey]: true }))} sx={{ width: "100%", height: "100%", objectFit: "contain" }}/>
                         ) : (
                           <CoffeeIcon sx={{ color: "#CCC", fontSize: isMobile ? 25 : 30 }} />
                         )}
@@ -335,13 +309,13 @@ export default function OrderHistory() {
                         <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1.1rem", fontWeight: 600, lineHeight: 1.2 }}>
                           {item?.name}
                         </Typography>
-                        <Typography sx={{ fontSize: "0.8rem", color: "gray", mt: 0.5 }}>
-                          Quantity: {item?.quantity}
+                        <Typography sx={{ fontSize: "0.8rem", color: "gray" }}>
+                          Quantity: {qty}
                         </Typography>
                       </Box>
 
-                      <Typography sx={{ fontWeight: 600, color: "#16675C", fontSize: isMobile ? "0.9rem" : "1rem" }}>
-                        ${(item?.total_price || 0).toFixed(2)}
+                      <Typography sx={{ fontWeight: 600, color: "#16675C" }}>
+                        ${displayPrice}
                       </Typography>
                     </Box>
                   );

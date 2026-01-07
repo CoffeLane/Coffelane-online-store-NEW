@@ -138,7 +138,6 @@ export default function UploadImages({ images, cover, setCover, handleImageUploa
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Передаем id если есть, иначе сам объект изображения
                     handleDeletePhoto(img.id || img);
                   }}
                   sx={{

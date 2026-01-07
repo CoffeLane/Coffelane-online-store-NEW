@@ -1,26 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
 
-export default function ProductsTable({
-  products,
-  selectedIds,
-  handleSelectAll,
-  handleSelectOne,
-  allSelected,
-  h5,
-  checkboxStyles,
-  page,
-  totalPages,
-  onPageChange,
-  variant,
-  categoryFilter,
-  setCategoryFilter,
-  onRefresh,
-}) {
+export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh}) {
 
   const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
   const categories = useMemo(() => {
@@ -55,9 +40,35 @@ export default function ProductsTable({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [imageErrors, setImageErrors] = useState({});
+  const [imageRetries, setImageRetries] = useState({});
 
-  const handleImageError = (productId) => {
-    setImageErrors(prev => ({ ...prev, [productId]: true }));
+  useEffect(() => {
+    setImageErrors({});
+    setImageRetries({});
+  }, [products]);
+
+  const handleImageError = (productId, imageUrl, event) => {
+    const img = event?.target;
+    if (img && (img.naturalWidth > 0 || img.complete)) {
+      return;
+    }
+
+    const retryCount = imageRetries[productId] || 0;
+    if (retryCount < 2) {
+      const delay = (retryCount + 1) * 2000;
+      setImageRetries(prev => ({ ...prev, [productId]: retryCount + 1 }));
+      setTimeout(() => {
+        const imgs = document.querySelectorAll(`img[data-product-id="${productId}"]`);
+        imgs.forEach(img => {
+          if (img && imageUrl) {
+            const separator = imageUrl.includes('?') ? '&' : '?';
+            img.src = imageUrl + separator + 'retry=' + Date.now();
+          }
+        });
+      }, delay);
+    } else {
+      setImageErrors(prev => ({ ...prev, [productId]: true }));
+    }
   };
 
   if (isMobile) {
@@ -127,28 +138,22 @@ export default function ProductsTable({
                           }}
                         />
                         {p.image && !imageErrors[p.id] ? (
-                          <Box component="img" src={p.image} alt={p.name}
-                            onError={() => handleImageError(p.id)}
-                            sx={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: '8px',
-                              objectFit: 'cover',
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                          <Box  component="img" src={p.image} alt={p.name} data-product-id={p.id} loading="lazy"
+                            onError={(e) => {
+                              handleImageError(p.id, p.image, e);
                             }}
-                          />
+                            onLoad={() => {
+                              if (imageRetries[p.id]) {
+                                setImageRetries(prev => {
+                                  const newRetries = { ...prev };
+                                  delete newRetries[p.id];
+                                  return newRetries;
+                                });
+                              }
+                            }}
+                            sx={{ width: 60, height: 60, borderRadius: '8px', objectFit: 'contain', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)', backgroundColor: '#fff', p: 0.5}}/>
                         ) : (
-                          <Box
-                            sx={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: '8px',
-                              backgroundColor: '#f0f0f0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
+                          <Box sx={{ width: 60, height: 60, borderRadius: '8px', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                             <CoffeeIcon sx={{ fontSize: 24, color: '#ccc' }} />
                           </Box>
                         )}
@@ -214,37 +219,16 @@ export default function ProductsTable({
   }
 
   return (
-    <TableContainer 
-      component={Paper} 
-      sx={{ 
-        width: '100%', 
-        borderRadius: '24px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-        overflow: 'hidden',
-      }}
-    >
+    <TableContainer component={Paper} sx={{  width: '100%',  borderRadius: '24px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', overflow: 'hidden' }}>
       <Table sx={{ width: '100%' }}>
-        <TableHead sx={{ 
-          backgroundColor: '#EAD9C9',
-          '& .MuiTableCell-head': {
-            fontWeight: 600,
-            fontSize: { xs: '12px', md: '14px' },
-            color: '#3E3027',
-            borderBottom: '2px solid #D4C4B5',
-            py: { xs: 1.5, md: 2 },
-          }
-        }}>
+        <TableHead sx={{  backgroundColor: '#EAD9C9', '& .MuiTableCell-head': { fontWeight: 600, fontSize: { xs: '12px', md: '14px' }, color: '#3E3027', borderBottom: '2px solid #D4C4B5', py: { xs: 1.5, md: 2 },}}}>
           <TableRow>
             <TableCell padding="checkbox" sx={{ ...checkboxStyles }}>
               <Checkbox
                 checked={allSelected}
                 indeterminate={selectedIds.length > 0 && !allSelected}
                 onChange={handleSelectAll}
-                sx={{ 
-                  '&.MuiCheckbox-indeterminate': { color: '#A4795B' },
-                  '& .MuiSvgIcon-root': { fontSize: { xs: 20, md: 24 } }
-                }}
-              />
+                sx={{  '&.MuiCheckbox-indeterminate': { color: '#A4795B' }, '& .MuiSvgIcon-root': { fontSize: { xs: 20, md: 24 } }}}/>
             </TableCell>
             <TableCell sx={{ ...h5, fontSize: { xs: '12px', md: '14px' } }}>Product</TableCell>
             <TableCell sx={{ ...h5, fontSize: { xs: '12px', md: '14px' } }}>Name</TableCell>
@@ -256,7 +240,7 @@ export default function ProductsTable({
           </TableRow>
         </TableHead>
 
-        <TableBody>
+        <TableBody sx={{ minHeight: '400px' }}>
           {paginatedFilteredProducts.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} align="center" sx={{ py: 4, color: '#999', fontSize: { xs: '14px', md: '16px' } }}>
@@ -267,17 +251,14 @@ export default function ProductsTable({
             paginatedFilteredProducts.map((p) => {
               const isSelected = selectedIds.includes(p.id);
               return (
-                <TableRow
-                  key={`${p.type}-${p.id}`}
+                <TableRow key={`${p.type}-${p.id}`}
                   sx={{
                     backgroundColor: isSelected ? '#f5e8ddff' : '#ffffff',
                     '&:hover': { 
                       backgroundColor: isSelected ? '#f5e8ddff' : '#f8f2edff',
-                      transform: 'scale(1.001)',
-                      transition: 'all 0.2s ease',
                     },
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'background-color 0.2s ease',
                     borderBottom: '1px solid #f0f0f0',
                     '&:last-child': {
                       borderBottom: 'none',
@@ -285,41 +266,26 @@ export default function ProductsTable({
                   }}
                 >
                   <TableCell padding="checkbox" sx={{ ...checkboxStyles }}>
-                    <Checkbox 
-                      checked={isSelected} 
-                      onChange={() => handleSelectOne(p.id)}
-                      sx={{
-                        '& .MuiSvgIcon-root': { fontSize: { xs: 20, md: 24 } }
-                      }}
-                    />
+                    <Checkbox  checked={isSelected}  onChange={() => handleSelectOne(p.id)} sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 20, md: 24 } }}}/>
                   </TableCell>
                   <TableCell>
                     {p.image && !imageErrors[p.id] ? (
-                      <Box
-                        component="img"
-                        src={p.image}
-                        alt={p.name}
-                        onError={() => handleImageError(p.id)}
-                        sx={{
-                          width: { xs: 32, md: 40 },
-                          height: { xs: 32, md: 40 },
-                          borderRadius: '8px',
-                          objectFit: 'cover',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      <Box component="img" src={p.image} alt={p.name} data-product-id={p.id} loading="lazy"
+                        onError={(e) => {
+                          handleImageError(p.id, p.image, e);
                         }}
-                      />
+                        onLoad={() => {
+                          if (imageRetries[p.id]) {
+                            setImageRetries(prev => {
+                              const newRetries = { ...prev };
+                              delete newRetries[p.id];
+                              return newRetries;
+                            });
+                          }
+                        }}
+                        sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 }, borderRadius: '8px', objectFit: 'contain', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)', backgroundColor: '#fff', p: 0.5,}}/>
                     ) : (
-                      <Box
-                        sx={{
-                          width: { xs: 32, md: 40 },
-                          height: { xs: 32, md: 40 },
-                          borderRadius: '8px',
-                          backgroundColor: '#f0f0f0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
+                      <Box sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 }, borderRadius: '8px', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center',}} >
                         <CoffeeIcon sx={{ fontSize: { xs: 16, md: 20 }, color: '#ccc' }} />
                       </Box>
                     )}
@@ -329,9 +295,7 @@ export default function ProductsTable({
                   <TableCell sx={{ fontSize: { xs: '12px', md: '14px' }, fontWeight: 600, color: '#16675C' }}>${p.price}</TableCell>
                   <TableCell sx={{ fontSize: { xs: '12px', md: '14px' } }}>{p.stock}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={p.status}
-                      size="small"
+                    <Chip label={p.status} size="small"
                       sx={{
                         backgroundColor:
                           p.status === 'Active' ? '#7AF48C' :
@@ -347,12 +311,7 @@ export default function ProductsTable({
                     />
                   </TableCell>
                   <TableCell>
-                    <ActionsMenu 
-                      id={p.id} 
-                      type="product" 
-                      productType={p.type === 'accessory' ? 'accessory' : 'coffee'}
-                      onRefresh={onRefresh} 
-                    />
+                    <ActionsMenu id={p.id} type="product" productType={p.type === 'accessory' ? 'accessory' : 'coffee'} onRefresh={onRefresh} />
                   </TableCell>
                 </TableRow>
               );

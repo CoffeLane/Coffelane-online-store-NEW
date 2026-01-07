@@ -1,7 +1,7 @@
 import { Box, Paper, List, ListItem, ListItemText, ListItemIcon, ListItemButton, AppBar, Toolbar, IconButton, Tooltip, Avatar, Drawer, useMediaQuery, useTheme } from '@mui/material';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import {  useMemo, useState } from 'react';
+import {  useMemo, useState, useEffect } from 'react';
 import { logoutUser, setAdminMode } from '../../store/slice/authSlice';
 import logo from '../../assets/images/header/logo.svg';
 import dashboard from '../../assets/admin/dashboard.svg'
@@ -14,6 +14,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import ScrollToTopButton from '../../components/ScrollToTopButton/ScrollToTopButton';
 
 export default function AdminLayout() {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ export default function AdminLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const { user: authUser, email } = useSelector((state) => state.auth);
   const isAdmin = useSelector((state) => state.auth.isAdmin);
 
@@ -39,6 +41,10 @@ export default function AdminLayout() {
     const savedAvatar = localStorage.getItem('userAvatar');
     return savedAvatar || null;
   }, [authUser?.avatar, authUser?.profile?.avatar]);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatar]);
 
   const handleLogout = () => {
     dispatch(logoutUser());
@@ -164,11 +170,12 @@ export default function AdminLayout() {
           '&:hover': { backgroundColor: 'action.hover', borderRadius:'16px', pt:'16px' } 
         }}
       >
-        {avatar ? (
+        {avatar && !avatarError ? (
           <Box 
             component="img" 
             src={avatar} 
             alt="Avatar" 
+            onError={() => setAvatarError(true)}
             sx={{ width: { xs: 40, md: 48 }, height: { xs: 40, md: 48 }, borderRadius: "50%", objectFit: "cover" }}
           />
         ) : (
@@ -247,20 +254,24 @@ export default function AdminLayout() {
           <SidebarContent />
         )}
 
-        <Box sx={{ 
-          flexGrow: 1, 
-          pr: { xs: 2, md: 3 }, 
-          pt: { xs: 2, md: 3 }, 
-          pl: { xs: 2, md: 0 },
-          overflowX: 'auto',
-          overflowY: 'auto',
-          width: { xs: '100%', md: 'auto' },
-          maxWidth: { xs: '100%', md: 'none' },
-          boxSizing: 'border-box'
-        }}>
+        <Box 
+          data-admin-content
+          sx={{ 
+            flexGrow: 1, 
+            pr: { xs: 2, md: 3 }, 
+            pt: { xs: 2, md: 3 }, 
+            pl: { xs: 2, md: 0 },
+            overflowX: 'auto',
+            overflowY: 'auto',
+            width: { xs: '100%', md: 'auto' },
+            maxWidth: { xs: '100%', md: 'none' },
+            boxSizing: 'border-box'
+          }}
+        >
           <Outlet />
         </Box>
       </Box>
+      <ScrollToTopButton />
     </Box>
   );
 }

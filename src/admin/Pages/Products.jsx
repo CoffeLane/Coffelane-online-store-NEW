@@ -42,20 +42,12 @@ export default function Products() {
     }
   }, [location.state]);
 
-  // Прокручиваем в начало таблицы при изменении страницы (работает для мобильной и десктопной версии)
+  // Прокручиваем в начало таблицы при изменении страницы (без анимации, чтобы избежать дергания)
   useEffect(() => {
-    // Используем небольшую задержку, чтобы дать время для обновления DOM
-    const timer = setTimeout(() => {
-      const tableTop = document.getElementById('products-table-top');
-      if (tableTop) {
-        tableTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        // Если элемент не найден, прокручиваем к началу страницы
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    const tableTop = document.getElementById('products-table-top');
+    if (tableTop) {
+      tableTop.scrollIntoView({ behavior: 'auto', block: 'start' });
+    }
   }, [page]);
 
   // Сбрасываем страницу при изменении категории и загружаем все продукты для фильтрации
@@ -69,8 +61,6 @@ export default function Products() {
 
   const fetchAllProducts = async (pageNumber = 1) => {
     try {
-      // Используем публичный эндпоинт для получения продуктов
-      // Админский эндпоинт может не возвращать фото или иметь другую структуру
       const productsRes = await api.get('/products', { params: { page: pageNumber } });
       const accessoriesRes = await api.get('/accessories');
 
@@ -81,52 +71,17 @@ export default function Products() {
       setProducts(combined);
       setTotalPages(productsRes.data.total_pages);
       setSelectedIds([]);
-      
-      // Отладочное логирование для проверки структуры данных
-      if (combined.length > 0) {
-        const productWithPhotos = combined.find(p => p.type === 'product' && (p.photos_url?.length > 0 || p.product_photos?.length > 0));
-        if (productWithPhotos) {
-          console.log("📸 Example product with photos:", {
-            id: productWithPhotos.id,
-            name: productWithPhotos.name,
-            photos_url: productWithPhotos.photos_url,
-            product_photos: productWithPhotos.product_photos
-          });
-        }
-        
-        // Логируем продукты без фото для отладки
-        const productsWithoutPhotos = combined.filter(p => 
-          p.type === 'product' && 
-          (!p.photos_url || p.photos_url.length === 0) && 
-          (!p.product_photos || p.product_photos.length === 0)
-        );
-        if (productsWithoutPhotos.length > 0) {
-          console.log(`⚠️ Found ${productsWithoutPhotos.length} products without photos`);
-          productsWithoutPhotos.forEach(p => {
-            console.log(`⚠️ Product ${p.id} (${p.name}) has no photo:`, {
-              photos_url: p.photos_url,
-              product_photos: p.product_photos,
-              hasPhotosUrl: !!p.photos_url,
-              hasProductPhotos: !!p.product_photos,
-              photosUrlLength: p.photos_url?.length || 0,
-              productPhotosLength: p.product_photos?.length || 0
-            });
-          });
-        }
-      }
     } catch (error) {
-// console.error('Error loading products/accessories:', error);
+      // Error handling
     }
   };
 
   // Загружаем все продукты для фильтрации по категориям
   const fetchAllProductsForFilter = async () => {
     try {
-      // Загружаем первую страницу для получения total_pages
       const firstPageRes = await api.get('/products', { params: { page: 1 } });
       const totalPages = firstPageRes.data.total_pages;
       
-      // Загружаем все страницы параллельно
       const allPagesPromises = [];
       for (let p = 1; p <= totalPages; p++) {
         allPagesPromises.push(api.get('/products', { params: { page: p } }));
@@ -135,16 +90,15 @@ export default function Products() {
       const allPagesRes = await Promise.all(allPagesPromises);
       const allProducts = allPagesRes.flatMap(res => res.data.data.map(p => ({ ...p, type: 'product' })));
       
-      // Загружаем аксессуары
       const accessoriesRes = await api.get('/accessories');
       const allAccessories = accessoriesRes.data.data.map(a => ({ ...a, type: 'accessory' }));
       
       const combined = [...allProducts, ...allAccessories];
       setProducts(combined);
-      setTotalPages(1); // После фильтрации пагинация будет на клиенте
+      setTotalPages(1);
       setSelectedIds([]);
     } catch (error) {
-      // console.error('Error loading all products for filter:', error);
+      // Error handling
     }
   };
 
@@ -161,10 +115,7 @@ export default function Products() {
       imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
     } else if (item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
       const firstPhoto = item.product_photos[0];
-      // product_photos может содержать объект с полем photo (строка или объект)
-      // Согласно документации: ProductPhoto{id, photo}
       if (firstPhoto.photo) {
-        // photo может быть строкой (URL) или объектом
         if (typeof firstPhoto.photo === 'string') {
           imageUrl = firstPhoto.photo;
         } else if (firstPhoto.photo.url) {
@@ -177,21 +128,22 @@ export default function Products() {
       }
     }
     
-    // Если URL относительный, добавляем базовый URL
     if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }
     
-    // Отладочное логирование для продуктов без фото (только для новых продуктов)
-    if (!imageUrl && item.type === 'product' && item.id >= 2) {
-      console.log(`⚠️ Product ${item.id} (${item.name}) has no photo:`, {
-        photos_url: item.photos_url,
-        product_photos: item.product_photos,
-        hasPhotosUrl: !!item.photos_url,
-        hasProductPhotos: !!item.product_photos,
-        photosUrlLength: item.photos_url?.length || 0,
-        productPhotosLength: item.product_photos?.length || 0
-      });
+    
+    const stockQuantity = item.supplies?.[0]?.quantity || item.quantity || 0;
+    let productStatus = 'Active';
+    
+    if (item.status) {
+      productStatus = item.status;
+    } else if (item.visible === false || item.visible === 'false') {
+      productStatus = 'Hidden';
+    } else if (stockQuantity === 0) {
+      productStatus = 'Out of stock';
+    } else if (stockQuantity > 0) {
+      productStatus = 'Active';
     }
     
     return {
@@ -200,8 +152,8 @@ export default function Products() {
       name: item.name,
       category: item.brand || item.category || 'Other',
       price: item.supplies?.[0]?.price || item.price || 0,
-      stock: item.supplies?.[0]?.quantity || item.quantity || 0,
-      status: (item.supplies?.[0]?.quantity || item.quantity || 0) > 0 ? 'Active' : 'Out of stock',
+      stock: stockQuantity,
+      status: productStatus,
       type: item.type
     };
   });
@@ -242,7 +194,7 @@ export default function Products() {
       );
       fetchAllProducts(page);
     } catch (error) {
-      // console.error('Error deleting:', error);
+      // Error handling
     }
   };
 
@@ -255,7 +207,7 @@ export default function Products() {
       );
       fetchAllProducts(page);
     } catch (error) {
-      // console.error('Hiding error:', error);
+      // Error handling
     }
   };
 
