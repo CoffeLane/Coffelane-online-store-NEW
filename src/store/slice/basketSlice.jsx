@@ -1,17 +1,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiWithAuth } from "../api/axios";
 
-// Получить активную корзину
 export const getActiveBasket = createAsyncThunk(
   "basket/getActiveBasket",
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const token = state.auth?.token || localStorage.getItem("access");
-      if (!token) {
-        return rejectWithValue("No access token");
-      }
-    
       const response = await apiWithAuth.get("/basket/");
       return response.data;
     } catch (err) {
@@ -20,43 +13,23 @@ export const getActiveBasket = createAsyncThunk(
   }
 );
 
-// Добавить товар в корзину
 export const addItemToBasket = createAsyncThunk(
   "basket/addItem",
-  async (payload, { rejectWithValue, getState, dispatch }) => {
+  async (payload, { rejectWithValue }) => {
     try {
       if (!payload) return rejectWithValue("Empty payload");
-      const state = getState();
-      const token = state.auth?.token || localStorage.getItem("access");
-
       const response = await apiWithAuth.post("/basket/add/", payload);
-      if (!response.data) {
-          throw new Error("No data received from server");
-      }
       return response.data;
     } catch (err) {
-      // ЕСЛИ БЭКЕНД ВЕРНУЛ 400 (корзина неактивна или ошибка)
-      if (err.response?.status === 400) {
-        console.warn("⚠️ Корзина неактивна, пробуем пересоздать...");
-        // Здесь можно либо вызвать очистку стейта, либо просто вернуть ошибку,
-        // которую мы обработаем в ordersSlice
-      }
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
 
-// Обновить товар в корзине
 export const updateBasketItem = createAsyncThunk(
   "basket/updateItem",
-  async ({ id, quantity }, { rejectWithValue, getState }) => {
+  async ({ id, quantity }, { rejectWithValue }) => {
     try {
-      const state = getState();
-      const token = state.auth?.token || localStorage.getItem("access");
-      if (!token) {
-        return rejectWithValue("No access token");
-      }
-   
       const response = await apiWithAuth.patch(`/basket/update/${id}/`, { quantity });
       return response.data;
     } catch (err) {
@@ -65,12 +38,10 @@ export const updateBasketItem = createAsyncThunk(
   }
 );
 
-// Удалить товар из корзины
 export const deleteBasketItem = createAsyncThunk(
   "basket/deleteItem",
   async (id, { rejectWithValue }) => {
     try {
-      // Исправленный URL согласно вашему бэкенду
       await apiWithAuth.delete(`/basket/delete/basket_item/${id}/`);
       return id;
     } catch (err) {
@@ -79,14 +50,11 @@ export const deleteBasketItem = createAsyncThunk(
   }
 );
 
-// Очистить корзину
 export const clearBasket = createAsyncThunk(
   "basket/clearBasket",
   async (basketId, { rejectWithValue }) => {
     try {
       if (!basketId) return rejectWithValue("No basket ID provided");
-      
-      // Исправленный URL согласно вашему бэкенду
       await apiWithAuth.delete(`/basket/clear/${basketId}/`);
       return true;
     } catch (err) {
@@ -137,7 +105,6 @@ const basketSlice = createSlice({
       })
       .addCase(addItemToBasket.fulfilled, (state, action) => {
         state.loading = false;
-        // Обновляем корзину после добавления товара
         if (action.payload?.id) {
           state.basketId = action.payload.id;
         }

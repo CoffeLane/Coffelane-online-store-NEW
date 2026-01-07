@@ -377,8 +377,8 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                         <Box display="flex" flexDirection="column" gap={2}>
                             {tab === 1 && (
                                 <>
-                                    <TextField label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} fullWidth sx={{ ...inputStyles }} error={!!errors.firstName} helperText={errors.firstName} />
-                                    <TextField label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} fullWidth sx={{ ...inputStyles }} error={!!errors.lastName} helperText={errors.lastName} />
+                                    <TextField label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} fullWidth sx={{ ...inputStyles }} error={!!errors.firstName} helperText={errors.firstName} required />
+                                    <TextField label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} fullWidth sx={{ ...inputStyles }} error={!!errors.lastName} helperText={errors.lastName} required />
                                 </>
                             )}
                             <TextField label="Email" type="email" value={email}
@@ -386,7 +386,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                                     setEmail(e.target.value);
                                     if (errors.submit) setErrors(prev => ({ ...prev, submit: null }));
                                 }}
-                                fullWidth sx={{ ...inputStyles }} error={!!errors.email} helperText={errors.email} />
+                                fullWidth sx={{ ...inputStyles }} error={!!errors.email} helperText={errors.email} required />
                             <TextField label="Password" type={showPassword ? "text" : "password"} value={password}
                                 onChange={(e) => {
                                     setPassword(e.target.value);
@@ -403,7 +403,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                                         </InputAdornment>
                                     ),
                                 }}
-                                error={!!errors.password} helperText={errors.password} />
+                                error={!!errors.password} helperText={errors.password} required />
                             {tab === 1 && (
                                 <TextField label="Repeat Password" type={showRepeatPassword ? "text" : "password"} value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)} fullWidth sx={{ ...inputStyles }}
                                     InputProps={{
@@ -415,7 +415,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                                             </InputAdornment>
                                         ),
                                     }}
-                                    error={!!errors.repeatPassword} helperText={errors.repeatPassword} />
+                                    error={!!errors.repeatPassword} helperText={errors.repeatPassword} required />
                             )}
                             {tab === 0 && (
                                 <Typography sx={{ ...h7, cursor: "pointer", color: "#A4795B", textAlign: "right" }} onClick={() => setForgotOpen(true)}>
@@ -428,7 +428,7 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                                 <>
                                     <FormControlLabel sx={{ ...checkboxStyles }} control={
                                         <Checkbox checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} />
-                                    } label="I agree to the privacy policy" />
+                                    } label={<span>I agree to the privacy policy <span style={{ color: "#d32f2f" }}>*</span></span>} />
                                     {errors.agreePrivacy && <Typography sx={{ color: "#d32f2f", fontSize: "0.75rem", mt: 0.5 }}>{errors.agreePrivacy}</Typography>}
                                     <FormControlLabel sx={{ ...checkboxStyles }} control={
                                         <Checkbox checked={subscribeNewsletter} onChange={(e) => setSubscribeNewsletter(e.target.checked)} />
@@ -445,23 +445,27 @@ export default function LoginModal({ open, handleClose, openResetByLink = false,
                             {loading ? <CircularProgress size={24} color="inherit" /> : tab === 0 ? "Log in" : "Sign up"}
                         </Button>
 
-                        <Box display="flex" alignItems="center" gap={1}>
-                            <Divider sx={{ flex: 1 }} />
-                            <Typography variant="body2">OR</Typography>
-                            <Divider sx={{ flex: 1 }} />
-                        </Box>
+                        {tab === 0 && (
+                            <>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <Divider sx={{ flex: 1 }} />
+                                    <Typography variant="body2">OR</Typography>
+                                    <Divider sx={{ flex: 1 }} />
+                                </Box>
 
-                        <Box sx={{ display: "flex", justifyContent: "center" }}>
-                            { }
+                                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                                    { }
 
-                            <GoogleLogin
-                                onSuccess={handleGoogleLogin}
-                                onError={() => { console.error("Google login failed") }}
-                                useOneTap={false}
-                                locale="en"
-                                text="continue_with"
-                            />
-                        </Box>
+                                    <GoogleLogin
+                                        onSuccess={handleGoogleLogin}
+                                        onError={() => { console.error("Google login failed") }}
+                                        useOneTap={false}
+                                        locale="en"
+                                        text="continue_with"
+                                    />
+                                </Box>
+                            </>
+                        )}
                     </>
                 )}
             </Box>

@@ -40,23 +40,23 @@ export default function ContactDetailsForm({
                 <Typography sx={{ ...h4, fontSize: { xs: '18px', md: '20px' } }}>Contact details</Typography>
             </Box>
 
-            <TextField id="firstName" fullWidth margin="normal" placeholder="First name *" value={firstName} onChange={handleFieldChange(setFirstName, "firstName")} error={!!errors.firstName} helperText={errors.firstName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="lastName" fullWidth margin="normal" placeholder="Last name *" value={lastName} onChange={handleFieldChange(setLastName, "lastName")} error={!!errors.lastName} helperText={errors.lastName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="email" fullWidth margin="normal" placeholder="Email" value={email} onChange={handleFieldChange(setEmail, "email")} error={!!errors.email} helperText={errors.email} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="phone" fullWidth margin="normal" placeholder="Phone number" value={phone} onChange={handleFieldChange(setPhone, "phone", formatPhone)} error={!!errors.phone} helperText={errors.phone} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
+            <TextField id="firstName" fullWidth margin="normal" label="First name" value={firstName} onChange={handleFieldChange(setFirstName, "firstName")} error={!!errors.firstName} helperText={errors.firstName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+            <TextField id="lastName" fullWidth margin="normal" label="Last name" value={lastName} onChange={handleFieldChange(setLastName, "lastName")} error={!!errors.lastName} helperText={errors.lastName} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+            <TextField id="email" fullWidth margin="normal" label="Email" type="email" value={email} onChange={handleFieldChange(setEmail, "email")} error={!!errors.email} helperText={errors.email} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+            <TextField id="phone" fullWidth margin="normal" label="Phone number" value={phone} onChange={handleFieldChange(setPhone, "phone", formatPhone)} error={!!errors.phone} helperText={errors.phone} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: { xs: 2, md: 3 } }}>
                 <Box component="img" src={icon2} alt="two" sx={{ width: { xs: 24, md: 32 }, height: { xs: 24, md: 32 } }} />
                 <Typography sx={{ ...h4, fontSize: { xs: '18px', md: '20px' } }}>Delivery</Typography>
             </Box>
 
-            <TextField id="country" fullWidth margin="normal" placeholder="Country" value={country} onChange={handleFieldChange(setCountry, "country")} error={!!errors.country} helperText={errors.country} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="street" fullWidth margin="normal" placeholder="Street address" value={street} onChange={handleFieldChange(setStreet, "street")} error={!!errors.street} helperText={errors.street} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-            <TextField id="apartment" fullWidth margin="normal" placeholder="Apartment number" value={apartment} onChange={handleFieldChange(setApartment, "apartment")} error={!!errors.apartment} helperText={errors.apartment} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} inputProps={{ maxLength: 30 }} />
+            <TextField id="country" fullWidth margin="normal" label="Country" value={country} onChange={handleFieldChange(setCountry, "country")} error={!!errors.country} helperText={errors.country} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+            <TextField id="street" fullWidth margin="normal" label="Street address" value={street} onChange={handleFieldChange(setStreet, "street")} error={!!errors.street} helperText={errors.street} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+            <TextField id="apartment" fullWidth margin="normal" label="Apartment number" value={apartment} onChange={handleFieldChange(setApartment, "apartment")} error={!!errors.apartment} helperText={errors.apartment} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} inputProps={{ maxLength: 30 }} required />
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={1} mt={1}>
-                <TextField id="region" fullWidth placeholder="City" value={region} onChange={handleFieldChange(setRegion, "region")} error={!!errors.region} helperText={errors.region} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-                <TextField id="state" fullWidth placeholder="State / Province" value={state} onChange={handleFieldChange(setState, "state")} error={!!errors.state} helperText={errors.state} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
-                <TextField id="zip" fullWidth placeholder="Postal / Zip Code" value={zip}  onChange={handleFieldChange(setZip, "zip", formatZip)} error={!!errors.zip} helperText={errors.zip} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} />
+                <TextField id="region" fullWidth label="City" value={region} onChange={handleFieldChange(setRegion, "region")} error={!!errors.region} helperText={errors.region} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+                <TextField id="state" fullWidth label="State / Province" value={state} onChange={handleFieldChange(setState, "state")} error={!!errors.state} helperText={errors.state} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
+                <TextField id="zip" fullWidth label="Postal / Zip Code" value={zip}  onChange={handleFieldChange(setZip, "zip", formatZip)} error={!!errors.zip} helperText={errors.zip} sx={{ ...inputStyles }} slotProps={{ formHelperText: { sx: helperTextRed } }} required />
             </Box>
 
             <Button fullWidth sx={{ ...btnStyles, mt: { xs: 2, md: 3 }, textTransform: "none", fontSize: { xs: '12px', md: '14px' }, py: { xs: 1, md: 1.5 } }} onClick={handleContinue}>Continue</Button>

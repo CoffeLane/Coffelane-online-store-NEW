@@ -19,32 +19,19 @@ export default function OrderDetails({ order, onClose }) {
   return (
     <Box sx={{ p: 3, borderRadius: 3, bgcolor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
       {onClose && (
-        <IconButton
-          onClick={onClose}
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            color: '#666',
-            '&:hover': {
-              backgroundColor: '#f5f5f5',
-              color: '#333'
-            }
-          }}
-        >
+        <IconButton onClick={onClose} sx={{ position: 'absolute', top: 8, right: 8, color: '#666', '&:hover': { backgroundColor: '#f5f5f5', color: '#333'}}}>
           <CloseIcon />
         </IconButton>
       )}
       <Typography mb={2} sx={{ ...h3 }}>Order #{order.ID}</Typography>
       
       <Stack direction="row" spacing={1} mb={2} alignItems="center" justifyContent="space-between">
-        <Chip 
-          label={order.status}
+        <Chip label={order.status}
           sx={{
             ...h6,
             bgcolor: 
-              order.status === 'Delivered' ? '#7AF48C' :
-              order.status === 'Processing' ? '#FFE47A' :
+              order.status === 'Delivered' ? '#46d95b' :
+              order.status === 'Processing' ? '#f5c407' :
               order.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
             color: '#3E3027',
             fontWeight: 'bold',
@@ -57,19 +44,13 @@ export default function OrderDetails({ order, onClose }) {
 
       <Divider sx={{ mb: 2 }} />
 
-      {/* Блок Клієнта */}
       <Stack spacing={1} alignItems="center" mb={2} bgcolor={'#F9F9F9'} p={2} borderRadius={2}>
-        <Avatar 
-          src={order.customerPhoto} 
-          sx={{ width: 80, height: 80, bgcolor: '#3E3027', fontSize: '2rem' }}
-        >
-          {/* Якщо src порожній, покаже ініціал або іконку */}
+        <Avatar src={order.customerPhoto} sx={{ width: 80, height: 80, bgcolor: '#3E3027', fontSize: '2rem' }}>
           {order.customer ? order.customer.charAt(0).toUpperCase() : <AccountCircleIcon sx={{ fontSize: 40 }} />}
         </Avatar>
         <Typography sx={{ ...h4, textAlign: 'center' }}>{order.customer}</Typography>
         <Typography sx={{ ...h7, color: '#999' }}>ID: {order.customerId}</Typography>
 
-        {/* Блок Адреси */}
         <Box sx={{ mt: 2, width: '100%', borderTop: '1px solid #E0E0E0', pt: 2 }}>
           <Typography sx={{ ...h7, fontWeight: 'bold', mb: 0.5, display: 'block' }}>Shipping Address:</Typography>
           <Typography sx={{ ...h7, color: '#555', lineHeight: 1.4 }}>
@@ -91,25 +72,9 @@ export default function OrderDetails({ order, onClose }) {
         {order.itemsList.map((item, idx) => (
           <Stack key={idx} direction="row" spacing={3} alignItems="center">
             {item.image && !imageErrors[idx] && !item.image.includes('placeholder') ? (
-              <Box 
-                component="img" 
-                src={item.image} 
-                alt={item.name}
-                onError={() => handleImageError(idx)}
-                sx={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 2, bgcolor: '#f5f5f5' }} 
-              />
+              <Box  component="img" src={item.image} alt={item.name} onError={() => handleImageError(idx)} sx={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 2, bgcolor: '#f5f5f5' }} />
             ) : (
-              <Box
-                sx={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 2,
-                  backgroundColor: '#f5f5f5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+              <Box sx={{ width: 80, height: 80, borderRadius: 2, backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center',}}>
                 <CoffeeIcon sx={{ fontSize: 40, color: '#ccc' }} />
               </Box>
             )}

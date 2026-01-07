@@ -14,6 +14,7 @@ import OurStoryPage from './pages/OurStoryPage.jsx';
 import FavouritePage from './pages/FavouritePage.jsx';
 import AccountPage from './pages/AccountPage.jsx';
 import ScrollToTop from './components/ScrollToTop/ScrollToTop.jsx';
+import ScrollToTopButton from './components/ScrollToTopButton/ScrollToTopButton.jsx';
 import ProductCardPage from './pages/ProductCardPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import OrderSuccessfulPage from './pages/OrderSuccessfulPage.jsx';
@@ -27,7 +28,8 @@ import Orders from './admin/Pages/Orders.jsx';
 import OrderEdit from './admin/Pages/OrderEdit.jsx';
 import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
-import { tokenRefreshedFromInterceptor, fetchProfile, setAdminMode } from "./store/slice/authSlice";
+import { tokenRefreshedFromInterceptor, fetchProfile, setAdminMode, clearAuthState } from "./store/slice/authSlice";
+import { jwtDecode } from "jwt-decode";
 
 
 
@@ -43,12 +45,63 @@ function App() {
   const { user, token, loading, error, isAdmin, email } = useSelector(state => state.auth);
 
   useEffect(() => {
+    const logoutFlag = sessionStorage.getItem("logoutFlag");
+    if (logoutFlag === "true") {
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      localStorage.removeItem("persist:auth");
+      localStorage.removeItem("persist:cart");
+      localStorage.removeItem("persist:favorites");
+      localStorage.removeItem("persist:products");
+      localStorage.removeItem("persist:basket");
+      localStorage.removeItem("isAdmin");
+      localStorage.removeItem("userAvatar");
+      localStorage.removeItem("avatarUploaded");
+      sessionStorage.removeItem("logoutFlag");
+      dispatch(clearAuthState());
+    }
+
+    const checkRefreshTokenValidity = () => {
+      const refreshToken = localStorage.getItem("refresh");
+      if (!refreshToken) {
+        return;
+      }
+
+      try {
+        const cleanToken = refreshToken.replace(/^"+|"+$/g, '');
+        const decoded = jwtDecode(cleanToken);
+        const expirationTime = decoded.exp * 1000;
+        const timeUntilExpiration = expirationTime - Date.now();
+        const daysLeft = Math.floor(timeUntilExpiration / (1000 * 60 * 60 * 24));
+        const hoursLeft = Math.floor((timeUntilExpiration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        if (timeUntilExpiration <= 0) {
+          console.error(`❌ Refresh token истек! Истек: ${new Date(expirationTime).toLocaleString()}`);
+          console.error(`❌ Необходимо перелогиниться.`);
+        } else {
+          console.log(`✅ Refresh token валиден еще ${daysLeft} дней, ${hoursLeft} часов`);
+          console.log(`✅ Истекает: ${new Date(expirationTime).toLocaleString()}`);
+        }
+      } catch (error) {
+        console.warn("Unable to verify refresh token expiration date.:", error);
+      }
+    };
+
+    checkRefreshTokenValidity();
+
     const handleRefreshed = (e) => {
       const { access, refresh } = e.detail;
       dispatch(tokenRefreshedFromInterceptor({ access, refresh }));
     };
+    const handleTokenExpired = () => {
+      dispatch(clearAuthState());
+    };
     window.addEventListener('tokenRefreshed', handleRefreshed);
-    return () => window.removeEventListener('tokenRefreshed', handleRefreshed);
+    window.addEventListener('tokenExpired', handleTokenExpired);
+    return () => {
+      window.removeEventListener('tokenRefreshed', handleRefreshed);
+      window.removeEventListener('tokenExpired', handleTokenExpired);
+    };
   }, [dispatch]);
 
   useEffect(() => {
@@ -84,6 +137,7 @@ function App() {
             <Header />
             <HomePage />
             <Footer />
+            <ScrollToTopButton />
           </>
         } />
 

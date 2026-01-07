@@ -9,7 +9,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { btnCart } from "../../styles/btnStyles.jsx";
 import { inputStyles } from "../../styles/inputStyles.jsx";
 import { apiWithAuth } from "../../store/api/axios.js";
-import { fetchProfile, refreshAccessToken } from "../../store/slice/authSlice.jsx";
+import { fetchProfile } from "../../store/slice/authSlice.jsx";
 import { formatPhone } from "../../components/utils/formatters.jsx";
 import { normalizePhone } from "../../components/utils/validation/validateProfile.jsx";
 import { patterns } from "../../components/utils/validation/validatorsPatterns.jsx";
@@ -35,11 +35,12 @@ export default function MyAccountAdmin() {
   const [personalData, setPersonalData] = useState({firstName: "", lastName: "", email: "", phone: "",role: "Administrator",});
   const [addressData, setAddressData] = useState({country: "", state: "", city: "", street: "", house: "", apt: ""});
 
-  // Состояние для аватарки
+
   const [avatar, setAvatar] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
+  const [avatarImageError, setAvatarImageError] = useState(false);
   const fileInputRef = useRef(null);
   const avatarInitializedRef = useRef(false);
   const userInitials = useMemo(() => {
@@ -144,6 +145,10 @@ export default function MyAccountAdmin() {
     }
   }, [authUser]);
 
+  useEffect(() => {
+    setAvatarImageError(false);
+  }, [avatar]);
+
   const handlePersonalChange = (field) => (e) => {
     setPersonalData((prev) => ({ ...prev, [field]: e.target.value }));
     if (personalErrors[field]) {
@@ -217,33 +222,9 @@ export default function MyAccountAdmin() {
         await dispatch(fetchProfile());
       } catch (error) {
         if (error.response?.status === 401) {
-          console.warn("Token expired when saving personal info, attempting to refresh...");
-
-          const refreshResult = await dispatch(refreshAccessToken());
-
-          if (refreshAccessToken.fulfilled.match(refreshResult)) {
-            await apiWithAuth.patch("/users/update", updateData);
-            setPersonalSuccess("Personal information saved successfully!");
-            setTimeout(() => setPersonalSuccess(""), 3000);
-            setIsEditingPersonal(false);
-            await dispatch(fetchProfile());
-          } else {
-            const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
-              errorPayload?.detail?.includes('expired') ||
-              errorPayload?.detail?.includes('Token is expired');
-
-            if (isTokenExpired) {
-              // Refresh token истек - сессия закончилась
-              setPersonalErrors({
-                general: "Your session has expired. Please log out and log in again to continue."
-              });
-            } else {
-              setPersonalErrors({
-                general: "Failed to save. Please try again or refresh the page."
-              });
-            }
-          }
+          setPersonalErrors({
+            general: "Your session has expired. Please log out and log in again to continue."
+          });
         } else {
           console.error("Error saving personal info:", error);
           console.error("Error response:", error.response?.data);
@@ -331,29 +312,9 @@ export default function MyAccountAdmin() {
         await dispatch(fetchProfile());
       } catch (error) {
         if (error.response?.status === 401) {
-          const refreshResult = await dispatch(refreshAccessToken());
-          if (refreshAccessToken.fulfilled.match(refreshResult)) {
-            await apiWithAuth.patch("/users/update", updateData);
-            setAddressSuccess("Address saved successfully!");
-            setTimeout(() => setAddressSuccess(""), 3000);
-            setIsEditingAddress(false);
-            await dispatch(fetchProfile());
-          } else {
-            const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
-              errorPayload?.detail?.includes('expired') ||
-              errorPayload?.detail?.includes('Token is expired');
-
-            if (isTokenExpired) {
-              setAddressErrors({
-                general: "Your session has expired. Please log out and log in again to continue."
-              });
-            } else {
-              setAddressErrors({
-                general: "Failed to save. Please try again or refresh the page."
-              });
-            }
-          }
+          setAddressErrors({
+            general: "Your session has expired. Please log out and log in again to continue."
+          });
         } else {
           console.error("Error saving address:", error);
           console.error("Error response:", error.response?.data);
@@ -508,10 +469,6 @@ export default function MyAccountAdmin() {
             localStorage.setItem('userAvatar', fullAvatarUrl);
             URL.revokeObjectURL(tempAvatarUrl);
           } else {
-            console.log("Server did not return avatar URL in profile, using temporary preview URL");
-            console.log("Temporary URL will work until page reload.");
-            console.log("Note: The server successfully received the avatar file, but did not return its URL.");
-            console.log("The avatar may be available after page refresh, or the backend may need to be configured to return the avatar URL.");
             localStorage.setItem('avatarUploaded', 'true');
             localStorage.setItem('avatarUploadTime', Date.now().toString());
           }
@@ -521,48 +478,7 @@ export default function MyAccountAdmin() {
         setAvatarError("");
 
       } catch (error) {
-        console.error("Error saving avatar:", error);
-        console.error("Error response:", error.response?.data);
-        console.error("Error status:", error.response?.status);
-
-        const errorData = error.response?.data;
-        const isRefreshTokenExpired = errorData?.code === 'token_not_valid' ||
-          errorData?.detail?.includes('expired') ||
-          errorData?.detail?.includes('Token is expired');
-
-        if (error.response?.status === 401 && !isRefreshTokenExpired) {
-          console.warn("Token expired when saving avatar, attempting to refresh...");
-
-          const refreshResult = await dispatch(refreshAccessToken());
-
-          if (refreshAccessToken.fulfilled.match(refreshResult)) {
-            try {
-              await apiWithAuth.put("/users/avatars", formData, {
-                headers: {
-                  'Content-Type': undefined, 
-                },
-              });
-              await dispatch(fetchProfile());
-              setAvatarFile(null);
-              setAvatarError("");
-              return;
-            } catch (retryError) {
-              console.error("Error retrying avatar upload after token refresh:", retryError);
-              setAvatarError("Failed to save avatar after token refresh. Please try again.");
-            }
-          } else {
-            const errorPayload = refreshResult.payload || refreshResult.error;
-            const isTokenExpired = errorPayload?.code === 'token_not_valid' ||
-              errorPayload?.detail?.includes('expired') ||
-              errorPayload?.detail?.includes('Token is expired');
-
-            if (isTokenExpired) {
-              setAvatarError("Your session has expired. Please log out and log in again to continue.");
-            } else {
-              setAvatarError("Failed to save avatar. Please try again or refresh the page.");
-            }
-          }
-        } else if (isRefreshTokenExpired || error.response?.status === 401) {
+        if (error.response?.status === 401) {
           setAvatarError("Your session has expired. Please log out and log in again to continue.");
         } else {
           console.error("Error saving avatar:", error);
@@ -636,17 +552,6 @@ export default function MyAccountAdmin() {
   };
 
 
-  console.log("Current avatar:", avatar);
-  // console.log("MyAccountAdmin - Render - authUser:", authUser);
-  // console.log("MyAccountAdmin - Render - personalData:", personalData);
-  // console.log("MyAccountAdmin - Render - personalData.firstName:", personalData?.firstName);
-  // console.log("MyAccountAdmin - Render - personalData.lastName:", personalData?.lastName);
-  // console.log("MyAccountAdmin - Render - personalData.email:", personalData?.email);
-  // console.log("MyAccountAdmin - Render - personalData.phone:", personalData?.phone);
-  // console.log("MyAccountAdmin - Render - isEditingPersonal:", isEditingPersonal);
-  // console.log("MyAccountAdmin - Render - addressData:", addressData);
-  // console.log("MyAccountAdmin - Render - isEditingAddress:", isEditingAddress);
-
   return (
     <Box sx={{ width: "100%", maxWidth: "100%", mt: { xs: 2, md: 4 }, mb: { xs: 2, md: 3 }, boxSizing: "border-box" }}>
       <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
@@ -655,8 +560,8 @@ export default function MyAccountAdmin() {
       <Paper sx={{ p: { xs: 2, md: 3 }, mb: { xs: 2, md: 3 }, borderRadius: "24px", width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 1 }}>
           <Box sx={{ position: "relative", display: "inline-block" }}>
-            {user.avatar ? (
-              <Box component="img" src={user.avatar} onError={(e) => {e.target.src = "";}} alt="Avatar" sx={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }}/>
+            {user.avatar && !avatarImageError ? (
+              <Box component="img" src={user.avatar} onError={() => setAvatarImageError(true)} alt="Avatar" sx={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }}/>
             ) : (
               <Avatar sx={{ width: 64, height: 64, bgcolor: '#A4795B', color: 'white', fontSize: '24px', fontWeight: 600,}}>
                 {userInitials}

@@ -14,10 +14,12 @@ export default function AddToCartButtons({ product, quantity }) {
 
     if (!product) return null;
 
+    const isOutOfStock = (product.quantity !== undefined ? Number(product.quantity) : 0) <= 0;
     const key = `${product.id}`;
     const isInCart = cartEntries.some(([cartKey]) => cartKey === key);
 
     const addProductToCart = () => {
+        if (isOutOfStock) return;
         dispatch(
             addToCart({
                 product: {
@@ -49,7 +51,8 @@ export default function AddToCartButtons({ product, quantity }) {
                 width: "100%"
             }}>
                 <Button 
-                    onClick={handleAddToCart} 
+                    onClick={handleAddToCart}
+                    disabled={isOutOfStock}
                     sx={{ 
                         ...(isInCart ? btnBorderStyles : btnStyles), 
                         textTransform: "none", 
@@ -58,9 +61,10 @@ export default function AddToCartButtons({ product, quantity }) {
                         fontSize: { xs: '14px', md: '16px' }
                     }}
                 >
-                    {isInCart ? "In cart" : "Add to cart"}
+                    {isOutOfStock ? "Sold Out" : (isInCart ? "In cart" : "Add to cart")}
                 </Button>
                 <Button 
+                    disabled={isOutOfStock}
                     sx={{ 
                         ...btnBorderStyles, 
                         width: "100%",
@@ -69,7 +73,7 @@ export default function AddToCartButtons({ product, quantity }) {
                     }} 
                     onClick={handleCheckout}
                 >
-                    Checkout now
+                    {isOutOfStock ? "Sold Out" : "Checkout now"}
                 </Button>
             </Box>
         </>

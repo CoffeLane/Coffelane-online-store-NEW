@@ -107,8 +107,8 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                                     size="small"
                                                     sx={{
                                                         backgroundColor:
-                                                            p.status === 'Delivered' ? '#7AF48C' :
-                                                                p.status === 'Processing' ? '#FFE47A' :
+                                                            p.status === 'Delivered' ? '#46d95b' :
+                                                                p.status === 'Processing' ? '#f5c407' :
                                                                     p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                         color: '#3E3027',
                                                         fontWeight: 600,
@@ -201,8 +201,8 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                             size="small"
                                             sx={{
                                                 backgroundColor:
-                                                    p.status === 'Delivered' ? '#7AF48C' :
-                                                        p.status === 'Processing' ? '#FFE47A' :
+                                                    p.status === 'Delivered' ? '#46d95b' :
+                                                        p.status === 'Processing' ? '#f5c407' :
                                                             p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                 color: '#3E3027',
                                                 fontWeight: 600,

@@ -7,6 +7,27 @@ import CoffeeIcon from '@mui/icons-material/Coffee';
 
 const ThumbnailItem = ({ img, isSelected, onClick, productName, index }) => {
   const [thumbError, setThumbError] = useState(false);
+  const [thumbRetries, setThumbRetries] = useState(0);
+
+  const handleThumbError = (e) => {
+    const imgElement = e?.target;
+    if (imgElement && (imgElement.naturalWidth > 0 || imgElement.complete)) {
+      return;
+    }
+
+    if (thumbRetries < 2) {
+      const delay = (thumbRetries + 1) * 2000;
+      setThumbRetries(prev => prev + 1);
+      setTimeout(() => {
+        if (imgElement && img) {
+          const separator = img.includes('?') ? '&' : '?';
+          imgElement.src = img + separator + 'retry=' + Date.now();
+        }
+      }, delay);
+    } else {
+      setThumbError(true);
+    }
+  };
 
   return (
     <Box sx={{ cursor: "pointer", textAlign: "center" }} onClick={onClick}>
@@ -29,7 +50,13 @@ const ThumbnailItem = ({ img, isSelected, onClick, productName, index }) => {
             component="img"
             src={img}
             alt={`${productName}-${index}`}
-            onError={() => setThumbError(true)}
+            onError={handleThumbError}
+            onLoad={() => {
+              if (thumbRetries > 0) {
+                setThumbRetries(0);
+              }
+            }}
+            loading="lazy"
             sx={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         )}
@@ -50,8 +77,20 @@ export default function ProductImageSlider({ photos = [], productName }) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mainError, setMainError] = useState(false);
+  const [mainRetries, setMainRetries] = useState(0);
 
-  const photoUrls = photos.filter((photo) => photo.url).map((photo) => photo.url);
+  const photoUrls = photos
+    .map((photo) => {
+      if (photo?.url) return photo.url;
+      if (photo?.photo) {
+        if (typeof photo.photo === 'string') return photo.photo;
+        if (photo.photo?.url) return photo.photo.url;
+        if (photo.photo?.photo_url) return photo.photo.photo_url;
+      }
+      if (typeof photo === 'string') return photo;
+      return null;
+    })
+    .filter((url) => url !== null);
 
   if (photoUrls.length === 0) {
     return (
@@ -63,7 +102,28 @@ export default function ProductImageSlider({ photos = [], productName }) {
 
   const handleSwitch = (newIndex) => {
     setMainError(false);
+    setMainRetries(0);
     setSelectedIndex(newIndex);
+  };
+
+  const handleMainError = (e) => {
+    const imgElement = e?.target;
+    if (imgElement && (imgElement.naturalWidth > 0 || imgElement.complete)) {
+      return;
+    }
+
+    if (mainRetries < 2) {
+      const delay = (mainRetries + 1) * 2000;
+      setMainRetries(prev => prev + 1);
+      setTimeout(() => {
+        if (imgElement && photoUrls[selectedIndex]) {
+          const separator = photoUrls[selectedIndex].includes('?') ? '&' : '?';
+          imgElement.src = photoUrls[selectedIndex] + separator + 'retry=' + Date.now();
+        }
+      }, delay);
+    } else {
+      setMainError(true);
+    }
   };
 
   return (
@@ -92,7 +152,13 @@ export default function ProductImageSlider({ photos = [], productName }) {
               component="img"
               src={photoUrls[selectedIndex]}
               alt={productName}
-              onError={() => setMainError(true)}
+              onError={handleMainError}
+              onLoad={() => {
+                if (mainRetries > 0) {
+                  setMainRetries(0);
+                }
+              }}
+              loading="lazy"
               sx={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           )}

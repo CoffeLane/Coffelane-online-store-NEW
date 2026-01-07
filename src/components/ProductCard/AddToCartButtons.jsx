@@ -15,10 +15,13 @@ export default function AddToCartButtons({ product, quantity, selectedSupplyId }
 
     if (!product || !selectedSupplyId) return null;
 
+    const supplies = product.supplies || [];
+    const selectedSupply = supplies.find((s) => s.id === selectedSupplyId) || supplies[0];
+    const isOutOfStock = !selectedSupply || Number(selectedSupply.quantity || 0) <= 0;
     const isInCart = cartEntries.some(([key]) => key === `${product.id}-${selectedSupplyId}`);
 
     const addProductToCart = () => {
-        if (!product) return;
+        if (!product || isOutOfStock) return;
 
         const supplies = product.supplies || [];
 
@@ -61,7 +64,8 @@ export default function AddToCartButtons({ product, quantity, selectedSupplyId }
                 width: "100%"
             }}>
                 <Button 
-                    onClick={handleAddToCart} 
+                    onClick={handleAddToCart}
+                    disabled={isOutOfStock}
                     sx={{ 
                         ...(isInCart ? btnBorderStyles : btnStyles), 
                         textTransform: "none", 
@@ -70,9 +74,10 @@ export default function AddToCartButtons({ product, quantity, selectedSupplyId }
                         fontSize: { xs: '14px', md: '16px' }
                     }}
                 >
-                    {isInCart ? "In cart" : "Add to cart"}
+                    {isOutOfStock ? "Sold Out" : (isInCart ? "In cart" : "Add to cart")}
                 </Button>
                 <Button 
+                    disabled={isOutOfStock}
                     sx={{ 
                         ...btnBorderStyles, 
                         width: "100%",
@@ -81,7 +86,7 @@ export default function AddToCartButtons({ product, quantity, selectedSupplyId }
                     }} 
                     onClick={handleCheckout}
                 >
-                    Checkout now
+                    {isOutOfStock ? "Sold Out" : "Checkout now"}
                 </Button>
             </Box>
 

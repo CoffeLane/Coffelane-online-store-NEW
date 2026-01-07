@@ -38,40 +38,15 @@ export default function ProductSettings({ visible, setVisible, stock }) {
         <Typography sx={{ ...h6 }} mb={1}>
           You can change the visibility of this product for customers
         </Typography>
-        <RadioGroup
-          sx={{ ...h6 }}
-          row
-          value={visible === null ? "" : visible ? "visible" : "notVisible"}
-          onChange={(e) => setVisible(e.target.value === "visible")}
-        >
-          <FormControlLabel
-            value="visible"
-            sx={{ ...radioBtnStyles }}
-            control={<Radio />}
-            label="Visible"
-          />
-          <FormControlLabel
-            value="notVisible"
-            sx={{ ...radioBtnStyles }}
-            control={<Radio />}
-            label="Not visible"
-          />
+        <RadioGroup sx={{ ...h6 }} row value={visible === null ? "" : visible ? "visible" : "notVisible"} onChange={(e) => setVisible(e.target.value === "visible")}>
+          <FormControlLabel value="visible" sx={{ ...radioBtnStyles }} control={<Radio />} label="Visible"/>
+          <FormControlLabel value="notVisible" sx={{ ...radioBtnStyles }} control={<Radio />} label="Not visible"/>
         </RadioGroup>
       </Card>
 
       <Card sx={{ p: 3, borderRadius: "24px" }}>
         <Typography sx={{ ...h4 }}>Status</Typography>
-        <Box
-          mt={1}
-          sx={{
-            backgroundColor: statusBg,
-            borderRadius: "20px",
-            py: 1,
-            textAlign: "center",
-            ...h6,
-            transition: "all 0.3s ease"
-          }}
-        >
+        <Box mt={1} sx={{ backgroundColor: statusBg, borderRadius: "20px", py: 1, textAlign: "center", ...h6, transition: "all 0.3s ease" }}>
           {statusText}
         </Box>
         <Typography mt={1} sx={{ ...h6 }}>

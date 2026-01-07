@@ -2,9 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiWithAuth } from "../api/axios";
 import { addItemToBasket, getActiveBasket, clearBasketState } from "./basketSlice";
 
-
-//  * Получение списка заказов
-
 export const fetchOrders = createAsyncThunk(
   "orders/fetchOrders",
   async ({ page = 1, size = 10 }, { rejectWithValue }) => {
@@ -53,138 +50,66 @@ const processOrderResponse = (data, page, size) => {
   };
 };
 
-
-//  * Создание нового заказа
-
-// export const createOrder = createAsyncThunk(
-//   "orders/createOrder",
-//   async (orderData, { rejectWithValue, dispatch }) => {
-//     try {
-//       for (const item of orderData.positions) {
-//         try {
-//           await dispatch(addItemToBasket({
-//             product_id: item.product_id,
-//             supply_id: item.supply_id,
-//             accessory_id: item.accessory_id,
-//             quantity: item.quantity
-//           })).unwrap();
-//         } catch (addError) {
-//           dispatch(clearBasketState());
-//           await dispatch(addItemToBasket({
-//             product_id: item.product_id,
-//             supply_id: item.supply_id,
-//             accessory_id: item.accessory_id,
-//             quantity: item.quantity
-//           })).unwrap();
-//         }
-//       }
-
-//       const basketRes = await dispatch(getActiveBasket()).unwrap();
-//       const basketId = basketRes?.id;
-//       if (!basketId) throw new Error("Не удалось получить ID корзины");
-
-//       const formatPhone = (phone) => {
-//         const digits = String(phone).replace(/\D/g, "");
-//         return digits.startsWith("38") ? `+${digits}` : `+38${digits}`;
-//       };
-
-//       const payload = {
-//         billing_details: {
-//           ...orderData.billing_details,
-//           phone_number: formatPhone(orderData.billing_details.phone_number)
-//         },
-//         positions: orderData.positions.map(p => ({
-//           quantity: Number(p.quantity),
-//           ...(p.accessory_id
-//             ? { accessory_id: Number(p.accessory_id) }
-//             : { product_id: Number(p.product_id), supply_id: Number(p.supply_id) }
-//           )
-//         })),
-//         customer_data: orderData.customer_data,
-//         discount_code: orderData.discount_code 
-//           ? (typeof orderData.discount_code === 'number' 
-//               ? orderData.discount_code 
-//               : (typeof orderData.discount_code === 'string' && !isNaN(Number(orderData.discount_code))
-//                   ? Number(orderData.discount_code)
-//                   : orderData.discount_code))
-//           : null,
-//         // basket_id: Number(basketId)
-//       };
-
-//       console.log("📤 Sending order payload:", JSON.stringify(payload, null, 2));
-//       const response = await apiWithAuth.post("/orders/create/", payload);
-//       dispatch(clearBasketState());
-//       return response.data;
-//     } catch (err) {
-//       console.error("❌ Order creation error:", err);
-//       console.error("❌ Error response:", err.response?.data);
-//       console.error("❌ Error status:", err.response?.status);
-//       return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
-//     }
-//   }
-// );
-
-
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
-  async (orderData, { rejectWithValue, dispatch }) => {
+  async (orderData, { rejectWithValue, dispatch, getState }) => {
     try {
-      for (const item of orderData.positions) {
-        try {
-          await dispatch(addItemToBasket({
-            product_id: item.product_id,
-            supply_id: item.supply_id,
-            accessory_id: item.accessory_id,
-            quantity: item.quantity
-          })).unwrap();
-        } catch (addError) {
-          dispatch(clearBasketState());
-          await dispatch(addItemToBasket({
-            product_id: item.product_id,
-            supply_id: item.supply_id,
-            accessory_id: item.accessory_id,
-            quantity: item.quantity
-          })).unwrap();
+      const state = getState();
+      const cartMap = state.cart?.items || {};
+      const localItems = Object.values(cartMap);
+
+      if (localItems.length > 0) {
+        for (const item of localItems) {
+          const product = item.product;
+          const qty = item.quantity || 1;
+          const isAccessory = product?.category || !product?.supplies;
+
+          let payload = { quantity: Number(qty) };
+
+          if (isAccessory) {
+            payload.accessory_id = Number(product.id);
+          } else {
+            payload.product_id = Number(product.id);
+            payload.supply_id = Number(product.supplies?.[0]?.id || product.selectedSupplyId);
+          }
+
+          if (payload.accessory_id || (payload.product_id && payload.supply_id)) {
+            try {
+              await dispatch(addItemToBasket(payload)).unwrap();
+            } catch (e) {
+              console.error(`Server error for ${product.name}:`, e);
+            }
+          } else {
+            console.warn("Not enough data to synchronize the product:", product);
+          }
         }
+
+        await dispatch(getActiveBasket()).unwrap();
       }
 
-      const basketRes = await dispatch(getActiveBasket()).unwrap();
-      const basketId = basketRes?.id;
-      if (!basketId) throw new Error("Не удалось получить ID корзины");
-
-      const formatPhone = (phone) => {
-        const digits = String(phone).replace(/\D/g, "");
-        return digits.startsWith("38") ? `+${digits}` : `+38${digits}`;
-      };
+    const cleanPhone = phone.replace(/\D/g, "");
+    const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`;
 
       const payload = {
         billing_details: {
           ...orderData.billing_details,
-          phone_number: formatPhone(orderData.billing_details.phone_number)
+          phone_number: formattedPhone(orderData.billing_details.phone_number)
         },
-        positions: orderData.positions.map(p => ({
-          quantity: Number(p.quantity),
-          ...(p.accessory_id
-            ? { accessory_id: Number(p.accessory_id) }
-            : { product_id: Number(p.product_id), supply_id: Number(p.supply_id) }
-          )
-        })),
         customer_data: orderData.customer_data,
-        discount_code: orderData.discount_code,
-        // basket_id: Number(basketId)
+        order_notes: orderData.order_notes || "",
+        discount_code: orderData.discount_code 
       };
 
       const response = await apiWithAuth.post("/orders/create/", payload);
       dispatch(clearBasketState());
       return response.data;
+
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Ошибка при создании заказа");
+      console.error("Final error:", err);
+      return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
-
-
-// //  * Детали конкретного заказа
 
 export const fetchOrderDetails = createAsyncThunk(
   "orders/fetchOrderDetails",
@@ -239,6 +164,12 @@ const ordersSlice = createSlice({
       .addCase(fetchOrderDetails.fulfilled, (state, action) => {
         state.currentOrder = action.payload;
         state.loading = false;
+      })
+      .addCase(fetchUserOrders.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload.results;
+        state.totalPages = action.payload.total_pages;
+        state.count = action.payload.count;
       })
       .addMatcher(
         (action) => [fetchOrders.pending.type, fetchUserOrders.pending.type].includes(action.type),

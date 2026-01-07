@@ -2,6 +2,7 @@ import { Box } from "@mui/material";
 import Footer from "../Footer";
 import Header from "../Header";
 import { Outlet } from "react-router-dom";
+import ScrollToTopButton from "../ScrollToTopButton/ScrollToTopButton";
 
 export default function Layout() {
   return (
@@ -11,6 +12,7 @@ export default function Layout() {
         <Outlet /> 
       </Box>
       <Footer />
+      <ScrollToTopButton />
     </Box>
   );
 }

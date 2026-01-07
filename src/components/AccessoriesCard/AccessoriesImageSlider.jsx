@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CoffeeIcon from '@mui/icons-material/Coffee'; 
 
 export default function AccessoriesImageSlider({ photos = [], productName }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [mainImageError, setMainImageError] = useState(false);
+  const [thumbnailErrors, setThumbnailErrors] = useState({});
   
   const photoUrls = photos
     .map(photo => {
@@ -23,10 +25,14 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
     })
     .filter(url => url !== null);
 
-  const handlePrev = () =>
+  const handlePrev = () => {
     setSelectedIndex((prev) => (prev === 0 ? photoUrls.length - 1 : prev - 1));
-  const handleNext = () =>
+    setMainImageError(false);
+  };
+  const handleNext = () => {
     setSelectedIndex((prev) => (prev === photoUrls.length - 1 ? 0 : prev + 1));
+    setMainImageError(false);
+  };
 
   if (!photoUrls.length) {
     return (
@@ -69,22 +75,28 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
           </IconButton>
         )}
 
-        <Box 
-          component="img" 
-          src={photoUrls[selectedIndex]} 
-          alt={productName} 
-          sx={{ 
-            backgroundColor: "#fff", 
-            p: { xs: 1, md: 2 }, 
-            height: { xs: 200, md: 300 }, 
-            width: { xs: "auto", md: "100%" },
-            maxWidth: { xs: "100%", md: "600px" },
-            objectFit: "contain", 
-            mx: { xs: "auto", md: 6 },
-            display: "block",
-            borderRadius: 2
-          }} 
-        />
+        <Box sx={{
+          width: { xs: 200, md: 350 }, 
+          height: { xs: 200, md: 350 }, 
+          display: "flex",
+          alignItems: "center", 
+          justifyContent: "center", 
+          mx: { xs: 4, md: 6 }
+        }}>
+          {mainImageError ? (
+            <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#eee", borderRadius: "12px" }}>
+              <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
+            </Box>
+          ) : (
+            <Box
+              component="img"
+              src={photoUrls[selectedIndex]}
+              alt={productName}
+              onError={() => setMainImageError(true)}
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          )}
+        </Box>
 
         {photoUrls.length > 1 && (
           <IconButton 
@@ -108,22 +120,43 @@ export default function AccessoriesImageSlider({ photos = [], productName }) {
       {photoUrls.length > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", gap: { xs: 1, md: 2 }, mt: { xs: 2, md: 4 }, flexWrap: "wrap", px: { xs: 1, md: 0 } }}>
           {photoUrls.map((img, index) => (
-            <Box key={index} sx={{ cursor: "pointer", textAlign: "center" }} onClick={() => setSelectedIndex(index)}>
-              <Box 
-                component="img" 
-                src={img} 
-                alt={`${productName}-${index}`} 
-                sx={{ 
+            <Box key={index} sx={{ cursor: "pointer", textAlign: "center" }} onClick={() => {
+              setSelectedIndex(index);
+              setMainImageError(false);
+            }}>
+              {thumbnailErrors[index] ? (
+                <Box sx={{ 
                   backgroundColor: "#fff", 
                   p: { xs: 0.5, md: 1 }, 
                   width: { xs: 60, md: 80 }, 
                   height: { xs: 60, md: 80 }, 
-                  objectFit: "contain", 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   borderRadius: 1,
                   border: selectedIndex === index ? "2px solid #3E3027" : "1px solid #eee",
                   transition: "all 0.2s ease"
-                }} 
-              />
+                }}>
+                  <CoffeeIcon sx={{ fontSize: { xs: 30, md: 40 }, color: "#ccc" }} />
+                </Box>
+              ) : (
+                <Box 
+                  component="img" 
+                  src={img} 
+                  alt={`${productName}-${index}`}
+                  onError={() => setThumbnailErrors(prev => ({ ...prev, [index]: true }))}
+                  sx={{ 
+                    backgroundColor: "#fff", 
+                    p: { xs: 0.5, md: 1 }, 
+                    width: { xs: 60, md: 80 }, 
+                    height: { xs: 60, md: 80 }, 
+                    objectFit: "contain", 
+                    borderRadius: 1,
+                    border: selectedIndex === index ? "2px solid #3E3027" : "1px solid #eee",
+                    transition: "all 0.2s ease"
+                  }} 
+                />
+              )}
               <Box sx={{ 
                 width: "100%", 
                 height: { xs: 3, md: 4 }, 

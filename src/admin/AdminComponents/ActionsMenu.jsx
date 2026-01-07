@@ -58,7 +58,6 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 await apiWithAuth.delete(`/orders/delete/${id}/`);
             }
 
-            // console.log(`✅ ${type} deleted successfully`);
             setDeleteDialogOpen(false);
             
             if (onRefresh) {

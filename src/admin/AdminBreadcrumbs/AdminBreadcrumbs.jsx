@@ -49,14 +49,7 @@ export default function AdminBreadcrumbs() {
             {label}
           </Typography>
         ) : (
-          <Link
-            key={to}
-            component={RouterLink}
-            underline="hover"
-            color="inherit"
-            to={to}
-            sx={{ fontSize: { xs: '14px', md: 'inherit' } }}
-          >
+          <Link key={to} component={RouterLink} underline="hover" color="inherit" to={to} sx={{ fontSize: { xs: '14px', md: 'inherit' } }}>
             {label}
           </Link>
         );
