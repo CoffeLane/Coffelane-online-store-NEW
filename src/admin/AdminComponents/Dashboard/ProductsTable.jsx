@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Table, TableBody, CircularProgress, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
+
 
 export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh}) {
 
@@ -99,9 +100,7 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
           
           <Box sx={{ display: 'flex', flexDirection: 'column',  gap: 1.5, p: 2, backgroundColor: '#fafafa'}}>
             {paginatedFilteredProducts.length === 0 ? (
-              <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Typography sx={{ color: '#999', fontSize: '14px' }}>No products found</Typography>
-              </Box>
+             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: '#A4795B' }}/></Box>
             ) : (
               paginatedFilteredProducts.map((p) => {
               const isSelected = selectedIds.includes(p.id);
