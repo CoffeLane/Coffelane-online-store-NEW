@@ -1,12 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Table, TableBody, CircularProgress, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, Chip, Box, Card, CardContent, Typography, useMediaQuery, useTheme } from '@mui/material';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
 
-
-export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh}) {
+export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh, onProductUpdated}) {
 
   const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
   const categories = useMemo(() => {
@@ -100,7 +99,9 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
           
           <Box sx={{ display: 'flex', flexDirection: 'column',  gap: 1.5, p: 2, backgroundColor: '#fafafa'}}>
             {paginatedFilteredProducts.length === 0 ? (
-             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: '#A4795B' }}/></Box>
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Typography sx={{ color: '#999', fontSize: '14px' }}>No products found</Typography>
+              </Box>
             ) : (
               paginatedFilteredProducts.map((p) => {
               const isSelected = selectedIds.includes(p.id);
@@ -169,7 +170,8 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
                         id={p.id} 
                         type="product" 
                         productType={p.type === 'accessory' ? 'accessory' : 'coffee'}
-                        onRefresh={onRefresh} 
+                        onRefresh={onRefresh}
+                        onProductUpdated={onProductUpdated}
                       />
                     </Box>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1.5 }}>
@@ -310,7 +312,7 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
                     />
                   </TableCell>
                   <TableCell>
-                    <ActionsMenu id={p.id} type="product" productType={p.type === 'accessory' ? 'accessory' : 'coffee'} onRefresh={onRefresh} />
+                    <ActionsMenu id={p.id} type="product" productType={p.type === 'accessory' ? 'accessory' : 'coffee'} onRefresh={onRefresh} onProductUpdated={onProductUpdated} />
                   </TableCell>
                 </TableRow>
               );

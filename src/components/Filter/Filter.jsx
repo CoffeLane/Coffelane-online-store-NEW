@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Typography, FormControl, Select, MenuItem, FormGroup, FormControlLabel, Checkbox, Slider, useMediaQuery, useTheme } from "@mui/material";
 import { h3, h4, h6 } from "../../styles/typographyStyles.jsx";
 import { inputDropdown, selectMenuProps, checkboxStyles } from '../../styles/inputStyles.jsx';
+import api from "../../store/api/axios.js";
 
 export default function Filter({ filters, setFilters }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [availableBrands, setAvailableBrands] = useState(['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso']);
   const handleCheckboxChange = (value, key) => {
     setFilters(prev => ({
       ...prev,
@@ -14,6 +16,51 @@ export default function Filter({ filters, setFilters }) {
         : [...prev[key], value]
     }));
   };
+
+  // Загружаем доступные бренды из всех продуктов и аксессуаров
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+
+        const firstPageRes = await api.get('/products', { params: { page: 1 } });
+        const totalPages = firstPageRes.data.total_pages || 1;
+
+        const allPagesPromises = [];
+        for (let p = 1; p <= totalPages; p++) {
+          allPagesPromises.push(api.get('/products', { params: { page: p } }));
+        }
+
+        const allPagesRes = await Promise.all(allPagesPromises);
+        const allProducts = allPagesRes.flatMap(res => res.data.data || []);
+
+        const accessoriesRes = await api.get('/accessories');
+        const allAccessories = accessoriesRes.data.data || [];
+
+        const productBrands = new Set();
+        allProducts.forEach(p => {
+          const brand = p.brand || p.category;
+          if (brand && brand.trim()) {
+            productBrands.add(brand.trim());
+          }
+        });
+        allAccessories.forEach(a => {
+          const brand = a.brand || a.category;
+          if (brand && brand.trim()) {
+            productBrands.add(brand.trim());
+          }
+        });
+
+        const allBrandsList = [...allBrands, ...Array.from(productBrands)].filter(Boolean);
+        setAvailableBrands(Array.from(new Set(allBrandsList)));
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+        // В случае ошибки оставляем стандартные бренды
+      }
+    };
+
+    fetchBrands();
+  }, []);
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: '#fff', borderRadius: { xs: '8px', md: '16px' }, boxShadow: 2, height: 'auto', mb:{ xs: 4, md: 0 } }}>
@@ -29,13 +76,9 @@ export default function Filter({ filters, setFilters }) {
       <FormControl fullWidth sx={{ ...h6, ...inputDropdown, my: { xs: 0.5, md: 1 }, mb: { xs: 2, md: 3 } }}>
         <Select value={filters.brand} onChange={e => setFilters(prev => ({ ...prev, brand: e.target.value }))} MenuProps={selectMenuProps}>
           <MenuItem value="Brand">Brand</MenuItem>
-          <MenuItem value="Lavazza">Lavazza</MenuItem>
-          <MenuItem value="Blasercafe">Blasercafe</MenuItem>
-          <MenuItem value="Nescafé">Nescafé</MenuItem>
-          <MenuItem value="Jacobs">Jacobs</MenuItem>
-          <MenuItem value="L'OR">L'OR</MenuItem>
-          <MenuItem value="Starbucks">Starbucks</MenuItem>
-          <MenuItem value="Nespresso">Nespresso</MenuItem>
+          {availableBrands.map(brand => (
+            <MenuItem key={brand} value={brand}>{brand}</MenuItem>
+          ))}
         </Select>
       </FormControl>
 

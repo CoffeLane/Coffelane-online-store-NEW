@@ -179,9 +179,13 @@ export default function CheckoutPage() {
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
+const phoneStr = String(phone || "");
 
-    const cleanPhone = phone.replace(/\D/g, "");
-    const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`;
+const cleanPhone = phoneStr.replace(/\D/g, "");
+const formattedPhone = cleanPhone.startsWith("+")
+  ? cleanPhone
+  : `+${cleanPhone}`;
+
 
     const orderData = {
       billing_details: {

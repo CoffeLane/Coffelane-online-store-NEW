@@ -29,6 +29,7 @@ export default function ProductEdit() {
   const [loading, setLoading] = useState(false);
   const [productType, setProductType] = useState('product');
   const [isSpecial, setIsSpecial] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
 
   const [images, setImages] = useState([]);
   const [cover, setCover] = useState(null);
@@ -81,16 +82,100 @@ export default function ProductEdit() {
     }
   }, []);
 
+  // Загружаем доступные категории из всех продуктов и аксессуаров
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+
+        const firstPageRes = await api.get('/products', { params: { page: 1 } });
+        const totalPages = firstPageRes.data.total_pages || 1;
+
+        const allPagesPromises = [];
+        for (let p = 1; p <= totalPages; p++) {
+          allPagesPromises.push(api.get('/products', { params: { page: p } }));
+        }
+
+        const allPagesRes = await Promise.all(allPagesPromises);
+        const allProducts = allPagesRes.flatMap(res => res.data.data || []);
+
+        const accessoriesRes = await api.get('/accessories');
+        const allAccessories = accessoriesRes.data.data || [];
+
+        const productCategories = new Set();
+        allProducts.forEach(p => {
+          const cat = p.brand || p.category;
+          if (cat && cat.trim()) {
+            productCategories.add(cat.trim());
+          }
+        });
+        allAccessories.forEach(a => {
+          const cat = a.brand || a.category;
+          if (cat && cat.trim()) {
+            productCategories.add(cat.trim());
+          }
+        });
+
+        const allCategories = [...allBrands, ...Array.from(productCategories)].filter(Boolean);
+        setAvailableCategories(Array.from(new Set(allCategories)));
+        console.log("✅ Categories loaded:", allCategories.length, "categories");
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+        setAvailableCategories(allBrands);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   const isProductReady = useMemo(() => {
     const nameValid = productName && String(productName).trim().length > 0;
-    const categoryValid = category && String(category).trim().length > 0;
+    // Категория валидна, если она не пустая и не "custom" (custom означает, что пользователь вводит новую категорию)
+    const categoryValid = category && category !== "custom" && String(category).trim().length > 0;
     const priceStr = price ? String(price).trim() : "";
     const priceValid = priceStr.length > 0 && !isNaN(Number(priceStr)) && Number(priceStr) > 0;
     const weightStr = weight ? String(weight).trim() : "";
     const weightValid = productType === 'accessory' ? true : weightStr.length > 0;
     
-    return nameValid && categoryValid && priceValid && weightValid;
-  }, [productName, category, price, weight, productType]);
+    // Проверяем наличие хотя бы одного фото (cover или images)
+    const hasCover = cover && (
+      (typeof cover === 'object' && (cover.url || cover.file)) ||
+      (typeof cover === 'string' && cover.length > 0)
+    );
+    
+    const hasImages = Array.isArray(images) && images.length > 0 && 
+      images.some(img => {
+        if (!img) return false;
+        if (typeof img === 'string') return img.length > 0;
+        if (typeof img === 'object') {
+          return !!(img.url || img.file);
+        }
+        return false;
+      });
+    
+    const hasPhoto = hasCover || hasImages;
+    
+    const result = nameValid && categoryValid && priceValid && weightValid && hasPhoto;
+    
+    // Временное логирование для отладки
+    if (!result) {
+      console.log('🔍 isProductReady check:', {
+        nameValid,
+        categoryValid,
+        priceValid,
+        weightValid,
+        hasCover,
+        hasImages,
+        hasPhoto,
+        cover: cover ? { hasUrl: !!cover.url, hasFile: !!cover.file, type: typeof cover } : null,
+        imagesCount: images?.length || 0,
+        images: images?.map(img => ({ hasUrl: !!img?.url, hasFile: !!img?.file }))
+      });
+    }
+    
+    return result;
+  }, [productName, category, price, weight, productType, cover, images]);
 
   const fetchProduct = React.useCallback(async () => {
       if (fetchingRef.current && fetchedIdRef.current === id) {
@@ -220,7 +305,14 @@ export default function ProductEdit() {
         }
 
         setProductName(product.name || "");
-        setCategory(productCategory || "");
+        const finalCategory = productCategory || "";
+        setCategory(finalCategory);
+        console.log("📋 Setting category from product data:", {
+          productCategory,
+          productCategoryValue: product.category,
+          productBrandValue: product.brand,
+          finalCategory
+        });
         let productStock = null;
         if (product.stock !== undefined && product.stock !== null) {
           productStock = product.stock;
@@ -417,26 +509,29 @@ export default function ProductEdit() {
       if (photo.id) {
         try {
           if (productType === 'accessory') {
+            // Try different endpoint formats based on API documentation: DELETE /accessories/{id}/remove_photo
             const endpoints = [
-              `/accessories/${id}/remove_photo`,
-              `/accessories/${id}/photo/${photo.id}`,
-              `/accessories/photo/${photo.id}`
+              { url: `/accessories/${id}/remove_photo?photo_id=${photo.id}`, method: 'query' },
+              { url: `/accessories/${id}/remove_photo?photoId=${photo.id}`, method: 'query' },
+              { url: `/accessories/${id}/remove_photo/${photo.id}`, method: 'path' },
+              { url: `/accessories/${id}/remove_photo`, method: 'body', data: { photo_id: photo.id } },
+              { url: `/accessories/${id}/remove_photo`, method: 'body', data: { photoId: photo.id } },
+              { url: `/accessories/${id}/remove_photo`, method: 'body', data: { id: photo.id } }
             ];
             let deleted = false;
             for (const endpoint of endpoints) {
               try {
-                if (endpoint.includes('remove_photo')) {
-                  await apiWithAuth.delete(endpoint, { data: { photo_id: photo.id } });
+                if (endpoint.method === 'body') {
+                  await apiWithAuth.delete(endpoint.url, { data: endpoint.data });
                 } else {
-                  await apiWithAuth.delete(endpoint);
+                  await apiWithAuth.delete(endpoint.url);
                 }
                 deleted = true;
-                console.log(`✅ Successfully deleted photo ${photo.id} via ${endpoint}`);
+                console.log(`✅ Successfully deleted photo ${photo.id} via ${endpoint.url}`);
                 break;
               } catch (error) {
                 if (error.response?.status !== 404) {
-
-                  console.warn(`Failed to delete photo ${photo.id} via ${endpoint}:`, error.response?.status, error.response?.data);
+                  console.warn(`Failed to delete photo ${photo.id} via ${endpoint.url}:`, error.response?.status, error.response?.data);
                 }
               }
             }
@@ -537,19 +632,30 @@ export default function ProductEdit() {
   };
 
   const handleDeletePhoto = async (photoId) => {
+    let deleted = false; // Declare outside if/else blocks so it's accessible later
     try {
       if (productType === 'accessory') {
+        // Try different endpoint formats based on API documentation: DELETE /accessories/{id}/remove_photo
+        // The photo_id might be passed in different ways depending on backend implementation
         const endpoints = [
-          { url: `/accessories/${id}/remove_photo`, useBody: true }, 
-          { url: `/accessories/${id}/photo/${photoId}`, useBody: false },
-          { url: `/accessories/photo/${photoId}`, useBody: false }
+          // Try with photo_id in query parameter
+          { url: `/accessories/${id}/remove_photo?photo_id=${photoId}`, method: 'query' },
+          // Try with photoId (camelCase) in query parameter
+          { url: `/accessories/${id}/remove_photo?photoId=${photoId}`, method: 'query' },
+          // Try with photo_id in URL path
+          { url: `/accessories/${id}/remove_photo/${photoId}`, method: 'path' },
+          // Try with body data (photo_id)
+          { url: `/accessories/${id}/remove_photo`, method: 'body', data: { photo_id: photoId } },
+          // Try with body data (photoId camelCase)
+          { url: `/accessories/${id}/remove_photo`, method: 'body', data: { photoId: photoId } },
+          // Try with body data (id)
+          { url: `/accessories/${id}/remove_photo`, method: 'body', data: { id: photoId } }
         ];
-        
-        let deleted = false;
+        let lastError = null;
         for (const endpoint of endpoints) {
           try {
-            if (endpoint.useBody) {
-              await apiWithAuth.delete(endpoint.url, { data: { photo_id: photoId } });
+            if (endpoint.method === 'body') {
+              await apiWithAuth.delete(endpoint.url, { data: endpoint.data });
             } else {
               await apiWithAuth.delete(endpoint.url);
             }
@@ -557,20 +663,57 @@ export default function ProductEdit() {
             console.log(`✅ Successfully deleted photo ${photoId} via ${endpoint.url}`);
             break;
           } catch (error) {
+            lastError = error;
+            // If photo doesn't exist on server (already deleted), consider it successful
+            const errorDetail = error.response?.data?.detail || error.response?.data?.message || '';
+            if (errorDetail.includes('No AccessoryPhotosModel matches') || 
+                errorDetail.includes('not found') ||
+                errorDetail.includes('does not exist') ||
+                (error.response?.status === 404 && errorDetail.includes('No'))) {
+              deleted = true;
+              console.log(`✅ Photo ${photoId} already removed from server (not found)`);
+              break;
+            }
+            // Log non-404 errors for debugging
+            if (error.response?.status !== 404) {
+              console.warn(`Failed to delete via ${endpoint.url}:`, error.response?.status, error.response?.data);
+            }
             if (error.response?.status === 404) {
+              // Check if it's a "not found" error that we should treat as success
+              // If error detail is empty or generic, continue trying other formats
+              continue;
+            } else if (error.response?.status >= 400 && error.response?.status < 500) {
+              // For 4xx errors other than 404, continue trying other formats
               continue;
             } else {
+              // For 5xx errors, throw immediately
               throw error;
             }
           }
         }
         
+        // If all attempts failed with 404, log the last error details
+        if (!deleted && lastError?.response?.status === 404) {
+          console.warn("All DELETE endpoint attempts returned 404. Endpoint may not be implemented.");
+          if (lastError.response?.data) {
+            console.warn("Last error response:", lastError.response.data);
+          }
+        }
+        
         if (!deleted) {
           console.warn("Photo deletion endpoint not found. Removing from local state only.");
-          showNotification("Photo removed from preview. Note: API endpoint for photo deletion may not be available.", "info");
+          console.warn("Tried endpoints:", [
+            `/accessories/${id}/remove_photo?photo_id=${photoId}`,
+            `/accessories/${id}/remove_photo?photoId=${photoId}`,
+            `/accessories/${id}/remove_photo/${photoId}`,
+            `/accessories/${id}/remove_photo (with body: photo_id)`,
+            `/accessories/${id}/remove_photo (with body: photoId)`,
+            `/accessories/${id}/remove_photo (with body: id)`
+          ]);
+          // Photo will be removed from server when user clicks "Publish" - the PUT request will update the photo list
+          showNotification("Photo removed from preview. Click 'Publish' to save changes and remove it from the server.", "info");
         }
       } else {
-        let deleted = false;
         const endpoints = [
           `/products/${id}/photo/${photoId}/deletion`,
           `/products/photo/${photoId}/deletion`,
@@ -586,6 +729,15 @@ export default function ProductEdit() {
             console.log(`✅ Successfully deleted photo ${photoId} via ${endpoint}`);
             break;
           } catch (error) {
+            // If photo doesn't exist on server (already deleted), consider it successful
+            const errorDetail = error.response?.data?.detail || error.response?.data?.message || '';
+            if (errorDetail.includes('not found') || 
+                errorDetail.includes('does not exist') ||
+                errorDetail.includes('No') && errorDetail.includes('matches')) {
+              deleted = true;
+              console.log(`✅ Photo ${photoId} already removed from server (not found)`);
+              break;
+            }
             if (error.response?.status !== 404) {
               console.warn(`Failed to delete photo ${photoId} via ${endpoint}:`, error.response?.status, error.response?.data);
             }
@@ -606,7 +758,11 @@ export default function ProductEdit() {
         return filtered;
       });
       
-      showNotification("Photo deleted successfully!", "success");
+      // Only show success if deletion was successful on server
+      // Otherwise, the info message above already explains what happened
+      if (productType !== 'accessory' || deleted) {
+        showNotification("Photo deleted successfully!", "success");
+      }
     } catch (error) {
       console.error(" Error when deleting photo:", error.response?.data || error.message);
       showNotification(error.response?.data?.detail || error.response?.data?.message || "Error deleting photo. Please try again.", "error");
@@ -626,10 +782,20 @@ export default function ProductEdit() {
     }
   };
 
+  // Helper function to convert .jfif files to .jpg
+  const convertJfifToJpg = (file) => {
+    if (file.name.toLowerCase().endsWith('.jfif')) {
+      const newFileName = file.name.replace(/\.jfif$/i, '.jpg');
+      return new File([file], newFileName, { type: 'image/jpeg' });
+    }
+    return file;
+  };
+
   const handleCoverUpload = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const file = files[0];
+      const originalFile = files[0];
+      const file = convertJfifToJpg(originalFile);
       const newCover = {
         id: null,
         url: URL.createObjectURL(file),
@@ -692,29 +858,35 @@ export default function ProductEdit() {
             const isJpeg = fileType === 'image/jpeg' || fileType === 'image/jpg' || 
                           fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') ||
                           fileName.endsWith('.jfif');
+            const isPng = fileType === 'image/png' || fileName.endsWith('.png');
             
-            if (isJpeg) {
-              photoFormData.append("images", img.file);
+            if (isJpeg || isPng) {
+              // Convert .jfif to .jpg for backend compatibility
+              const convertedFile = convertJfifToJpg(img.file);
+              photoFormData.append("images", convertedFile);
             } else {
               unsupportedFiles.push(img.file.name);
             }
           }
         });
         
-        if (unsupportedFiles.length > 0) {
-          showNotification(`Warning: Some files were skipped. Only JPEG/JPG/JFIF format is supported. Skipped: ${unsupportedFiles.join(', ')}`, "warning");
-        }
-        
-        if (photoFormData.getAll("images").length === 0 && existingImages.length === 0 && !cover?.id) {
-          showNotification("No valid JPEG/JFIF images to upload. Please select JPEG/JPG/JFIF files.", "error");
-          setLoading(false);
-          return;
-        }
-        
+        // Handle cover file if it exists and is new
         if (cover?.file) {
           const isCoverInImages = newImages.some(img => img.file === cover.file);
           if (!isCoverInImages) {
+            const convertedCoverFile = convertJfifToJpg(cover.file);
+            photoFormData.append("images", convertedCoverFile);
           }
+        }
+        
+        if (unsupportedFiles.length > 0) {
+          showNotification(`Warning: Some files were skipped. Only JPEG/JPG/PNG format is supported. Skipped: ${unsupportedFiles.join(', ')}`, "warning");
+        }
+        
+        if (photoFormData.getAll("images").length === 0 && existingImages.length === 0 && !cover?.id) {
+          showNotification("No valid images to upload. Please select JPEG/JPG/PNG files.", "error");
+          setLoading(false);
+          return;
         }
         
         existingImages.forEach(img => {
@@ -771,41 +943,53 @@ export default function ProductEdit() {
             console.log("📊 Response status:", photoResponse.status);
             console.log("📊 Response headers:", photoResponse.headers);
           } catch (putError) {
-            if (putError.response?.status === 400 || putError.response?.status === 403 || putError.response?.status === 405) {
-              console.log("⚠️ PUT failed with", putError.response?.status, ", trying POST...");
-              addDebugLog("PUT failed, trying POST", {
-                status: putError.response?.status,
-                error: putError.response?.data
-              });
-              try {
-                photoResponse = await apiWithAuth.post(`/accessories/${id}/photo`, photoFormData, {
-                  headers: {
-                    'Content-Type': 'multipart/form-data',
-                  },
-                });
-                console.log("✅ Accessory photos updated successfully via POST:", photoResponse.data);
-                addDebugLog("✅ Accessory photos updated successfully via POST", photoResponse.data);
-              } catch (postError) {
-                console.error("POST also failed:", postError.response?.data || postError.message);
-                addDebugLog("POST also failed", {
-                  status: postError.response?.status,
-                  error: postError.response?.data || postError.message
-                });
-                throw postError;
-              }
-            } else {
-              console.error("PUT failed with unexpected status:", putError.response?.status);
-              addDebugLog("PUT failed", {
-                status: putError.response?.status,
-                error: putError.response?.data || putError.message
-              });
-              throw putError;
-            }
+            console.error("❌ PUT failed:", putError.response?.status, putError.response?.data || putError.message);
+            addDebugLog("PUT failed", {
+              status: putError.response?.status,
+              error: putError.response?.data || putError.message
+            });
+            throw putError;
           }
           
           console.log("✅ Accessory photos response:", photoResponse.data);
           console.log("📸 Response accessory_photos:", photoResponse.data?.accessory_photos);
           console.log("📊 Response status:", photoResponse.status);
+          
+          // Compare sent vs received photo IDs
+          const sentPhotoIds = existingImages.map(img => img.id).filter(id => id != null);
+          const receivedPhotoIds = photoResponse.data?.accessory_photos?.map(photo => 
+            photo.id || photo.photo_id
+          ).filter(id => id != null) || [];
+          
+          console.log("🔍 Photo ID comparison:", {
+            sent: sentPhotoIds,
+            received: receivedPhotoIds,
+            sentCount: sentPhotoIds.length,
+            receivedCount: receivedPhotoIds.length,
+            match: sentPhotoIds.length === receivedPhotoIds.length && 
+                   sentPhotoIds.every(id => receivedPhotoIds.includes(id))
+          });
+          
+          if (sentPhotoIds.length !== receivedPhotoIds.length) {
+            console.warn("⚠️ Mismatch: Sent", sentPhotoIds.length, "photo IDs but received", receivedPhotoIds.length, "photos");
+            console.warn("Sent IDs:", sentPhotoIds);
+            console.warn("Received IDs:", receivedPhotoIds);
+            
+            // Check if server returned photos that we didn't send (should have been deleted)
+            const unexpectedPhotos = receivedPhotoIds.filter(id => !sentPhotoIds.includes(id));
+            if (unexpectedPhotos.length > 0) {
+              console.warn("⚠️ Backend returned photos that should have been deleted:", unexpectedPhotos);
+              console.warn("This indicates that PUT /accessories/{id}/photo does not remove photos not in photo_ids list.");
+              console.warn("These photos may need to be deleted manually via DELETE /accessories/{id}/remove_photo endpoint.");
+              
+              // Show warning to user
+              showNotification(
+                `Warning: ${unexpectedPhotos.length} photo(s) were not removed from server. The DELETE endpoint may need to be used separately.`,
+                "warning"
+              );
+            }
+          }
+          
           addDebugLog("✅ Accessory photos response", photoResponse.data);
           
           if (!photoResponse.data?.accessory_photos || photoResponse.data.accessory_photos.length === 0) {
@@ -947,7 +1131,17 @@ export default function ProductEdit() {
       const formData = new FormData();
       
       formData.append("name", productName.trim());
-      formData.append("category", category);
+      // Обрабатываем категорию так же, как в ProductAdd
+      // Если category === "custom", отправляем пустую строку, иначе отправляем значение category
+      const categoryValue = category === "custom" ? "" : (category || "");
+      formData.append("category", categoryValue);
+      
+      // Также отправляем brand (как в ProductAdd)
+      if (categoryValue && categoryValue.trim().length > 0) {
+        formData.append("brand", categoryValue.trim());
+      } else {
+        formData.append("brand", null);
+      }
       formData.append("is_special", isSpecial ? "true" : "false");
       
       if (stock !== null && stock !== undefined) {
@@ -1078,6 +1272,15 @@ export default function ProductEdit() {
       console.log("📸 Response photos:", response.data?.photos);
       console.log("📸 Response images:", response.data?.images);
       console.log("📸 Full response:", JSON.stringify(response.data, null, 2));
+      
+      // Обновляем категорию из ответа API, если она изменилась
+      if (response.data) {
+        const updatedCategory = response.data.category || response.data.brand || "";
+        if (updatedCategory && updatedCategory !== category) {
+          console.log("🔄 Updating category from response:", updatedCategory);
+          setCategory(updatedCategory);
+        }
+      }
 
       if (hasNewPhotos && productType === 'product') {
         console.log("📤 Uploading photos via PUT /products/{id}/photo...");
@@ -1131,32 +1334,33 @@ export default function ProductEdit() {
               (response.data.product_photos && Array.isArray(response.data.product_photos) && response.data.product_photos.length > 0);
             
             if (hasPhotosInResponse) {
-              console.log("🔄 Photos found in response, reloading page in 3 seconds to update products table...");
-              showNotification("Photos uploaded successfully! Reloading page...", "success");
+              console.log("🔄 Photos found in response, navigating to products page to update table...");
+              showNotification("Photos uploaded successfully! Updating products list...", "success");
+              setLoading(false);
               setTimeout(() => {
-                console.log("🔄 Reloading page now...");
-                window.location.reload();
-              }, 3000);
+                console.log("🔄 Navigating to products page with refresh flag...");
+                navigate('/admin/products', { state: { refresh: true } });
+              }, 1000);
             } else {
               // Если фото нет в ответе, даем больше времени бэкенду обработать фото
-              console.log("⚠️ No photos in response yet, waiting 5 seconds for backend to process...");
+              console.log("⚠️ No photos in response yet, waiting 3 seconds for backend to process...");
               showNotification("Photos uploaded, waiting for processing...", "info");
+              setLoading(false);
               setTimeout(() => {
-                window.location.reload();
-              }, 5000);
+                navigate('/admin/products', { state: { refresh: true } });
+              }, 3000);
             }
-            setLoading(false);
             return; // Выходим, не продолжаем обработку
           } else {
             console.warn("⚠️ PUT /products/{id}/photo returned success but no photos in response");
             console.warn("⚠️ Photo response data:", photoResponse.data);
-            // Если фото нет в ответе, перезагружаем страницу через 3 секунды, чтобы дать время бэкенду обработать фото
-            console.log("🔄 Will reload page in 3 seconds to get updated product data...");
-            showNotification("Photos uploaded, reloading page to see changes...", "info");
-            setTimeout(() => {
-              window.location.reload();
-            }, 3000);
+            // Если фото нет в ответе, переходим на страницу продуктов с флагом refresh
+            console.log("🔄 Will navigate to products page in 2 seconds to get updated product data...");
+            showNotification("Photos uploaded, updating products list...", "info");
             setLoading(false);
+            setTimeout(() => {
+              navigate('/admin/products', { state: { refresh: true } });
+            }, 2000);
             return; // Выходим, не продолжаем обработку
           }
         } catch (photoError) {
@@ -1604,11 +1808,11 @@ export default function ProductEdit() {
               productName={productName} setProductName={setProductName}
               category={category} setCategory={setCategory}
               stock={stock} setStock={setStock}
+              availableCategories={availableCategories}
               price={price} setPrice={setPrice}
               weight={weight} setWeight={setWeight}
               description={description} setDescription={setDescription}
               productType={productType}
-              availableCategories={[]}
             />
             
             {productType === 'product' && (

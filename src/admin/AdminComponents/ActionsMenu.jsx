@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiWithAuth } from '../../store/api/axios.js';
 
-export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh, onViewOrder }) {
+export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh, onViewOrder, onProductUpdated }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -86,17 +86,68 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
 
         setLoading(true);
         try {
-            await apiWithAuth.patch(`/products/product/${id}`, { status: 'Hidden' });
+            // Устанавливаем visible: false и status: 'Hidden' для скрытия продукта
+            // Пробуем сначала JSON, так как мы не отправляем файлы
+            let response;
+            try {
+                response = await apiWithAuth.patch(`/products/product/${id}`, {
+                    visible: false,
+                    status: 'Hidden'
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+            } catch (jsonError) {
+                // Если JSON не работает, пробуем FormData
+                console.warn("JSON request failed, trying FormData:", jsonError);
+                const formData = new FormData();
+                formData.append("visible", "false");
+                formData.append("status", "Hidden");
+                
+                response = await apiWithAuth.patch(`/products/product/${id}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            }
 
-            // console.log("✅ Product hidden successfully");
+            console.log("✅ Product hidden successfully");
+            console.log("📊 Response data:", response.data);
             
+            // Уведомляем родительский компонент об обновлении продукта
+            // Это позволяет обновить локальное состояние без перезагрузки
+            if (onProductUpdated) {
+                onProductUpdated(id, { status: 'Hidden', visible: false });
+            }
+            
+            // API не возвращает status и visible в ответе PATCH, но изменения должны быть применены
+            // Даем время бэкенду обработать изменения
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Обновляем список продуктов
             if (onRefresh) {
-                onRefresh();
+                if (typeof onRefresh === 'function') {
+                    try {
+                        onRefresh();
+                        console.log("✅ Product list refreshed");
+                    } catch (e) {
+                        console.warn("onRefresh failed, reloading page:", e);
+                        window.location.reload();
+                    }
+                } else {
+                    window.location.reload();
+                }
             } else {
                 window.location.reload();
             }
         } catch (error) {
             console.error("Error hiding product:", error.response?.data || error.message);
+            console.error("Error details:", {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
             const errorMessage = error.response?.data?.detail || 
                                error.response?.data?.message || 
                                "Error when hiding product. Please try again.";

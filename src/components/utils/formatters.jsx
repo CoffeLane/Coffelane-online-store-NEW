@@ -1,10 +1,14 @@
-export const formatDigits = (value, maxLength) => value.replace(/\D/g, "").slice(0, maxLength);
+export const formatDigits = (value, maxLength) => String(value || "").replace(/\D/g, "").slice(0, maxLength);
 
 export const formatPhone = (value) => {
-  const digits = value.replace(/\D/g, '');
+  if (value === null || value === undefined) return "";
+
+  const digits = String(value).replace(/\D/g, '');
   if (!digits) return '';
+
   const limited = digits.slice(0, 15);
   const parts = [];
+
   if (limited.length > 0) parts.push(limited.slice(0, 3)); 
   if (limited.length > 3) parts.push(limited.slice(3, 5));
   if (limited.length > 5) parts.push(limited.slice(5, 8));
@@ -13,6 +17,7 @@ export const formatPhone = (value) => {
 
   return `+${parts.join(' ')}`;
 };
+
 
 export const formatCardNumber = (value) =>
     formatDigits(value, 16).replace(/(.{4})/g, "$1 ").trim();
