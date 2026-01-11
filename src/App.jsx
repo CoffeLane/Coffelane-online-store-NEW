@@ -76,11 +76,11 @@ function App() {
         const hoursLeft = Math.floor((timeUntilExpiration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
         if (timeUntilExpiration <= 0) {
-          console.error(`❌ Refresh token истек! Истек: ${new Date(expirationTime).toLocaleString()}`);
-          console.error(`❌ Необходимо перелогиниться.`);
+          console.error(`Refresh token истек! Истек: ${new Date(expirationTime).toLocaleString()}`);
+          console.error(`You need to log in again.`);
         } else {
-          console.log(`✅ Refresh token валиден еще ${daysLeft} дней, ${hoursLeft} часов`);
-          console.log(`✅ Истекает: ${new Date(expirationTime).toLocaleString()}`);
+        //   console.log(`✅ Refresh token валиден еще ${daysLeft} дней, ${hoursLeft} часов`);
+        //   console.log(`✅ Истекает: ${new Date(expirationTime).toLocaleString()}`);
         }
       } catch (error) {
         console.warn("Unable to verify refresh token expiration date.:", error);

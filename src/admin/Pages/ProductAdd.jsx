@@ -235,7 +235,8 @@ export default function ProductsAdd() {
           productData.weight = weight.trim();
         }
 
-        productData.visible = visible === true;
+        // По умолчанию продукт видим, если не указано иное
+        productData.visible = visible !== false; // true если visible === true или visible === null
 
         console.log("📤 Creating product with JSON data:", productData);
 

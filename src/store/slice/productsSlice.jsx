@@ -37,6 +37,33 @@ export const fetchProducts = createAsyncThunk(
           allProducts = allProducts.concat(res.data.data);
         });
       }
+      
+      // Фильтруем только активные и видимые продукты для публичной страницы
+      allProducts = allProducts.filter(p => {
+        // Проверяем статус продукта
+        const status = p.status;
+        const visible = p.visible;
+        
+        // Строгая проверка: скрываем продукт если:
+        // 1. Статус 'Hidden' или 'Draft'
+        // 2. visible === false (явно скрыт)
+        // 3. visible === 'false' (строковое значение)
+        if (status === 'Hidden' || status === 'Draft' || status === 'hidden' || status === 'draft') {
+          return false;
+        }
+        
+        if (visible === false || visible === 'false' || visible === 0) {
+          return false;
+        }
+        
+        // Показываем только если:
+        // - статус 'Active' или отсутствует (null/undefined)
+        // - visible === true или null/undefined (по умолчанию видимый)
+        const isActive = !status || status === 'Active' || status === 'active';
+        const isVisible = visible !== false && visible !== 'false' && visible !== 0;
+        
+        return isActive && isVisible;
+      });
 
       if (filters.roast && filters.roast.length) {
         allProducts = allProducts.filter(p => filters.roast.includes(p.roast));

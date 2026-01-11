@@ -5,7 +5,7 @@ import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
 
-export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh}) {
+export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh, onProductUpdated}) {
 
   const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
   const categories = useMemo(() => {
@@ -170,7 +170,8 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
                         id={p.id} 
                         type="product" 
                         productType={p.type === 'accessory' ? 'accessory' : 'coffee'}
-                        onRefresh={onRefresh} 
+                        onRefresh={onRefresh}
+                        onProductUpdated={onProductUpdated}
                       />
                     </Box>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1.5 }}>
@@ -311,7 +312,7 @@ export default function ProductsTable({ products, selectedIds, handleSelectAll, 
                     />
                   </TableCell>
                   <TableCell>
-                    <ActionsMenu id={p.id} type="product" productType={p.type === 'accessory' ? 'accessory' : 'coffee'} onRefresh={onRefresh} />
+                    <ActionsMenu id={p.id} type="product" productType={p.type === 'accessory' ? 'accessory' : 'coffee'} onRefresh={onRefresh} onProductUpdated={onProductUpdated} />
                   </TableCell>
                 </TableRow>
               );

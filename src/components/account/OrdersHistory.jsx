@@ -12,6 +12,9 @@ import deliveringImg from "../../assets/images/status/delivering.png";
 import cancelledImg from "../../assets/images/status/cancelled.png";
 import { useNavigate } from "react-router-dom";
 import { default as api } from "../../store/api/axios.js";
+import PaginationControl from "../PaginationControl/PaginationControl.jsx";
+
+const ordersPerPage = 10;
 
 export default function OrderHistory() {
   const theme = useTheme();
@@ -21,7 +24,8 @@ export default function OrderHistory() {
   const { orders, loading, error } = useSelector((state) => state.orders);
   const [openOrderId, setOpenOrderId] = useState(null);
   const [photoCache, setPhotoCache] = useState(new Map()); 
-  const [imageErrors, setImageErrors] = useState({}); 
+  const [imageErrors, setImageErrors] = useState({});
+  const [page, setPage] = useState(1); 
 
 
   useEffect(() => {
@@ -194,6 +198,18 @@ export default function OrderHistory() {
   }
 
   const ordersList = Array.isArray(orders) ? [...orders].sort((a, b) => b.id - a.id) : [];
+  
+  // Вычисляем пагинацию
+  const totalPages = Math.ceil(ordersList.length / ordersPerPage);
+  const startIndex = (page - 1) * ordersPerPage;
+  const endIndex = startIndex + ordersPerPage;
+  const paginatedOrders = ordersList.slice(startIndex, endIndex);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    // Прокручиваем в начало списка при смене страницы
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (ordersList.length === 0) {
     return (
@@ -210,7 +226,7 @@ export default function OrderHistory() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: isMobile ? 1 : 0 }}>
-      {ordersList.map(order => {
+      {paginatedOrders.map(order => {
         const totalAmount =
           order.order_amount && !isNaN(Number(order.order_amount))
             ? Number(order.order_amount).toFixed(2)
@@ -325,6 +341,14 @@ export default function OrderHistory() {
           </Box>
         );
       })}
+      
+      {totalPages > 1 && (
+        <PaginationControl 
+          page={page} 
+          totalPages={totalPages} 
+          onPageChange={handlePageChange} 
+        />
+      )}
     </Box>
   );
 }

@@ -87,13 +87,10 @@ export const createOrder = createAsyncThunk(
         await dispatch(getActiveBasket()).unwrap();
       }
 
-    const cleanPhone = phone.replace(/\D/g, "");
-    const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`;
-
       const payload = {
         billing_details: {
           ...orderData.billing_details,
-          phone_number: formattedPhone(orderData.billing_details.phone_number)
+          phone_number: orderData.billing_details.phone_number
         },
         customer_data: orderData.customer_data,
         order_notes: orderData.order_notes || "",
