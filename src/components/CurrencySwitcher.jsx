@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCurrency } from '../store/slice/settingsSlice';
 import { fetchProducts } from '../store/slice/productsSlice';
+import { fetchAccessories } from '../store/slice/accessoriesSlice';
 import { IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined';
 
@@ -21,8 +22,8 @@ export const CurrencySwitcher = () => {
 
   const handleSelect = (newCurrency) => {
     dispatch(setCurrency(newCurrency));
-    // товары с новой валютой
     dispatch(fetchProducts({ filters: {} })); 
+    dispatch(fetchAccessories({ page: 1 }));
     handleClose();
   };
 
