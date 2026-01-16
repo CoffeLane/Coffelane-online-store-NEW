@@ -9,7 +9,19 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Екземпляр для запитів, де потрібна авторизація
+api.interceptors.request.use((config) => {
+  const currency = localStorage.getItem('currency') || 'USD';
+  
+  config.params = {
+    ...config.params,
+    currency: currency,
+  };
+  
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 export const apiWithAuth = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },

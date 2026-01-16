@@ -17,7 +17,7 @@ import { selectCartCount, selectCartItems, addToCart, decrementQuantity, removeF
 import SettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { searchAll, clearSearch, setQuery } from "../../store/slice/searchSlice.jsx";
+import { searchAll, clearSearch } from "../../store/slice/searchSlice.jsx";
 import SearchDropdown from "../SearchDropdown/index.jsx";
 import { CurrencySwitcher } from "../CurrencySwitcher.jsx";
 
@@ -72,9 +72,6 @@ function Header() {
         }
     };
 
-    const handleOpenLoginModal = () => {
-        setIsLoginModalOpen(true);
-    }
     const handleCloseLoginModal = () => {
         setIsLoginModalOpen(false);
 
