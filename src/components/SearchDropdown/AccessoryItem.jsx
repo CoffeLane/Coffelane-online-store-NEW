@@ -1,26 +1,22 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { Box, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { getPrice, getProductPrice, formatPrice } from '../utils/priceUtils';
+import KitchenIcon from '@mui/icons-material/Kitchen';
+import { useSelector } from 'react-redux';
+import { getProductPrice, formatPrice } from '../utils/priceUtils.jsx';
 
-const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
-  
-  const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || '';
+const AccessoryItem = ({ accessory, searchInput, onProductClick, isLastItem }) => {
   const currency = useSelector((state) => state.settings.currency);
-    const supply = product.supplies?.[0];
-
-  const price = supply ? getPrice(supply, currency) : getProductPrice(product, currency);
-  const productUrl = `/coffee/product/${product.id}`;
+  const price = getProductPrice(accessory, currency);
+  const productUrl = `/accessories/product/${accessory.id}`;
 
   const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const safeSearch = escapeRegExp(searchInput);
 
   const highlightText = (text, query) => {
     if (!query) return text;
-    
+    const safe = escapeRegExp(query);
     return text
-      .split(new RegExp(`(${safeSearch})`, 'gi'))
+      .split(new RegExp(`(${safe})`, 'gi'))
       .map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
           <span key={i} style={{ color: '#16675C', fontWeight: 600 }}>
@@ -33,7 +29,8 @@ const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
   };
 
   return (
-    <Link
+      <Link
+          key={`acc-${accessory.id}`}
       to={productUrl}
       style={{ textDecoration: 'none' }}
       onClick={onProductClick}
@@ -48,27 +45,23 @@ const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
           transition: 'background 0.2s',
           borderBottom: !isLastItem ? '1px solid #f0f0f0' : 'none',
           '&:hover': {
-            bgcolor: '#f8f8f8',
+              bgcolor: '#f8f8f8',
+              transform: 'translateX(4px)',
           },
         }}
       >
-        <Box
-          component="img"
-          src={imageUrl}
-          alt={product.name}
-          onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/80?text=No+Image';
-          }}
-          sx={{
-            width: 80,
-            height: 80,
-            objectFit: 'cover',
-            borderRadius: '8px',
-            flexShrink: 0,
-            bgcolor: '#f5f5f5',
-          }}
-        />
-
+         <Box
+           sx={{
+             width: 50,
+              height: 50,
+              borderRadius: '8px',
+              display: 'grid', placeItems: 'center',
+              bgcolor: '#E8F5E9',
+              border: '1px solid #e0e0e0',
+              }}
+         >
+          <KitchenIcon sx={{ color: '#16675C', fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+        </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant="body1"
@@ -78,13 +71,23 @@ const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
               mb: 0.5,
             }}
           >
-            {highlightText(product.name, searchInput)}
+            {highlightText(accessory.name, searchInput)}
           </Typography>
           
-          <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-            {product.category?.name || 'Coffee'}
-          </Typography>
-          
+          {accessory.category?.name && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: '#666',
+                fontSize: '12px',
+                display: 'block',
+                mb: 0.3,
+              }}
+            >
+              {accessory.category.name}
+            </Typography>
+          )}
+
           <Typography
             variant="body1"
             sx={{
@@ -100,4 +103,4 @@ const ProductItem = ({ product, searchInput, onProductClick, isLastItem }) => {
   );
 };
 
-export default ProductItem;
+export default AccessoryItem;
