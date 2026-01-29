@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { apiWithAuth } from "../api/axios";
+import api, { apiWithAuth } from "../api/axios";
 
 export const fetchFavorites = createAsyncThunk(
   "favorites/fetchFavorites",
@@ -31,64 +31,39 @@ export const fetchFavorites = createAsyncThunk(
         return [];
       }
 
-      const productsFromStore = state.products?.items || [];
-      const accessoriesFromStore = state.accessories?.items || [];
+      const currentCurrency = state.settings?.currency;
 
       const productIds = items.filter(item => item.product).map(item => item.product);
       const accessoryIds = items.filter(item => item.accessory).map(item => item.accessory);
       const supplyIds = items.filter(item => item.supply).map(item => item.supply);
 
-      const mappedItems = [];
+      const fetchedItems = [];
 
-      productIds.forEach(id => {
-        const productFromStore = productsFromStore.find(p => p.id === id);
-        if (productFromStore) {
-          mappedItems.push({ ...productFromStore, type: 'product' });
-        } else {
-
-          mappedItems.push({ id, type: 'product', _needsFetch: true });
+      for (const id of productIds) {
+        try {
+          const res = await api.get(`/products/${id}`, {
+            params: { currency: currentCurrency },
+          });
+          fetchedItems.push({ ...res.data, type: 'product' });
+        } catch (error) {
+          console.warn(`Failed to fetch product ${id}:`, error);
         }
-      });
-
-      accessoryIds.forEach(id => {
-        const accessoryFromStore = accessoriesFromStore.find(a => a.id === id);
-        if (accessoryFromStore) {
-          mappedItems.push({ ...accessoryFromStore, type: 'accessory' });
-        } else {
-
-          mappedItems.push({ id, type: 'accessory', _needsFetch: true });
-        }
-      });
-
-      supplyIds.forEach(id => {
-        mappedItems.push({ id, type: 'supply', _needsFetch: true });
-      });
-
-      const needsFetch = mappedItems.filter(item => item._needsFetch);
-      if (needsFetch.length > 0) {
-
-        const fetchedItems = [];
-        for (const item of needsFetch) {
-          try {
-            await new Promise(resolve => setTimeout(resolve, 100)); 
-            if (item.type === 'product') {
-              const res = await apiWithAuth.get(`/products/${item.id}`);
-              fetchedItems.push({ ...res.data, type: 'product' });
-            } else if (item.type === 'accessory') {
-              const res = await apiWithAuth.get(`/accessories/${item.id}`);
-              fetchedItems.push({ ...res.data, type: 'accessory' });
-            }
-          } catch (error) {
-            console.warn(`Failed to fetch ${item.type} ${item.id}:`, error);
-
-          }
-        }
-
-        const finalItems = mappedItems.filter(item => !item._needsFetch).concat(fetchedItems);
-        return finalItems;
       }
 
-      return mappedItems;
+      for (const id of accessoryIds) {
+        try {
+          const res = await api.get(`/accessories/${id}`, {
+            params: { currency: currentCurrency },
+          });
+          fetchedItems.push({ ...res.data, type: 'accessory' });
+        } catch (error) {
+          console.warn(`Failed to fetch accessory ${id}:`, error);
+        }
+      }
+
+      // supplyIds сейчас не используются для отображения карточек
+
+      return fetchedItems;
     } catch (error) {
       // Интерцептор автоматически обработает 401 и попытается обновить токен
       // Если токен не может быть обновлен, интерцептор отклонит запрос

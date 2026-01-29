@@ -1,4 +1,5 @@
 import { createSlice, createSelector } from "@reduxjs/toolkit";
+import { getPrice, getProductPrice } from "../../components/utils/priceUtils.jsx";
 
 const initialState = {
   items: {},          // { [key]: { product, quantity } }
@@ -75,12 +76,19 @@ export const selectCartCount = createSelector(
 );
 
 export const selectCartTotal = createSelector(
-  selectCartItems,
-  (items) =>
-    items.reduce(
-      (sum, [, item]) => sum + ((Number(item?.product?.price) || 0) * (item?.quantity || 0)),
-      0
-    )
+  (state) => state.cart.items || {},
+  (state) => state.settings.currency,
+  (items, currency) =>
+    Object.entries(items).reduce((sum, [, item]) => {
+      const product = item?.product || {};
+      const quantity = item?.quantity || 0;
+      const supplies = product.supplies || [];
+      const selectedSupply = supplies.find((s) => s.id === product.selectedSupplyId);
+      const unitPrice = selectedSupply
+        ? getPrice(selectedSupply, currency)
+        : getProductPrice(product, currency);
+      return sum + unitPrice * quantity;
+    }, 0)
 );
 
 export const { addToCart, decrementQuantity, removeFromCart, clearCart, completeOrder, resetOrderStatus} = cartSlice.actions;

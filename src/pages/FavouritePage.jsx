@@ -92,13 +92,14 @@ export default function FavouritePage() {
   const token = useSelector(state => state.auth.token);
   const user = useSelector(state => state.auth.user);
   const cartEntries = useSelector(selectCartItems);
-  const currency = useSelector((state) => state.settings?.selectedCurrency || 'USD');
+  const currency = useSelector((state) => state.settings.currency || 'USD');
   
   const [loginOpen, setLoginOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   
   const hasLoadedRef = useRef(false);
+  const lastCurrencyRef = useRef(null);
   const modalOpenedRef = useRef(false);
 
 
@@ -111,11 +112,12 @@ export default function FavouritePage() {
       return;
     }
 
-    if (!hasLoadedRef.current) {
+    if (!hasLoadedRef.current || lastCurrencyRef.current !== currency) {
       hasLoadedRef.current = true;
+      lastCurrencyRef.current = currency;
       dispatch(fetchFavorites());
     }
-  }, [token, user, dispatch]);
+  }, [token, user, currency, dispatch]);
 
   const favoritesMap = useMemo(() => {
     return favorites.reduce((acc, item) => {

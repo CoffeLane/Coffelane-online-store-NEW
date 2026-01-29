@@ -13,6 +13,7 @@ import cancelledImg from "../../assets/images/status/cancelled.png";
 import { useNavigate } from "react-router-dom";
 import { default as api } from "../../store/api/axios.js";
 import PaginationControl from "../PaginationControl/PaginationControl.jsx";
+import { getCurrencySymbol } from "../utils/priceUtils.jsx";
 
 const ordersPerPage = 10;
 
@@ -227,6 +228,8 @@ export default function OrderHistory() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: isMobile ? 1 : 0 }}>
       {paginatedOrders.map(order => {
+        const currencyCode = order.currency || "USD";
+        const currencySymbol = getCurrencySymbol(currencyCode);
         const totalAmount =
           order.order_amount && !isNaN(Number(order.order_amount))
             ? Number(order.order_amount).toFixed(2)
@@ -258,7 +261,9 @@ export default function OrderHistory() {
                 </Box>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Total Amount</Typography>
-                  <Typography sx={{ fontWeight: 600 }}>${order.order_amount || totalAmount}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>
+                    {currencySymbol}{order.order_amount || totalAmount}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Status</Typography>
@@ -331,7 +336,7 @@ export default function OrderHistory() {
                       </Box>
 
                       <Typography sx={{ fontWeight: 600, color: "#16675C" }}>
-                        ${displayPrice}
+                        {currencySymbol}{displayPrice}
                       </Typography>
                     </Box>
                   );

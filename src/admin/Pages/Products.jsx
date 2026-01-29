@@ -19,6 +19,8 @@ export default function Products() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState('Category');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   
   // Обработчик обновления продукта (для локального обновления статуса)
   const handleProductUpdated = (productId, updates) => {
@@ -33,10 +35,25 @@ export default function Products() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Обновляем список продуктов при монтировании и при изменении страницы
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const needFullDataset = useMemo(() => {
+    const q = (debouncedSearchQuery || '').trim();
+    return (categoryFilter !== 'Category' && !!categoryFilter) || q.length > 0;
+  }, [categoryFilter, debouncedSearchQuery]);
+
+  // Обновляем список продуктов при изменении страницы/режима (постраничный vs полный набор)
+  useEffect(() => {
+    if (needFullDataset) {
+      if (page !== 1) setPage(1);
+      fetchAllProductsForFilter();
+      return;
+    }
     fetchAllProducts(page);
-  }, [page]);
+  }, [page, needFullDataset]);
 
   // Обновляем список продуктов, если пришли с флагом refresh
   useEffect(() => {
@@ -50,7 +67,7 @@ export default function Products() {
       }, 5000); // Увеличено до 5 секунд, чтобы дать время серверу обработать и сохранить фото
       return () => clearTimeout(timer);
     }
-  }, [location.state]);
+  }, [location.state, navigate, location.pathname, page]);
 
   // Прокручиваем в начало таблицы при изменении страницы (без анимации, чтобы избежать дергания)
   useEffect(() => {
@@ -62,12 +79,12 @@ export default function Products() {
 
   // Сбрасываем страницу при изменении категории и загружаем все продукты для фильтрации
   useEffect(() => {
-    setPage(1);
-    if (categoryFilter !== 'Category') {
-      // При выборе категории загружаем все продукты для корректной фильтрации
-      fetchAllProductsForFilter();
-    }
+    if (page !== 1) setPage(1);
   }, [categoryFilter]);
+
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+  }, [debouncedSearchQuery]);
 
   const fetchAllProducts = async (pageNumber = 1) => {
     try {
@@ -222,20 +239,53 @@ export default function Products() {
     };
   });
 
-  const allSelected = selectedIds.length === adminProducts.length;
+  const normalize = (v) => String(v ?? '').trim().toLowerCase();
+  const shouldLocalPaginate = useMemo(() => {
+    return (categoryFilter !== 'Category' && !!categoryFilter) || !!normalize(debouncedSearchQuery);
+  }, [categoryFilter, debouncedSearchQuery]);
 
   const filteredProducts = useMemo(() => {
-    if (categoryFilter === 'Category' || !categoryFilter) return adminProducts;
-    return adminProducts.filter(p => {
-      const productCategory = (p.category || '').trim();
-      const filterCategory = categoryFilter.trim();
-      return productCategory.toLowerCase() === filterCategory.toLowerCase();
+    const q = normalize(debouncedSearchQuery);
+    const byCategory =
+      categoryFilter === 'Category' || !categoryFilter
+        ? adminProducts
+        : adminProducts.filter(p => {
+            const productCategory = (p.category || '').trim();
+            const filterCategory = categoryFilter.trim();
+            return productCategory.toLowerCase() === filterCategory.toLowerCase();
+          });
+
+    if (!q) return byCategory;
+    return byCategory.filter((p) => {
+      const haystack = [
+        p.id,
+        p.name,
+        p.category,
+        p.status,
+        p.type,
+        p.price,
+        p.stock,
+      ].map(normalize).join(' ');
+      return haystack.includes(q);
     });
-  }, [adminProducts, categoryFilter]);
+  }, [adminProducts, categoryFilter, debouncedSearchQuery]);
+
+  const itemsPerPage = 10;
+  const visibleRows = useMemo(() => {
+    if (!shouldLocalPaginate) return filteredProducts;
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, page, shouldLocalPaginate]);
+
+  const isAllSelectedForView = useMemo(() => {
+    if (visibleRows.length === 0) return false;
+    return visibleRows.every((p) => selectedIds.includes(p.id));
+  }, [visibleRows, selectedIds]);
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
-      setSelectedIds(filteredProducts.map(p => p.id));
+      setSelectedIds(visibleRows.map(p => p.id));
     } else {
       setSelectedIds([]);
     }
@@ -300,7 +350,7 @@ export default function Products() {
 
         <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Search />
+            <Search value={searchQuery} onChange={(v) => setSearchQuery(v)} />
           </Box>
           <Button variant="contained" onClick={() => navigate('add')} startIcon={<AddIcon />} sx={{ ...btnCart, fontSize: { xs: '12px', md: '14px' }, py: { xs: 0.75, md: 1 }, width: { xs: '100%', sm: 'auto' } }}>
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Add new product</Box>
@@ -316,7 +366,7 @@ export default function Products() {
         selectedIds={selectedIds}
         handleSelectAll={handleSelectAll}
         handleSelectOne={handleSelectOne}
-        allSelected={allSelected}
+        allSelected={isAllSelectedForView}
         h5={h5}
         checkboxStyles={checkboxStyles}
         page={page}
@@ -327,6 +377,8 @@ export default function Products() {
         variant="admin"
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
+        searchQuery={debouncedSearchQuery}
+        onProductUpdated={handleProductUpdated}
       />
     </Box>
   );

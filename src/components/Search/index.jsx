@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TextField, InputAdornment, Box, IconButton, } from '@mui/material';
 import SearchIcon from '../../assets/icons/search-icon.svg';
 
-const Search = () => {
-  const [value, setValue] = useState('');
+const Search = ({ value: controlledValue, onChange, placeholder = 'Search' }) => {
+  const isControlled = controlledValue !== undefined;
+  const [uncontrolledValue, setUncontrolledValue] = useState('');
 
-  const onChange = (e) => {
-    setValue(e.target.value);
+  const value = useMemo(
+    () => (isControlled ? controlledValue : uncontrolledValue),
+    [isControlled, controlledValue, uncontrolledValue]
+  );
+
+  const handleChange = (e) => {
+    const nextValue = e.target.value;
+    if (!isControlled) setUncontrolledValue(nextValue);
+    onChange?.(nextValue, e);
   };
 
   return (
     <Box sx={{width: { xs: '100%', sm: '240px' }, height:'52px'}}>
-      <TextField fullWidth variant="outlined" size="small" placeholder="Search" onChange={onChange} autoComplete="off" autoCorrect="off"
+      <TextField
+        fullWidth
+        variant="outlined"
+        size="small"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        autoComplete="off"
+        autoCorrect="off"
         sx={{
           '& .MuiOutlinedInput-root': {
             borderRadius: '16px',
