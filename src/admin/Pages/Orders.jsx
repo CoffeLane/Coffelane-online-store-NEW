@@ -7,7 +7,7 @@ import ProductsTableOrders from '../AdminComponents/ProductsTableOrders.jsx';
 import AdminBreadcrumbs from '../AdminBreadcrumbs/AdminBreadcrumbs.jsx';
 import OrderDetails from '../AdminComponents/OrderDetails.jsx';
 import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
-import { apiWithAuth, default as api } from '../../store/api/axios.js';
+import { default as api } from '../../store/api/axios.js';
 
 const PRODUCT_PLACEHOLDER = 'https://via.placeholder.com/150?text=No+Product';
 
@@ -19,6 +19,7 @@ console.log('Orders from Redux store:', orders);
   const rowsPerPage = 20;
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [photoCache, setPhotoCache] = useState(new Map()); 
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     dispatch(fetchOrders({ page, size: rowsPerPage, ordering: '-id' }));
@@ -197,6 +198,27 @@ console.log('Orders from Redux store:', orders);
       };
     });
 
+  const normalize = (v) => String(v ?? '').trim().toLowerCase();
+  const filteredOrders = useMemo(() => {
+    const q = normalize(searchQuery);
+    if (!q) return transformedOrders;
+    return transformedOrders.filter((o) => {
+      const haystack = [
+        o.ID,
+        o.customer,
+        o.customerId,
+        o.status,
+        o.date,
+        o.total,
+        o.items,
+        ...(o.itemsList || []).flatMap((it) => [it.name]),
+      ]
+        .map(normalize)
+        .join(' ');
+      return haystack.includes(q);
+    });
+  }, [transformedOrders, searchQuery]);
+
   const totalPages = Math.ceil((count || 0) / rowsPerPage);
 
   const handlePageChange = (e, newPage) => {
@@ -234,13 +256,16 @@ console.log('Orders from Redux store:', orders);
         <Box mb={3} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 2, sm: 0 } }}>
           <AdminBreadcrumbs />
           <Box display="flex" gap={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Search />
+            <Search value={searchQuery} onChange={(v) => {
+              setSearchQuery(v);
+              setSelectedOrder(null);
+            }} />
           </Box>
         </Box>
 
         <Box sx={{ flex: 1, minHeight: 0 }}>
           <ProductsTableOrders
-            products={transformedOrders}
+            products={filteredOrders}
             h5={h5}
             page={page}
             totalPages={totalPages}

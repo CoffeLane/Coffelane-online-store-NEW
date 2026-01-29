@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Typography, CircularProgress } from '@mui/material';
-import NoResults from '../../assets/icons/cute-barista-cat-mascot-wearing-a-coffee-shop-apr.svg';
+import { Box, Typography, CircularProgress, useTheme, useMediaQuery } from '@mui/material';
+import NoResults from '../../assets/icons/noResults.svg';
 
 export const LoadingState = () => (
   <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -27,16 +27,34 @@ export const EmptyInputState = () => (
   </Box>
 );
 
-export const NoResultsState = ({ searchInput }) => (
-  <Box sx={{ textAlign: 'center', py: 4 }}>
-    <Typography variant="h6" sx={{ color: '#232323', mb: 1 }}>
-      We couldn't find any results for 
-      <span style={{ fontWeight: 700 }}> "{searchInput}"</span>. Try with a different keyword.
-    </Typography>
-    <img 
-      src={NoResults} 
-      alt="no-results" 
-      style={{ width: '560px', height: '315px', maxWidth: '100%' }} 
-    />
-  </Box>
-);
+
+export const NoResultsState = ({ searchInput }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  return (
+    <Box sx={{ textAlign: 'center', py: isMobile ? 2 : 4, px: 2 }}>
+      <Typography
+        variant={isMobile ? "body1" : "h6"}
+        sx={{ color: '#232323', mb: isMobile ? 1 : 2 }}
+      >
+        We couldn't find any results for
+        <span style={{ fontWeight: 700 }}> "{searchInput}"</span>. Try with a different keyword.
+      </Typography>
+      <Box
+        component="img"
+        src={NoResults}
+        alt="no-results"
+        sx={{
+          width: '100%',
+          maxWidth: isMobile ? 300 : 560,
+          height: 'auto',
+          maxHeight: isMobile ? 180 : 315,
+          margin: '0 auto',
+        }}
+      />
+    </Box>
+  );
+};
+
+export default NoResultsState;

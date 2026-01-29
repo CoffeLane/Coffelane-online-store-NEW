@@ -5,37 +5,61 @@ import CategoryHeader from '../CategoryHeader.jsx';
 import ActionsMenu from '../ActionsMenu.jsx';
 import PaginationControl from '../../../components/PaginationControl/PaginationControl.jsx';
 
-export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh, onProductUpdated}) {
+const ALL_BRANDS = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+const normalize = (v) => String(v ?? '').trim().toLowerCase();
 
-  const allBrands = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+export default function ProductsTable({ products, selectedIds, handleSelectAll, handleSelectOne, allSelected, h5, checkboxStyles, page, totalPages, onPageChange, variant, categoryFilter, setCategoryFilter, onRefresh, onProductUpdated, searchQuery = '' }) {
+
   const categories = useMemo(() => {
     const productCategories = new Set(products.map(p => p.category));
-    const allCategories = ['Category', ...allBrands, ...Array.from(productCategories)];
+    const allCategories = ['Category', ...ALL_BRANDS, ...Array.from(productCategories)];
     return Array.from(new Set(allCategories));
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    if (categoryFilter === 'Category' || !categoryFilter) return products;
-    return products.filter(p => {
+    const q = normalize(searchQuery);
+    const byCategory =
+      categoryFilter === 'Category' || !categoryFilter
+        ? products
+        : products.filter(p => {
       const productCategory = (p.category || '').trim();
       const filterCategory = categoryFilter.trim();
       return productCategory.toLowerCase() === filterCategory.toLowerCase();
     });
-  }, [products, categoryFilter]);
+
+    if (!q) return byCategory;
+    return byCategory.filter((p) => {
+      const haystack = [
+        p.id,
+        p.name,
+        p.category,
+        p.status,
+        p.type,
+        p.price,
+        p.stock,
+      ]
+        .map(normalize)
+        .join(' ');
+      return haystack.includes(q);
+    });
+  }, [products, categoryFilter, searchQuery]);
 
   const itemsPerPage = 10;
-  const calculatedTotalPages = categoryFilter === 'Category' || !categoryFilter
-    ? totalPages
-    : Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
+  const shouldLocalPaginate =
+    (categoryFilter !== 'Category' && !!categoryFilter) || !!normalize(searchQuery);
+
+  const calculatedTotalPages = shouldLocalPaginate
+    ? Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage))
+    : totalPages;
   
   const paginatedFilteredProducts = useMemo(() => {
-    if (categoryFilter === 'Category' || !categoryFilter) {
+    if (!shouldLocalPaginate) {
       return filteredProducts;
     }
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredProducts.slice(startIndex, endIndex);
-  }, [filteredProducts, page, categoryFilter, itemsPerPage]);
+  }, [filteredProducts, page, shouldLocalPaginate]);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
