@@ -1,170 +1,213 @@
-import React from "react";
-import { Box, Typography, CircularProgress } from "@mui/material";
-import { Link } from "react-router-dom";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Divider,
+  List,
+  ListItem,
+} from "@mui/material";
 import { useSelector } from "react-redux";
-import { getPrice, getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
-import KitchenIcon from "@mui/icons-material/Kitchen";
-import NoResultsState from "../SearchDropdown/SearchStates.jsx";
+import { getProductPrice, formatPrice } from "../utils/priceUtils";
+import { Link as RouterLink } from "react-router-dom";
+import NoResults from "../../assets/icons/noResults.svg";
+// Не забудьте импортировать иконку!
+import CoffeeIcon from "@mui/icons-material/Coffee";
 
-const overlaySx = {
-  position: "fixed",
-  inset: 0,
-  bgcolor: "rgba(0,0,0,0.4)",
-  zIndex: 1200,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-  pt: { xs: 4, sm: 6, md: 11 },
-  px: { xs: 2, sm: 0 },
-};
-
-const panelSx = {
-  bgcolor: "white",
-  borderRadius: "12px",
-  boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
-  minWidth: { xs: "280px", sm: "380px", md: "500px" },
-  maxWidth: { xs: "calc(100% - 32px)", sm: "700px", md: "800px" },
-  maxHeight: "70vh",
-  overflowY: "auto",
-};
-
-const SearchDropdown = ({ loading, query, onClose, error }) => {
+function SearchDropdown({ loading, query, onClose }) {
+  const [tabValue, setTabValue] = useState(0);
   const currency = useSelector((state) => state.settings.currency);
+
   const products = useSelector((state) => state.search.products || []);
   const accessories = useSelector((state) => state.search.accessories || []);
-  const totalResults = products.length + accessories.length;
 
-  if (!query || !query.trim()) return null;
+  const allResults = [...products, ...accessories];
+  const currentItems = tabValue === 0 ? allResults : products;
 
-  if (loading) {
+  if (!query.trim()) return null;
+
+  if (!loading && allResults.length === 0) {
     return (
-      <Box sx={overlaySx} onClick={onClose}>
-        <Box sx={{ ...panelSx, p: 2, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-          <CircularProgress sx={{ color: '#A4795B' }} />
-          <Typography variant="caption" sx={{ display: "block", mt: 1, color: "#666" }}>
-            Searching...
-          </Typography>
-        </Box>
+      <Box sx={{ p: 4, textAlign: "center", bgcolor: "white" }}>
+        <Typography variant="body1" color="text.secondary">
+          No results found for "{query}"
+        </Typography>
+        <Box
+          component="img"
+          src={NoResults}
+          alt="no-results"
+          sx={{
+            width: "100%",
+            maxWidth: { xs: 300, md: 560 },
+            height: "auto",
+            maxHeight: { xs: 180, md: 315 },
+            margin: "20px auto 0",
+          }}
+        />
       </Box>
     );
   }
 
-  if (error) {
-    return (
-      <Box sx={overlaySx} onClick={onClose}>
-        <Box sx={{ ...panelSx, p: 2 }} onClick={(e) => e.stopPropagation()}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "#d32f2f" }}>
-            <ErrorOutlineIcon fontSize="small" />
-            <Typography variant="body2">{error}</Typography>
-          </Box>
-        </Box>
-      </Box>
+  const highlightText = (text, highlight) => {
+    if (!highlight.trim()) return text;
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    return parts.map((part, i) =>
+      part.toLowerCase() === highlight.toLowerCase() ? (
+        <span key={i} style={{ color: "#16675C", fontWeight: 700 }}>
+          {part}
+        </span>
+      ) : (
+        part
+      ),
     );
-  }
-
-  if (!totalResults) {
-    return (
-      <Box sx={overlaySx} onClick={onClose}>
-        <Box sx={{ ...panelSx, p: 2, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-          <NoResultsState searchInput={query} />
-        </Box>
-      </Box>
-    );
-  }
+  };
 
   return (
-    <Box sx={overlaySx} onClick={onClose}>
-      <Box sx={panelSx} onClick={(e) => e.stopPropagation()}>
+    <Box
+      sx={{ width: "100%", bgcolor: "white", borderRadius: "0 0 12px 12px" }}
+    >
+      <Tabs
+        value={tabValue}
+        onChange={(e, newValue) => setTabValue(newValue)}
+        variant="fullWidth"
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
+        }}
+      >
+        <Tab label={`All results ${allResults.length}`} />
+        <Tab label={`Products ${products.length}`} />
+      </Tabs>
 
-        {/* PRODUCTS */}
-        {products.length > 0 && (
-          <>
-            <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8f8f8", borderBottom: "1px solid #e0e0e0", position: "sticky", top: 0, zIndex: 1 }}>
-              <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 0.5, fontWeight: 600, color: "#666" }}>
-                Products ({products.length})
-              </Typography>
-            </Box>
-
-            {products.slice(0, 8).map((item) => {
-              const imageUrl = item.photos_url?.[0]?.url || item.photos_url?.[0] || '';
-              const supply = item.supplies?.[0];
-              const price = supply ? getPrice(supply, currency) : getProductPrice(item, currency);
-              const productUrl = `/coffee/product/${item.id}`;
-
-              return (
-                <Link key={item.id} to={productUrl} style={{ textDecoration: "none" }} onClick={onClose}>
-                  <Box sx={{ display: "flex", alignItems: "center", p: 1.5, gap: 1.5, cursor: "pointer", borderBottom: "1px solid #f5f5f5", "&:last-child": { borderBottom: "none" } }}>
-                    <Box component="img" src={imageUrl} alt={item.name} onError={(e) => { e.target.src = "https://via.placeholder.com/50?text=No+Image"; }} sx={{ width: 50, height: 50, objectFit: "cover", borderRadius: "6px", flexShrink: 0, bgcolor: "#f5f5f5" }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: "#232323", mb: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#16675C", fontWeight: 600, fontSize: "14px" }}>
-                        {formatPrice(price, currency)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Link>
-              );
-            })}
-          </>
-        )}
-
-        {/* ACCESSORIES */}
-        {accessories.length > 0 && (
-          <>
-            <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8f8f8", borderBottom: "1px solid #e0e0e0", position: "sticky", top: 0, zIndex: 1, mt: products.length > 0 ? 1 : 0 }}>
-              <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 0.5, fontWeight: 600, color: "#666" }}>
-                Accessories ({accessories.length})
-              </Typography>
-            </Box>
-
-            {accessories.slice(0, 4).map((item) => {
+      <Box sx={{ maxHeight: "420px", overflowY: "auto" }}>
+        {loading ? (
+          <Typography sx={{ p: 3, textAlign: "center" }}>Loading...</Typography>
+        ) : (
+          <List sx={{ p: 0 }}>
+            {currentItems.map((item) => {
               const price = getProductPrice(item, currency);
-              const productUrl = `/accessories/product/${item.id}`;
+              const imageUrl = item.photos_url?.[0]?.url || item.image;
+              const itemPath =
+                item.category === "accessories"
+                  ? `/accessories/product/${item.id}`
+                  : `/coffee/product/${item.id}`;
 
               return (
-                <Link key={`acc-${item.id}`} to={productUrl} style={{ textDecoration: "none" }} onClick={onClose}>
-                  <Box sx={{ display: "flex", alignItems: "center", p: 1.5, gap: 1.5, cursor: "pointer" }}>
-                    <Box sx={{ width: 50, height: 50, borderRadius: "8px", display: "grid", placeItems: "center", bgcolor: "#E8F5E9", border: "1px solid #e0e0e0" }}>
-                      <KitchenIcon sx={{ color: "#16675C", fontSize: 28, display: "flex", alignItems: "center", justifyContent: "center" }} />
+                <ListItem
+                  key={item.id}
+                  component={RouterLink}
+                  to={itemPath}
+                  onClick={onClose}
+                  sx={{
+                    gap: 2,
+                    alignItems: "flex-start",
+                    p: 2,
+                    borderBottom: "1px solid #f0f0f0",
+                    textDecoration: "none",
+                    color: "inherit",
+                    "&:hover": { bgcolor: "#f9f9f9" },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      position: "relative",
+                      bgcolor: "#eee",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <CoffeeIcon sx={{ color: "#ccc", fontSize: 32 }} />
                     </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: "#232323", mb: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {item.name}
-                      </Typography>
-                      {item.category && (
-                        <Typography variant="caption" sx={{ color: "#666", fontSize: "12px", display: "block", mb: 0.3 }}>
-                          {item.category}
-                        </Typography>
-                      )}
-                      <Typography variant="caption" sx={{ color: "#16675C", fontWeight: 600, fontSize: "14px" }}>
-                        {formatPrice(price, currency)}
-                      </Typography>
-                    </Box>
+
+                    {imageUrl && (
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        sx={{
+                          position: "relative",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          zIndex: 1,
+                        }}
+                        onError={(e) => {
+                          if (e.currentTarget) {
+                            e.currentTarget.style.display = "none";
+                          }
+                        }}
+                      />
+                    )}
                   </Box>
-                </Link>
+
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}
+                    >
+                      {highlightText(item.name, query)}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 1 }}
+                    >
+                      {item.description?.substring(0, 60)}...
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 700, color: "#16675C" }}
+                    >
+                      {formatPrice(price, currency)}
+                    </Typography>
+                  </Box>
+                </ListItem>
               );
             })}
-          </>
+          </List>
         )}
+      </Box>
 
-        {totalResults > 8 && (
-          <Box sx={{ borderTop: "1px solid #e3e3e3", p: 1.5, textAlign: "center", bgcolor: "#fafafa" }}>
-            <Link to={`/coffee?search=${encodeURIComponent(query)}`} style={{ textDecoration: "none" }} onClick={onClose}>
-              <Typography variant="body2" sx={{ color: "#16675C", fontWeight: 600, "&:hover": { textDecoration: "underline" } }}>
-                See all {totalResults} results →
-              </Typography>
-            </Link>
-          </Box>
-        )}
-
+      <Divider />
+      {/* Футер дропдауна */}
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          cursor: "pointer",
+          "&:hover": { bgcolor: "#f9f9f9" },
+        }}
+      >
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            Which capsules are the top choice among customers?
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Among the most popular are{" "}
+            <span style={{ color: "#16675C" }}>Instant coffee...</span>
+          </Typography>
+        </Box>
+        <Typography sx={{ color: "#999", fontWeight: 300, fontSize: 24 }}>
+          &rsaquo;
+        </Typography>
       </Box>
     </Box>
   );
-};
+}
 
 export default SearchDropdown;
-
-
