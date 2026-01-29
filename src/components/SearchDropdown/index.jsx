@@ -15,7 +15,7 @@ const overlaySx = {
   display: "flex",
   justifyContent: "center",
   alignItems: "flex-start",
-  pt: { xs: 19, md: 17 },
+  pt: { xs: 17, md: 19 },
   px: 2,
 
 };
@@ -137,7 +137,8 @@ const SearchDropdown = ({ results, loading, query, onClose, error }) => {
             </Box>
 
             {products.slice(0, 8).map((product) => {
-              const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || ''; const supply = product.supplies?.[0];
+              const imageUrl = product.photos_url?.[0]?.url || product.photos_url?.[0] || ''; 
+              const supply = product.supplies?.[0];
               const price = supply
                 ? getPrice(supply, currency)
                 : getProductPrice(product, currency);
