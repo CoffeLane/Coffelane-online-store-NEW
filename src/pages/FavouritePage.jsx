@@ -20,20 +20,16 @@ import LoginModal from "../components/Modal/LoginModal.jsx";
 import { formatPrice, getPrice, getProductPrice } from "../components/utils/priceUtils.jsx";
 import CoffeeIcon from '@mui/icons-material/Coffee';
 
-// Вспомогательный компонент для изображений с обработкой ошибок (как в CoffeeCardData)
-const FavoriteProductImage = ({ item, isMobile }) => {
+const FavoriteProductImage = ({ item}) => {
   const [hasError, setHasError] = React.useState(false);
   
-  // Извлекаем фото из различных полей (как в других компонентах)
   let imageUrl = null;
   
-  // Проверяем photos_url
   if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
     const firstPhoto = item.photos_url[0];
     imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
   }
   
-  // Проверяем product_photos (для продуктов)
   if (!imageUrl && item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
     const firstPhoto = item.product_photos[0];
     if (firstPhoto.photo) {
@@ -43,13 +39,11 @@ const FavoriteProductImage = ({ item, isMobile }) => {
     }
   }
   
-  // Проверяем accessory_photos (для аксессуаров)
   if (!imageUrl && item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
     const firstPhoto = item.accessory_photos[0];
     imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
   }
   
-  // Если URL относительный, добавляем базовый URL
   if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http') && !imageUrl.startsWith('blob:')) {
     const baseUrl = 'https://onlinestore-928b.onrender.com';
     imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
@@ -148,14 +142,12 @@ export default function FavouritePage() {
     
     const isProduct = item.type === "product";
     const supply = isProduct ? item.supplies?.[0] : null;
-    
-    // Проверка наличия товара
     const isOutOfStock = isProduct 
       ? (!supply || Number(supply.quantity || 0) <= 0)
       : ((item.quantity !== undefined ? Number(item.quantity) : 0) <= 0);
     
     if (isOutOfStock) {
-      return; // Не добавляем товар, если его нет в наличии
+      return; 
     }
     
     dispatch(addToCart({
@@ -223,10 +215,8 @@ export default function FavouritePage() {
               ? (supply ? getPrice(supply, currency) : getProductPrice(item, currency))
               : getProductPrice(item, currency);
             
-            // Проверка наличия товара
             let isOutOfStock = false;
             if (isProduct) {
-              // Для продуктов проверяем quantity в supplies
               if (!item.supplies || item.supplies.length === 0) {
                 isOutOfStock = true;
               } else if (!supply) {
@@ -236,7 +226,6 @@ export default function FavouritePage() {
                 isOutOfStock = supplyQuantity <= 0;
               }
             } else {
-              // Для аксессуаров проверяем quantity
               const itemQuantity = item.quantity !== undefined && item.quantity !== null ? Number(item.quantity) : 0;
               isOutOfStock = itemQuantity <= 0;
             }

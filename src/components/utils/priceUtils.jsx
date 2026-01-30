@@ -1,15 +1,10 @@
-// price including currency conversion utils
-// Базовая валюта бэкенда — USD.
-// Здесь делаем предсказуемую конвертацию на фронте:
-// - берём basePrice в долларах (supply.price / product.price)
-// - умножаем на коэффициент валюты.
 const CURRENCY_RATES = {
-  USD: 1,        // базовая валюта
-  UAH: 42.77,    // 1 USD = 42.77 UAH
-  EUR: 0.84,     // 1 USD = 0.84 EUR
+  USD: 1,        
+  UAH: 42.77,    
+  EUR: 0.84,   
 };
 
-const toCurrency = (baseUsd, currency = 'USD') => {
+export const toCurrency = (baseUsd, currency = 'USD') => {
   const rate = CURRENCY_RATES[currency] ?? 1;
   return Number(baseUsd || 0) * rate;
 };
