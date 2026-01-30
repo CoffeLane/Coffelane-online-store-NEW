@@ -28,6 +28,7 @@ const PaginationControl = ({ page, totalPages, onPageChange, variant = "catalog"
           "& .MuiPaginationItem-previousNext": {
             borderRadius: "50%",
             backgroundColor: "#FFFFFF",
+            border: "1px solid #E0E0E0",
             margin: { xs: "0 8px", md: "0 96px" },
             minWidth: { xs: "32px", md: "40px" },
             minHeight: { xs: "32px", md: "40px" },
