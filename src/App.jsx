@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { useSelector } from 'react-redux';
-import HomePage from './pages/HomePage.jsx'
+import { useDispatch, useSelector } from 'react-redux';
+import HomePage from './pages/HomePage.jsx';
 import NotFoundPage from './pages/NotFoundPage';
 import Header from './components/Header/index.jsx';
 import Footer from './components/Footer/index.jsx';
@@ -29,75 +28,30 @@ import OrderEdit from './admin/Pages/OrderEdit.jsx';
 import MyAccount from './admin/Pages/MyAccountAdmin.jsx';
 import LoginModalWrapper from './components/Modal/LoginModalWrapper.jsx';
 import { tokenRefreshedFromInterceptor, fetchProfile, setAdminMode, clearAuthState } from "./store/slice/authSlice";
-import { jwtDecode } from "jwt-decode";
 
-
-
-const ADMIN_EMAILS = [
-  'admin@coffeelane.com',
-  'admin@example.com',
-];
-
+const ADMIN_EMAILS = ['admin@coffeelane.com', 'admin@example.com'];
 
 function App() {
-
   const dispatch = useDispatch();
-  const { user, token, loading, error, isAdmin, email } = useSelector(state => state.auth);
+  const { user, loading, error, isAdmin, email } = useSelector(state => state.auth);
 
   useEffect(() => {
-    const logoutFlag = sessionStorage.getItem("logoutFlag");
-    if (logoutFlag === "true") {
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-      localStorage.removeItem("persist:auth");
-      localStorage.removeItem("persist:cart");
-      localStorage.removeItem("persist:favorites");
-      localStorage.removeItem("persist:products");
-      localStorage.removeItem("persist:basket");
-      localStorage.removeItem("isAdmin");
-      localStorage.removeItem("userAvatar");
-      localStorage.removeItem("avatarUploaded");
+    if (sessionStorage.getItem("logoutFlag") === "true") {
+      localStorage.clear(); 
       sessionStorage.removeItem("logoutFlag");
       dispatch(clearAuthState());
     }
-
-    const checkRefreshTokenValidity = () => {
-      const refreshToken = localStorage.getItem("refresh");
-      if (!refreshToken) {
-        return;
-      }
-
-      try {
-        const cleanToken = refreshToken.replace(/^"+|"+$/g, '');
-        const decoded = jwtDecode(cleanToken);
-        const expirationTime = decoded.exp * 1000;
-        const timeUntilExpiration = expirationTime - Date.now();
-        const daysLeft = Math.floor(timeUntilExpiration / (1000 * 60 * 60 * 24));
-        const hoursLeft = Math.floor((timeUntilExpiration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-        if (timeUntilExpiration <= 0) {
-          console.error(`Refresh token истек! Истек: ${new Date(expirationTime).toLocaleString()}`);
-          console.error(`You need to log in again.`);
-        } else {
-        //   console.log(`✅ Refresh token валиден еще ${daysLeft} дней, ${hoursLeft} часов`);
-        //   console.log(`✅ Истекает: ${new Date(expirationTime).toLocaleString()}`);
-        }
-      } catch (error) {
-        console.warn("Unable to verify refresh token expiration date.:", error);
-      }
-    };
-
-    checkRefreshTokenValidity();
 
     const handleRefreshed = (e) => {
       const { access, refresh } = e.detail;
       dispatch(tokenRefreshedFromInterceptor({ access, refresh }));
     };
-    const handleTokenExpired = () => {
-      dispatch(clearAuthState());
-    };
+
+    const handleTokenExpired = () => dispatch(clearAuthState());
+
     window.addEventListener('tokenRefreshed', handleRefreshed);
     window.addEventListener('tokenExpired', handleTokenExpired);
+
     return () => {
       window.removeEventListener('tokenRefreshed', handleRefreshed);
       window.removeEventListener('tokenExpired', handleTokenExpired);
@@ -105,23 +59,16 @@ function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    const tokenFromStorage = localStorage.getItem("access");
-    const currentToken = token || tokenFromStorage;
-    if (currentToken && !user && !loading && !error) {
+    const hasToken = localStorage.getItem("access");
+    if (hasToken && !user && !loading && !error) {
       dispatch(fetchProfile());
     }
-  }, [dispatch, user, token, loading, error]);
-
+  }, [dispatch, user, loading, error]);
 
   useEffect(() => {
     if (user) {
       const userEmail = email || user.email;
-      if (!userEmail) return;
-
-      const isAdminEmail = ADMIN_EMAILS.some(e => userEmail.toLowerCase() === e.toLowerCase());
-      const isAdminRole = user.role === 'admin';
-      const shouldBeAdmin = isAdminEmail || isAdminRole;
-
+      const shouldBeAdmin = user.role === 'admin' || ADMIN_EMAILS.includes(userEmail?.toLowerCase());
       if (shouldBeAdmin !== isAdmin) {
         dispatch(setAdminMode(shouldBeAdmin));
       }
@@ -153,15 +100,10 @@ function App() {
           <Route path="/account" element={<Navigate to="/account/personal-info" replace />} />
           <Route path="/account/:tab" element={<AccountPage />} />
           <Route path="recovery_password/:token" element={<LoginModalWrapper />} />
-
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        <Route path="/admin/*" element={
-          <AdminRoute>
-            <AdminLayout />
-          </AdminRoute>
-        }>
+        <Route path="/admin/*" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<ProductAdd />} />

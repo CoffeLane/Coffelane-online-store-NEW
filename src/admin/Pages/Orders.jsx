@@ -173,9 +173,11 @@ console.log('Orders from Redux store:', orders);
 
       const statusLabels = {
         processing: 'Processing',
+        preparing: 'Preparing',
+        shipping: 'Shipping',
+        in_transit: 'In Transit',
         delivered: 'Delivered',
         delivering: 'Delivered',
-        in_transit: 'Delivered',
         cancelled: 'Cancelled',
         canceled: 'Cancelled',
       };

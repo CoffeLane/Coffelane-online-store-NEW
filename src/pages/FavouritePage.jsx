@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { 
-  Box, Typography, CircularProgress, Card, CardContent, 
-  CardMedia, Button, IconButton, Snackbar, Tooltip, useMediaQuery, useTheme 
-} from "@mui/material";
+import { Box, Typography, CircularProgress, Card, CardContent, CardMedia, Button, IconButton, Snackbar, Tooltip, useMediaQuery, useTheme } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import { useDispatch, useSelector } from "react-redux";
@@ -191,7 +188,7 @@ export default function FavouritePage() {
             Favourite products
           </Typography>
 
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "flex-start", md: "center" }, gap: 1, mb: 4, flexWrap: "nowrap" }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "flex-start", sm: "center" }, gap: 1, mb: 4, flexWrap: "nowrap" }}>
             <Tooltip title="Share favorites list">
               <IconButton onClick={handleShare} sx={{ color: "#16675C", "&:hover": { backgroundColor: "rgba(22, 103, 92, 0.1)" } }}>
                 <ShareIcon />
@@ -236,7 +233,6 @@ export default function FavouritePage() {
                 height: { xs: "auto", md: 480 }, 
                 display: "flex", flexDirection: "column", 
                 borderRadius: "24px", p: { xs: 1.5, md: 2 }, boxShadow: 2,
-                opacity: isOutOfStock ? 0.7 : 1
               }}>
           
                 <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 250 }, mb: { xs: 1.5, md: 2 } }}>

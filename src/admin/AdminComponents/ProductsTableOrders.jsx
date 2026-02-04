@@ -109,7 +109,10 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                                         backgroundColor:
                                                             p.status === 'Delivered' ? '#46d95b' :
                                                                 p.status === 'Processing' ? '#f5c407' :
-                                                                    p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
+                                                                    p.status === 'Preparing' ? '#FF9800' :
+                                                                        p.status === 'Shipping' ? '#2196F3' :
+                                                                            p.status === 'In Transit' ? '#00BCD4' :
+                                                                                p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                         color: '#3E3027',
                                                         fontWeight: 600,
                                                         fontSize: '10px',
@@ -203,7 +206,10 @@ export default function ProductsTableOrders({ products, onRowClick, page, totalP
                                                 backgroundColor:
                                                     p.status === 'Delivered' ? '#46d95b' :
                                                         p.status === 'Processing' ? '#f5c407' :
-                                                            p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
+                                                            p.status === 'Preparing' ? '#FF9800' :
+                                                                p.status === 'Shipping' ? '#2196F3' :
+                                                                    p.status === 'In Transit' ? '#00BCD4' :
+                                                                        p.status === 'Cancelled' ? '#FD8888' : '#E0E0E0',
                                                 color: '#3E3027',
                                                 fontWeight: 600,
                                                 fontSize: { xs: '10px', md: '12px' },

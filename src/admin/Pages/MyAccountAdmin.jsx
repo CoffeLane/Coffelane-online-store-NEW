@@ -397,8 +397,6 @@ export default function MyAccountAdmin() {
           avatarUrl = `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
         }
 
-        console.log("🔍 Extracted avatarUrl from response:", avatarUrl);
-
         const tempAvatarUrl = URL.createObjectURL(fileToUpload);
         setAvatar(tempAvatarUrl);
 
@@ -426,8 +424,6 @@ export default function MyAccountAdmin() {
             }
           }
         } else {
-          console.log("No avatar URL in response, trying to get user ID and fetch via /users/list/{id}/...");
-
           const currentUserId = authUser?.id || authUser?.profile?.id;
 
           if (currentUserId) {

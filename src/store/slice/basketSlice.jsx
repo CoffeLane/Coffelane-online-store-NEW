@@ -71,6 +71,7 @@ const basketSlice = createSlice({
     items: [],
     loading: false,
     error: null,
+    totalAmount: null, 
   },
   reducers: {
     setBasketId: (state, action) => {
@@ -81,6 +82,7 @@ const basketSlice = createSlice({
       state.basketId = null;
       state.items = [];
       state.error = null;
+      state.totalAmount = null;
     },
   },
   extraReducers: (builder) => {
@@ -94,6 +96,46 @@ const basketSlice = createSlice({
         state.basket = action.payload;
         state.basketId = action.payload?.id || null;
         state.items = action.payload?.items || [];
+
+        let backendTotal = action.payload?.total_amount || 
+                          action.payload?.total || 
+                          action.payload?.amount ||
+                          null;
+        
+        const totalPrice = action.payload?.total_price;
+        if (totalPrice && totalPrice !== '0.00' && totalPrice !== 0) {
+          backendTotal = Number(totalPrice);
+        }
+        
+        if (!backendTotal && action.payload?.items && Array.isArray(action.payload.items) && action.payload.items.length > 0) {
+          const calculatedTotal = action.payload.items.reduce((sum, item) => {
+        
+            let itemTotal = 0;
+            if (item.total_price !== undefined && item.total_price !== null && Number(item.total_price) !== 0) {
+              itemTotal = Number(item.total_price);
+            } else if (item.price !== undefined && item.price !== null) {
+              const quantity = item.quantity || 1;
+              itemTotal = Number(item.price) * quantity;
+            } else if (item.unit_price !== undefined && item.unit_price !== null) {
+              const quantity = item.quantity || 1;
+              itemTotal = Number(item.unit_price) * quantity;
+            } else if (item.product?.price !== undefined && item.product?.price !== null) {
+              const quantity = item.quantity || 1;
+              itemTotal = Number(item.product.price) * quantity;
+            } else if (item.accessory?.price !== undefined && item.accessory?.price !== null) {
+              const quantity = item.quantity || 1;
+              itemTotal = Number(item.accessory.price) * quantity;
+            }
+            return sum + itemTotal;
+          }, 0);
+          
+          backendTotal = Math.round(calculatedTotal * 100) / 100;
+        
+        state.totalAmount = backendTotal;
+        
+        } else {
+          state.totalAmount = backendTotal;
+        }
       })
       .addCase(getActiveBasket.rejected, (state, action) => {
         state.loading = false;
@@ -111,6 +153,8 @@ const basketSlice = createSlice({
         if (action.payload?.items) {
           state.items = action.payload.items;
         }
+
+        state.totalAmount = action.payload?.total_amount || action.payload?.total || null;
       })
       .addCase(addItemToBasket.rejected, (state, action) => {
         state.loading = false;
@@ -125,6 +169,8 @@ const basketSlice = createSlice({
         if (action.payload?.items) {
           state.items = action.payload.items;
         }
+        
+        state.totalAmount = action.payload?.total_amount || action.payload?.total || null;
       })
       .addCase(updateBasketItem.rejected, (state, action) => {
         state.loading = false;

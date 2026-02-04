@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   IconButton,
@@ -16,8 +16,9 @@ import CoffeeIcon from "@mui/icons-material/Coffee";
 import deleteIcon from "../../assets/icons/delete-icon.svg";
 import { btnCart } from "../../styles/btnStyles.jsx";
 import { h3, h5 } from "../../styles/typographyStyles.jsx";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { formatPrice, getPrice } from "../utils/priceUtils.jsx";
+import { getActiveBasket } from "../../store/slice/basketSlice.jsx";
 
 const CartItemImage = ({ src, alt, isMobile }) => {
   const [hasError, setHasError] = useState(false);
@@ -73,13 +74,27 @@ export default function BasketModal({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const currency = useSelector((state) => state.settings.currency);
-  const subtotal = items.reduce(
+  const backendTotal = useSelector((state) => state.basket.totalAmount); // Сумма с бэкенда
+  const token = useSelector((state) => state.auth.token);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (open && token && items.length > 0) {
+      dispatch(getActiveBasket());
+    }
+  }, [open, token, dispatch, items.length]);
+  
+  const calculatedSubtotal = items.reduce(
     (s, it) => s + getPrice({ price: it.price }, currency) * it.qty,
     0,
   );
+  const roundedSubtotal = Math.round(calculatedSubtotal * 100) / 100;
+  const subtotal = (backendTotal !== null && backendTotal !== undefined && Number(backendTotal) !== 0)
+    ? Number(backendTotal)
+    : roundedSubtotal;
   const discountVal = getPrice({ price: discount }, currency);
   const total = subtotal - discountVal;
-
+  
   return (
     <Drawer
       anchor="right"

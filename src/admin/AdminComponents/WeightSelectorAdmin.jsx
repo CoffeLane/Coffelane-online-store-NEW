@@ -25,28 +25,36 @@ export default function WeightSelectorAdmin({ weight, setWeight }) {
   };
 
   return (
-    <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+    <Box
+      sx={{
+        mt: 1,
+        display: "flex",
+        gap: 1,
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
+    >
       {weights.map((item) => {
         const isSelected = isWeightSelected(item);
         const isFromBackend = isLoadedFromBackend() && isSelected;
-        
+
         return (
           <Typography
             key={item}
             onClick={() => setWeight(item)}
             sx={{
               ...h6,
-              border: isFromBackend 
-                ? "2px solid #000" 
-                : isSelected 
-                  ? "2px solid #3E3027" 
+              border: isFromBackend
+                ? "2px solid #000"
+                : isSelected
+                  ? "2px solid #3E3027"
                   : "1px solid #3E3027",
               borderRadius: "8px",
               px: 2,
               py: 1,
               cursor: "pointer",
               userSelect: "none",
-              transition: "0.2s"
+              transition: "0.2s",
             }}
           >
             {item}
