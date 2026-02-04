@@ -22,7 +22,7 @@ import cancelledImg from "../../assets/images/status/cancelled.png";
 import { useNavigate } from "react-router-dom";
 import { default as api } from "../../store/api/axios.js";
 import PaginationControl from "../PaginationControl/PaginationControl.jsx";
-import { formatPrice, toCurrency } from "../utils/priceUtils.jsx";
+import { formatPrice } from "../utils/priceUtils.jsx";
 
 const ordersPerPage = 5;
 
@@ -236,18 +236,22 @@ export default function OrderHistory() {
 
   const statusLabels = {
     processing: "Processing",
+    preparing: "Preparing",
+    shipping: "Shipping",
+    in_transit: "In Transit",
     delivered: "Delivered",
     delivering: "Delivered",
-    in_transit: "Delivered",
     cancelled: "Cancelled",
     canceled: "Cancelled",
   };
 
   const statusColors = {
     processing: "#f5c407",
+    preparing: "#FF9800",
+    shipping: "#2196F3",
+    in_transit: "#00BCD4",
     delivered: "#46d95b",
     delivering: "#46d95b",
-    in_transit: "#46d95b",
     cancelled: "#FD8888",
     canceled: "#FD8888",
   };
@@ -331,30 +335,22 @@ export default function OrderHistory() {
     >
       {paginatedOrders.map((order) => {
         const currencyCode = order.currency || "USD";
-        console.log(`Order №${order.id} data:`, {
-          currency: order.currency,
-          amount: order.order_amount,
-          positions: order.positions,
-        });
         const rawBaseAmount =
-          order.order_amount && !isNaN(Number(order.order_amount))
+          order.order_amount !== undefined &&
+          order.order_amount !== null &&
+          !isNaN(Number(order.order_amount))
             ? Number(order.order_amount)
-            : Array.isArray(order.positions)
-              ? order.positions.reduce((sum, p) => {
-                  const unitPrice = Number(
-                    p.price ??
-                      p.product?.price ??
-                      p.accessory?.price ??
-                      p.product?.total_price ??
-                      0,
-                  );
-                  return sum + unitPrice * (p.quantity || 1);
-                }, 0)
-              : 0;
-        const formattedTotal = formatPrice(
-          toCurrency(rawBaseAmount, currencyCode),
-          currencyCode,
-        );
+            : order.total_price !== undefined &&
+                order.total_price !== null &&
+                !isNaN(Number(order.total_price))
+              ? Number(order.total_price)
+              : order.total !== undefined &&
+                  order.total !== null &&
+                  !isNaN(Number(order.total))
+                ? Number(order.total)
+                : 0;
+
+        const formattedTotal = formatPrice(rawBaseAmount, currencyCode);
         return (
           <Box
             key={order.id}
@@ -463,15 +459,23 @@ export default function OrderHistory() {
                 {order.positions?.map((pos, index) => {
                   const item = pos.product || pos.accessory;
                   const qty = pos.quantity || 1;
-                  const currencyCode = order.currency || "USD"; 
-                  const unitPriceUsd = Number(
-                    pos.price ?? item?.price ?? item?.total_price ?? 0,
-                  );
-                  const totalPriceUsd = unitPriceUsd * qty;
-                  const formattedPrice = formatPrice(
-                    toCurrency(totalPriceUsd, currencyCode),
-                    currencyCode,
-                  );
+                  const currencyCode = order.currency || "USD";
+                  let totalPrice = 0;
+                  if (pos.total_price) {
+                    totalPrice = Number(pos.total_price);
+                  } else if (pos.price) {
+                    totalPrice = Number(pos.price) * qty;
+                  } else if (order.positions.length === 1) {
+                    totalPrice = Number(
+                      order.order_amount || order.total_price,
+                    );
+                  } else {
+                    totalPrice =
+                      Number(pos.product?.price || pos.accessory?.price || 0) *
+                      qty;
+                  }
+
+                  const formattedPrice = formatPrice(totalPrice, currencyCode);
                   let photoUrl = null;
                   if (pos.product?.id) {
                     photoUrl = photoCache.get(`product-${pos.product.id}`);

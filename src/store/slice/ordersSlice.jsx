@@ -1,7 +1,21 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiWithAuth } from "../api/axios";
-import { addItemToBasket, getActiveBasket, clearBasketState } from "./basketSlice";
+import {
+  addItemToBasket,
+  getActiveBasket,
+  clearBasketState,
+  clearBasket,
+} from "./basketSlice";
 
+const processOrderResponse = (data, page, size) => ({
+  results: data?.results || data?.data || (Array.isArray(data) ? data : []),
+  count: data?.count || data?.total_items || (Array.isArray(data) ? data.length : 0),
+  total_pages: data?.total_pages || 1,
+  page,
+  size,
+});
+
+// Thunks
 export const fetchOrders = createAsyncThunk(
   "orders/fetchOrders",
   async ({ page = 1, size = 10 }, { rejectWithValue }) => {
@@ -25,84 +39,49 @@ export const fetchUserOrders = createAsyncThunk(
     }
   }
 );
-const processOrderResponse = (data, page, size) => {
-  let ordersList = [];
-  let totalCount = 0;
-
-  if (data?.results && Array.isArray(data.results)) {
-    ordersList = data.results;
-    totalCount = data.count || data.total_items || ordersList.length;
-  } else if (data?.data && Array.isArray(data.data)) {
-    ordersList = data.data;
-    totalCount = data.total_items || ordersList.length;
-  } else if (Array.isArray(data)) {
-    ordersList = data;
-    totalCount = data.length;
-  }
-
-  return {
-    results: ordersList,
-    count: totalCount,
-    total_pages: data?.total_pages || 1,
-    current_page: data?.current_page || page,
-    page,
-    size
-  };
-};
 
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
   async (orderData, { rejectWithValue, dispatch, getState }) => {
     try {
-      const state = getState();
-      const cartMap = state.cart?.items || {};
-      const localItems = Object.values(cartMap);
+      const { cart } = getState();
+      const localItems = Object.values(cart?.items || {});
 
-      if (localItems.length > 0) {
-        for (const item of localItems) {
-          const product = item.product;
-          const qty = item.quantity || 1;
-          const isAccessory = product?.category || !product?.supplies;
-
-          let payload = { quantity: Number(qty) };
-
-          if (isAccessory) {
-            payload.accessory_id = Number(product.id);
-          } else {
-            payload.product_id = Number(product.id);
-            payload.supply_id = Number(product.supplies?.[0]?.id || product.selectedSupplyId);
-          }
-
-          if (payload.accessory_id || (payload.product_id && payload.supply_id)) {
-            try {
-              await dispatch(addItemToBasket(payload)).unwrap();
-            } catch (e) {
-              console.error(`Server error for ${product.name}:`, e);
-            }
-          } else {
-            console.warn("Not enough data to synchronize the product:", product);
-          }
-        }
-
-        await dispatch(getActiveBasket()).unwrap();
+      try {
+        const activeBasket = await dispatch(getActiveBasket()).unwrap();
+        if (activeBasket?.id) await dispatch(clearBasket(activeBasket.id)).unwrap();
+      } catch (e) {
+        console.warn("Cart already empty or error clearing", e);
       }
 
-      const payload = {
-        billing_details: {
-          ...orderData.billing_details,
-          phone_number: orderData.billing_details.phone_number
-        },
+      for (const item of localItems) {
+        const { product, quantity } = item;
+        const isAccessory = product?.category || !product?.supplies;
+        
+        const payload = {
+          quantity: Number(quantity || 1),
+          ...(isAccessory 
+            ? { accessory_id: Number(product.id) } 
+            : { product_id: Number(product.id), supply_id: Number(product.supplies?.[0]?.id || product.selectedSupplyId) })
+        };
+
+        if (payload.accessory_id || (payload.product_id && payload.supply_id)) {
+          await dispatch(addItemToBasket(payload)).unwrap();
+        }
+      }
+
+      const finalPayload = {
+        billing_details: { ...orderData.billing_details },
         customer_data: orderData.customer_data,
         order_notes: orderData.order_notes || "",
-        discount_code: orderData.discount_code 
+        ...(orderData.currency && { currency: orderData.currency }),
+        ...(orderData.discount_code?.trim() && { discount_code: orderData.discount_code.trim() })
       };
 
-      const response = await apiWithAuth.post("/orders/create/", payload);
+      const response = await apiWithAuth.post("/orders/create/", finalPayload);
       dispatch(clearBasketState());
       return response.data;
-
     } catch (err) {
-      console.error("Final error:", err);
       return rejectWithValue(err.response?.data || err.message);
     }
   }
@@ -127,18 +106,15 @@ const ordersSlice = createSlice({
     count: 0,
     page: 1,
     size: 5,
+    totalPages: 1,
     loading: false,
     creating: false,
     error: null,
     currentOrder: null,
   },
   reducers: {
-    clearCurrentOrder: (state) => {
-      state.currentOrder = null;
-    },
-    resetOrdersError: (state) => {
-      state.error = null;
-    },
+    clearCurrentOrder: (state) => { state.currentOrder = null; },
+    resetOrdersError: (state) => { state.error = null; },
     clearOrders: (state) => {
       state.orders = [];
       state.count = 0;
@@ -147,9 +123,7 @@ const ordersSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(createOrder.pending, (state) => {
-        state.creating = true;
-      })
+      .addCase(createOrder.pending, (state) => { state.creating = true; state.error = null; })
       .addCase(createOrder.fulfilled, (state, action) => {
         state.creating = false;
         state.currentOrder = action.payload;
@@ -162,38 +136,26 @@ const ordersSlice = createSlice({
         state.currentOrder = action.payload;
         state.loading = false;
       })
-      .addCase(fetchUserOrders.fulfilled, (state, action) => {
-        state.loading = false;
-        state.orders = action.payload.results;
-        state.totalPages = action.payload.total_pages;
-        state.count = action.payload.count;
-      })
       .addMatcher(
-        (action) => [fetchOrders.pending.type, fetchUserOrders.pending.type].includes(action.type),
-        (state) => {
-          state.loading = true;
-          state.error = null;
-        }
+        (action) => action.type.endsWith('/pending') && action.type.includes('fetch'),
+        (state) => { state.loading = true; state.error = null; }
       )
       .addMatcher(
-        (action) => [fetchOrders.fulfilled.type, fetchUserOrders.fulfilled.type].includes(action.type),
+        (action) => action.type.endsWith('/fulfilled') && action.type.includes('fetch') && action.payload?.results,
         (state, action) => {
           state.loading = false;
           state.orders = action.payload.results;
           state.count = action.payload.count;
+          state.totalPages = action.payload.total_pages;
           state.page = action.payload.page;
         }
       )
       .addMatcher(
-        (action) => [fetchOrders.rejected.type, fetchUserOrders.rejected.type].includes(action.type),
-        (state, action) => {
-          state.loading = false;
-          state.error = action.payload;
-        }
-      )
-
+        (action) => action.type.endsWith('/rejected') && action.type.includes('fetch'),
+        (state, action) => { state.loading = false; state.error = action.payload; }
+      );
   },
 });
 
-export const { clearCurrentOrder, resetOrdersError } = ordersSlice.actions;
+export const { clearCurrentOrder, resetOrdersError, clearOrders } = ordersSlice.actions;
 export default ordersSlice.reducer;

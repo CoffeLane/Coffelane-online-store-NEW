@@ -7,30 +7,30 @@ export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
   async ({ filters = {} } = {}, thunkAPI) => {
     try {
-     const currentCurrency = getCurrency(thunkAPI);
+     // currency добавляется автоматически через интерцептор в axios.js
 
-      const params = new URLSearchParams();
-      params.append("page", 1);
-      params.append("size", 12);
-      params.append("currency", currentCurrency);
+      // Используем объект params вместо URLSearchParams, чтобы интерцептор мог добавить currency
+      const params = {
+        page: 1,
+        size: 12,
+      };
 
-      if (filters.brand && filters.brand !== "Brand") params.append("brand", filters.brand);
+      if (filters.brand && filters.brand !== "Brand") params.brand = filters.brand;
       if (filters.priceRange) {
-        params.append("min_price", filters.priceRange[0]);
-        params.append("max_price", filters.priceRange[1]);
+        params.min_price = filters.priceRange[0];
+        params.max_price = filters.priceRange[1];
       }
-      if (filters.sort === "lowToHigh") params.append("ordering", "price");
-      if (filters.sort === "highToLow") params.append("ordering", "-price");
+      if (filters.sort === "lowToHigh") params.ordering = "price";
+      if (filters.sort === "highToLow") params.ordering = "-price";
 
-      const firstResponse = await api.get(`/products?${params.toString()}`);
+      const firstResponse = await api.get(`/products`, { params });
       let allProducts = firstResponse.data.data;
       const totalPages = firstResponse.data.total_pages;
 
       if (totalPages > 1) {
         const requests = [];
         for (let p = 2; p <= totalPages; p++) {
-          params.set("page", p);
-          requests.push(api.get(`/products?${params.toString()}`));
+          requests.push(api.get(`/products`, { params: { ...params, page: p } }));
         }
         const responses = await Promise.all(requests);
         responses.forEach((res, index) => {
@@ -117,8 +117,8 @@ export const fetchProducts = createAsyncThunk(
 export const fetchProductById = createAsyncThunk(
   "products/fetchById",
   async (id, thunkAPI) => {
-    const currentCurrency = getCurrency(thunkAPI); 
-    const response = await api.get(`/products/${id}?currency=${currentCurrency}`);
+    // currency добавляется автоматически через интерцептор в axios.js
+    const response = await api.get(`/products/${id}`);
     return response.data;
   }
 );
@@ -128,26 +128,26 @@ export const searchAndFilterProducts = createAsyncThunk(
   "products/searchAndFilter",
   async ({ searchQuery = '', filters = {} } = {}, thunkAPI) => {
     try {
-      const currentCurrency = getCurrency(thunkAPI);
-      const params = new URLSearchParams();
-      params.append("page", 1);
-      params.append("size", 12);
-      params.append("currency", currentCurrency);
+      // Используем объект params вместо URLSearchParams, чтобы интерцептор мог добавить currency
+      const params = {
+        page: 1,
+        size: 12,
+      };
 
       if (searchQuery) {
-        params.append("q", searchQuery);
+        params.q = searchQuery;
       }
 
-      if (filters.brand && filters.brand !== "Brand") params.append("brand", filters.brand);
+      if (filters.brand && filters.brand !== "Brand") params.brand = filters.brand;
       if (filters.priceRange) {
-        params.append("min_price", filters.priceRange[0]);
-        params.append("max_price", filters.priceRange[1]);
+        params.min_price = filters.priceRange[0];
+        params.max_price = filters.priceRange[1];
       }
-      if (filters.sort === "lowToHigh") params.append("ordering", "price");
-      if (filters.sort === "highToLow") params.append("ordering", "-price");
+      if (filters.sort === "lowToHigh") params.ordering = "price";
+      if (filters.sort === "highToLow") params.ordering = "-price";
 
       const endpoint = searchQuery ? '/search/items/' : '/products';
-      const response = await api.get(`${endpoint}?${params.toString()}`);
+      const response = await api.get(endpoint, { params });
 
       let allProducts = response.data.data;
 

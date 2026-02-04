@@ -92,12 +92,10 @@ export const searchAll = createAsyncThunk(
     try {
       if (!query?.trim()) return { products: [], accessories: [], totalItems: 0 };
 
-      const state = thunkAPI.getState();
-      const currency = state.settings?.currency || "USD";
-
+      // currency добавляется автоматически через интерцептор в axios.js
       const [pRes, aRes] = await Promise.all([
-        api.get("/products", { params: { page: 1, size: 200, currency } }),
-        api.get("/accessories", { params: { page: 1, size: 200, currency } }),
+        api.get("/products", { params: { page: 1, size: 200 } }),
+        api.get("/accessories", { params: { page: 1, size: 200 } }),
       ]);
 
       const getArray = (res) => {

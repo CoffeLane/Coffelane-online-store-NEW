@@ -78,8 +78,14 @@ export const selectCartCount = createSelector(
 export const selectCartTotal = createSelector(
   (state) => state.cart.items || {},
   (state) => state.settings.currency,
-  (items, currency) =>
-    Object.entries(items).reduce((sum, [, item]) => {
+  (state) => state.basket.totalAmount, // Сумма с бэкенда
+  (items, currency, backendTotal) => {
+    // Если есть сумма с бэкенда и она не равна 0, используем её (она уже в правильной валюте)
+    if (backendTotal !== null && backendTotal !== undefined && Number(backendTotal) !== 0) {
+      return Number(backendTotal);
+    }
+    // Иначе рассчитываем на фронте
+    const calculatedTotal = Object.entries(items).reduce((sum, [, item]) => {
       const product = item?.product || {};
       const quantity = item?.quantity || 0;
       const supplies = product.supplies || [];
@@ -88,7 +94,10 @@ export const selectCartTotal = createSelector(
         ? getPrice(selectedSupply, currency)
         : getProductPrice(product, currency);
       return sum + unitPrice * quantity;
-    }, 0)
+    }, 0);
+    // Округляем до 2 знаков после запятой, как бэкенд
+    return Math.round(calculatedTotal * 100) / 100;
+  }
 );
 
 export const { addToCart, decrementQuantity, removeFromCart, clearCart, completeOrder, resetOrderStatus} = cartSlice.actions;

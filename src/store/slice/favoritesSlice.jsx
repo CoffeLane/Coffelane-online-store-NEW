@@ -31,7 +31,7 @@ export const fetchFavorites = createAsyncThunk(
         return [];
       }
 
-      const currentCurrency = state.settings?.currency;
+      // currency добавляется автоматически через интерцептор в axios.js
 
       const productIds = items.filter(item => item.product).map(item => item.product);
       const accessoryIds = items.filter(item => item.accessory).map(item => item.accessory);
@@ -41,9 +41,7 @@ export const fetchFavorites = createAsyncThunk(
 
       for (const id of productIds) {
         try {
-          const res = await api.get(`/products/${id}`, {
-            params: { currency: currentCurrency },
-          });
+          const res = await api.get(`/products/${id}`);
           fetchedItems.push({ ...res.data, type: 'product' });
         } catch (error) {
           console.warn(`Failed to fetch product ${id}:`, error);
@@ -52,9 +50,7 @@ export const fetchFavorites = createAsyncThunk(
 
       for (const id of accessoryIds) {
         try {
-          const res = await api.get(`/accessories/${id}`, {
-            params: { currency: currentCurrency },
-          });
+          const res = await api.get(`/accessories/${id}`);
           fetchedItems.push({ ...res.data, type: 'accessory' });
         } catch (error) {
           console.warn(`Failed to fetch accessory ${id}:`, error);

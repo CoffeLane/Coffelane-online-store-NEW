@@ -22,7 +22,6 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   
-  // Обработчик обновления продукта (для локального обновления статуса)
   const handleProductUpdated = (productId, updates) => {
     setProducts(prevProducts => 
       prevProducts.map(p => 
@@ -45,7 +44,6 @@ export default function Products() {
     return (categoryFilter !== 'Category' && !!categoryFilter) || q.length > 0;
   }, [categoryFilter, debouncedSearchQuery]);
 
-  // Обновляем список продуктов при изменении страницы/режима (постраничный vs полный набор)
   useEffect(() => {
     if (needFullDataset) {
       if (page !== 1) setPage(1);
@@ -55,21 +53,16 @@ export default function Products() {
     fetchAllProducts(page);
   }, [page, needFullDataset]);
 
-  // Обновляем список продуктов, если пришли с флагом refresh
   useEffect(() => {
     if (location.state?.refresh) {
-      // Увеличиваем задержку, чтобы дать время серверу обработать фото
-      // Фото могут обрабатываться асинхронно на сервере, особенно для новых продуктов
       const timer = setTimeout(() => {
         fetchAllProducts(page);
-        // Очищаем state, чтобы не обновлять при каждом рендере
         navigate(location.pathname, { replace: true, state: {} });
-      }, 5000); // Увеличено до 5 секунд, чтобы дать время серверу обработать и сохранить фото
+      }, 5000); 
       return () => clearTimeout(timer);
     }
   }, [location.state, navigate, location.pathname, page]);
 
-  // Прокручиваем в начало таблицы при изменении страницы (без анимации, чтобы избежать дергания)
   useEffect(() => {
     const tableTop = document.getElementById('products-table-top');
     if (tableTop) {
@@ -77,7 +70,6 @@ export default function Products() {
     }
   }, [page]);
 
-  // Сбрасываем страницу при изменении категории и загружаем все продукты для фильтрации
   useEffect(() => {
     if (page !== 1) setPage(1);
   }, [categoryFilter]);
@@ -88,9 +80,7 @@ export default function Products() {
 
   const fetchAllProducts = async (pageNumber = 1) => {
     try {
-      // Используем apiWithAuth для получения полных данных включая status и visible
       const productsRes = await apiWithAuth.get('/products', { params: { page: pageNumber } }).catch(() => {
-        // Если авторизованный запрос не работает, используем обычный
         return api.get('/products', { params: { page: pageNumber } });
       });
       const accessoriesRes = await api.get('/accessories');
@@ -120,11 +110,8 @@ export default function Products() {
       console.error("Error fetching products:", error);
     }
   };
-
-  // Загружаем все продукты для фильтрации по категориям
   const fetchAllProductsForFilter = async () => {
     try {
-      // Используем apiWithAuth для получения полных данных включая status и visible
       const firstPageRes = await apiWithAuth.get('/products', { params: { page: 1 } }).catch(() => {
         return api.get('/products', { params: { page: 1 } });
       });
@@ -155,11 +142,7 @@ export default function Products() {
   };
 
   const adminProducts = products.map(item => {
-    // Обрабатываем фото для продуктов и аксессуаров
     let imageUrl = null;
-    
-    // Проверяем разные варианты структуры фото
-    // Приоритет: photos_url > product_photos > accessory_photos
     if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
       const firstPhoto = item.photos_url[0];
       if (typeof firstPhoto === 'string') {
@@ -191,7 +174,6 @@ export default function Products() {
       }
     }
     
-    // Если URL относительный, добавляем базовый URL
     if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }

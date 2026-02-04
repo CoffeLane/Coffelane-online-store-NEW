@@ -5,13 +5,11 @@ import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PhoneIcon from '@mui/icons-material/Phone';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { apiWithAuth, default as api } from '../../store/api/axios.js';
-import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
-import AdminBreadcrumbs from '../AdminBreadcrumbs/AdminBreadcrumbs.jsx';
-import { h3, h4, h5, h6, h7 } from "../../styles/typographyStyles.jsx";
+import { h3, h5, h6, h7 } from "../../styles/typographyStyles.jsx";
+import AdminBreadcrumbs from "../AdminBreadcrumbs/AdminBreadcrumbs.jsx";
 
 export default function OrderEdit() {
   const { id } = useParams();
@@ -603,6 +601,9 @@ export default function OrderEdit() {
                   }}
                 >
                   <MenuItem value="processing">Processing</MenuItem>
+                  <MenuItem value="preparing">Preparing</MenuItem>
+                  <MenuItem value="shipping">Shipping</MenuItem>
+                  <MenuItem value="in_transit">In Transit</MenuItem>
                   <MenuItem value="delivered">Delivered</MenuItem>
                   <MenuItem value="cancelled">Cancelled</MenuItem>
                 </Select>

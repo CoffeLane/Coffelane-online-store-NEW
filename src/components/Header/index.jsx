@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate, useSearchParams, useLocation, NavLink } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import debounce from "lodash/debounce";
@@ -75,18 +75,20 @@ const Header = () => {
     navigate(isAdmin ? "/admin/account" : "/account/personal-info");
   };
 
-  const debouncedSearch = useCallback(
-    (val) => {
-      const searchAction = debounce((v) => dispatch(searchAll(v)), 300);
-      searchAction(val);
-    },
-    [dispatch]
+  const debouncedSearchRef = useRef(
+    debounce((val) => dispatch(searchAll(val)), 300)
   );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearchRef.current.cancel();
+    };
+  }, []);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchInput(val);
-    val.trim() ? debouncedSearch(val) : dispatch(clearSearch());
+    val.trim() ? debouncedSearchRef.current(val) : dispatch(clearSearch());
   };
 
   const closeSearch = () => {

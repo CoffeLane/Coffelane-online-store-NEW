@@ -86,8 +86,6 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
 
         setLoading(true);
         try {
-            // Устанавливаем visible: false и status: 'Hidden' для скрытия продукта
-            // Пробуем сначала JSON, так как мы не отправляем файлы
             let response;
             try {
                 response = await apiWithAuth.patch(`/products/product/${id}`, {
@@ -99,7 +97,6 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                     },
                 });
             } catch (jsonError) {
-                // Если JSON не работает, пробуем FormData
                 console.warn("JSON request failed, trying FormData:", jsonError);
                 const formData = new FormData();
                 formData.append("visible", "false");
@@ -114,18 +111,11 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
 
             console.log("✅ Product hidden successfully");
             console.log("📊 Response data:", response.data);
-            
-            // Уведомляем родительский компонент об обновлении продукта
-            // Это позволяет обновить локальное состояние без перезагрузки
             if (onProductUpdated) {
                 onProductUpdated(id, { status: 'Hidden', visible: false });
             }
-            
-            // API не возвращает status и visible в ответе PATCH, но изменения должны быть применены
-            // Даем время бэкенду обработать изменения
+
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Обновляем список продуктов
             if (onRefresh) {
                 if (typeof onRefresh === 'function') {
                     try {
