@@ -1,6 +1,6 @@
 import axios from 'axios';
-
-const API_URL = 'https://onlinestore-928b.onrender.com/api';
+export const BASE_URL = "https://onlinestore-928b.onrender.com";
+const API_URL = `${BASE_URL}/api`;
 
 const getCleanToken = (key) => {
   const token = localStorage.getItem(key);
@@ -15,12 +15,48 @@ const api = axios.create({
 
 
 api.interceptors.request.use((config) => {
-  config.params = { 
-    ...config.params, 
-    currency: localStorage.getItem('currency') || 'USD' 
-  };
+  // Для админских запросов НЕ добавляем currency, чтобы избежать ошибок на бэкенде
+  const isAdminRequest = config.params?._admin === 'true';
+  
+  if (isAdminRequest) {
+    // Удаляем служебный параметр _admin, НЕ добавляем currency для админских запросов
+    const { _admin, ...restParams } = config.params || {};
+    config.params = restParams;
+  } else {
+    // Для обычных запросов добавляем currency из localStorage
+    config.params = { 
+      ...(config.params || {}), 
+      currency: localStorage.getItem('currency') || 'USD' 
+    };
+  }
   return config;
 });
+
+// Интерцептор ответа для автоматического повтора без currency при 500 ошибке
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Если получили 500 или Network Error (который часто скрывает 500 из-за CORS)
+    // и в запросе был параметр currency
+    if ((!error.response || error.response?.status === 500) && originalRequest.params?.currency) {
+      // Проверяем, не был ли это уже повторный запрос
+      if (originalRequest._retryWithoutCurrency) {
+        return Promise.reject(error);
+      }
+      
+      // Создаем копию параметров БЕЗ currency
+      const { currency, ...paramsWithoutCurrency } = originalRequest.params;
+      originalRequest.params = paramsWithoutCurrency;
+      originalRequest._retryWithoutCurrency = true;
+      
+      // Повторяем запрос
+      return api(originalRequest);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const apiWithAuth = axios.create({
   baseURL: API_URL,
@@ -42,8 +78,19 @@ apiWithAuth.interceptors.request.use((config) => {
   const token = getCleanToken('access');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   
-  if (config.method?.toLowerCase() !== 'delete') {
-    config.params = { ...config.params, currency: localStorage.getItem('currency') || 'USD' };
+  // Для админских запросов НЕ добавляем currency, чтобы избежать ошибок на бэкенде
+  const isAdminRequest = config.params?._admin === 'true';
+  
+  if (isAdminRequest) {
+    // Удаляем служебный параметр _admin, НЕ добавляем currency для админских запросов
+    const { _admin, ...restParams } = config.params || {};
+    config.params = restParams;
+  } else if (config.method?.toLowerCase() !== 'delete') {
+    // Для обычных запросов (не DELETE) добавляем currency из localStorage
+    config.params = { 
+      ...(config.params || {}), 
+      currency: localStorage.getItem('currency') || 'USD' 
+    };
   }
   return config;
 });

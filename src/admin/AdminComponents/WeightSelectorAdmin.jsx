@@ -21,7 +21,17 @@ export default function WeightSelectorAdmin({ weight, setWeight }) {
 
   const isLoadedFromBackend = () => {
     if (!weight) return false;
-    return weight.toString().includes(".");
+    const weightStr = weight.toString().trim();
+    const weightNum = normalizeWeight(weight);
+    if (weightNum === null) return false;
+    
+    // Проверяем, что вес соответствует одному из вариантов (250, 500, 1000)
+    const isValidWeight = weightNum === 250 || weightNum === 500 || weightNum === 1000;
+    if (!isValidWeight) return false;
+    
+    // Если вес не в формате "250g", "500g", "1kg", значит он загружен с бэкенда
+    // (пользователь выбирает в формате "250g", а бэкенд возвращает число или строку без "g")
+    return !weightStr.toLowerCase().endsWith('g') && !weightStr.toLowerCase().endsWith('kg');
   };
 
   return (

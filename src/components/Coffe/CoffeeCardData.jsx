@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart } from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
 import { getPrice, formatPrice } from "../utils/priceUtils.jsx";
-
+import { buildImageUrl } from "../../components/utils/helpers.js";
 
 const ProductImage = ({ src, alt }) => {
   const [error, setError] = useState(false);
@@ -26,7 +26,7 @@ const ProductImage = ({ src, alt }) => {
   }
 
   return (
-    <CardMedia component="img" image={src} alt={alt} onError={() => setError(true)} sx={{ width: "100%", height: "100%", objectFit: "contain" }}/>
+    <CardMedia component="img" image={buildImageUrl(src)} alt={alt} onError={() => setError(true)} sx={{ width: "100%", height: "100%", objectFit: "contain" }}/>
   );
 };
 
@@ -38,49 +38,25 @@ export default function CoffeeCardData({ products, favorites, onToggleFavorite, 
 
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 2, md: 3 }, justifyContent: "center", width: "100%" }}>
-      {products.map((item, index) => {
+      {products.map((item) => {
         const itemId = String(item.id);
         const supply = item.supplies?.[0] || null;
         const isOutOfStock = !supply || Number(supply.quantity) <= 0;
         const cartKey = supply ? `${item.id}-${supply.id}` : `${item.id}-default`;
         const isInCart = cartEntries.some(([key]) => key === cartKey);
         
-        // Извлекаем фото из разных вариантов структуры данных
-        let mainPhoto = null;
-        
-        // Проверяем photos_url
-        if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
-          const firstPhoto = item.photos_url[0];
-          if (typeof firstPhoto === 'string') {
-            mainPhoto = firstPhoto;
-          } else if (firstPhoto && typeof firstPhoto === 'object') {
-            mainPhoto = firstPhoto.url || firstPhoto.photo || firstPhoto.photo_url || firstPhoto.image_url || null;
-          }
+        const potentialPhotos = [
+          item.image,
+          ...(Array.isArray(item.photos_url) ? item.photos_url : []),
+          ...(Array.isArray(item.product_photos) ? item.product_photos : [])
+        ];
+
+        let rawPhoto = potentialPhotos.find(p => p !== null && p !== undefined);
+        if (rawPhoto && typeof rawPhoto === 'object') {
+          rawPhoto = rawPhoto.url || rawPhoto.photo || rawPhoto.photo_url || rawPhoto.image_url;
         }
-        
-        // Если не нашли в photos_url, проверяем product_photos
-        if (!mainPhoto && item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
-          const firstPhoto = item.product_photos[0];
-          if (firstPhoto && typeof firstPhoto === 'object') {
-            if (firstPhoto.photo) {
-              if (typeof firstPhoto.photo === 'string') {
-                mainPhoto = firstPhoto.photo;
-              } else if (firstPhoto.photo && typeof firstPhoto.photo === 'object') {
-                mainPhoto = firstPhoto.photo.url || firstPhoto.photo.photo_url || firstPhoto.photo.image_url || null;
-              }
-            } else {
-              mainPhoto = firstPhoto.url || firstPhoto.photo || firstPhoto.photo_url || firstPhoto.image_url || null;
-            }
-          } else if (typeof firstPhoto === 'string') {
-            mainPhoto = firstPhoto;
-          }
-        }
-        
-        // Если URL относительный, добавляем базовый URL
-        if (mainPhoto && typeof mainPhoto === 'string' && !mainPhoto.startsWith('http') && !mainPhoto.startsWith('blob:')) {
-          const baseUrl = 'https://onlinestore-928b.onrender.com';
-          mainPhoto = mainPhoto.startsWith('/') ? `${baseUrl}${mainPhoto}` : `${baseUrl}/${mainPhoto}`;
-        }
+
+        const mainPhoto = buildImageUrl(rawPhoto);
 
         return (
           <Card key={cartKey} sx={{ width: isRecommended ? { xs: "100%", sm: "280px", md: "300px" } : { xs: "100%", sm: "280px", md: "300px" }, maxWidth: isRecommended ? "360px" : "none", minHeight: { xs: '360px', md: '480px' }, display: "flex",  flexDirection: "column",  borderRadius: "24px", p: 2,  boxShadow: 2,}}>

@@ -33,8 +33,18 @@ export default function AccessoriesCardPage() {
         justifyContent: "center", gap: { xs: 4, md: 10 }
       }}>
         <Box sx={{ width: { xs: "100%", md: "400px" }, display: "flex", justifyContent: "center" }}>
-          <AccessoriesImageSlider 
-            photos={selectedAccessory.photos_url || selectedAccessory.accessory_photos || []} 
+          <AccessoriesImageSlider  
+             photos={
+              selectedAccessory.photos_url?.length > 0
+                ? selectedAccessory.photos_url
+                : selectedAccessory.product_photos?.length > 0
+                  ? selectedAccessory.product_photos
+                  : selectedAccessory.cover
+                    ? [selectedAccessory.cover] 
+                    : selectedAccessory.image
+                      ? [selectedAccessory.image]
+                      : []
+            }
             productName={selectedAccessory.name}
           />
         </Box>

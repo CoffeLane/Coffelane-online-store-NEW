@@ -5,6 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CoffeeIcon from '@mui/icons-material/Coffee'; 
 import { useSelector } from "react-redux";
 import { getPrice, getProductPrice, formatPrice } from "../utils/priceUtils.jsx";
+import { buildImageUrl, getProductPhoto } from "../utils/helpers.js";
 
 const SummaryImage = ({ src, alt }) => {
   const [hasError, setHasError] = useState(false);
@@ -54,11 +55,11 @@ export default function CartSummary({ items, handleRemove, handleQuantityChange,
         const selectedSupply = supplies.find((s) => s.id === product.selectedSupplyId);
         const price = selectedSupply ? getPrice(selectedSupply, currency) : getProductPrice(product, currency);
         const weight = selectedSupply?.weight ?? null;
-        const imageUrl = product.photos_url?.[0]?.url || product.img;
+        const photoUrl = buildImageUrl(getProductPhoto(cartItem));
 
         return (
           <Box key={key} sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: "space-between", mb: 2, p: { xs: 1, md: 2 }, borderBottom: "1px solid #E0E0E0", gap: { xs: 2, sm: 0 } }}>
-            <SummaryImage src={imageUrl} alt={product.name} />
+            <SummaryImage src={photoUrl} alt={product.name} />
             <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, ml: { xs: 0, sm: 4, md: 6 }, gap: { xs: 1, md: 2 }, width: { xs: '100%', sm: 'auto' } }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: 'flex-start' }}>
                 <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>

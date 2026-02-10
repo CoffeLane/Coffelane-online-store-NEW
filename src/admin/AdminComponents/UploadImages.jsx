@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Typography, Button, IconButton } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CoffeeIcon from "@mui/icons-material/Coffee";
@@ -13,12 +13,75 @@ export default function UploadImages({
 }) {
   const [coverError, setCoverError] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
+  const prevBlobUrlsRef = useRef([]);
+
+  // Создаем blob URL для cover, если есть file
+  const coverSrc = useMemo(() => {
+    if (!cover) return "";
+    // Если есть file, всегда используем его для создания blob URL
+    if (cover.file) {
+      const blobUrl = URL.createObjectURL(cover.file);
+      return blobUrl;
+    }
+    // Иначе используем url (может быть blob URL или обычный URL)
+    const url = cover.url || "";
+    return url;
+  }, [cover]);
+
+  // Создаем blob URLs для images
+  const imageSrcs = useMemo(() => {
+    return images.map((img, index) => {
+      // Если есть file, всегда используем его для создания blob URL
+      if (img.file) {
+        const blobUrl = URL.createObjectURL(img.file);
+        return blobUrl;
+      }
+      // Иначе используем url
+      const url = img.url || "";
+      return url;
+    });
+  }, [images]);
+
+  // Сбрасываем ошибку cover при изменении coverSrc
+  const prevCoverSrcRef = useRef(null);
+  useEffect(() => {
+    // Сбрасываем ошибку только если coverSrc действительно изменился
+    if (coverSrc !== prevCoverSrcRef.current) {
+      setCoverError(false);
+      prevCoverSrcRef.current = coverSrc;
+    }
+  }, [coverSrc]);
+
+  // Очищаем старые blob URLs при изменении cover или images
+  useEffect(() => {
+    const currentBlobUrls = [
+      coverSrc && coverSrc.startsWith('blob:') ? coverSrc : null,
+      ...imageSrcs.filter(url => url && url.startsWith('blob:'))
+    ].filter(Boolean);
+
+    // Очищаем blob URLs, которые больше не используются
+    prevBlobUrlsRef.current.forEach(url => {
+      if (!currentBlobUrls.includes(url)) {
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    prevBlobUrlsRef.current = currentBlobUrls;
+
+    // Очистка при размонтировании
+    return () => {
+      currentBlobUrls.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [coverSrc, imageSrcs]);
 
   return (
     <Box
       sx={{
         display: "flex",
-        flexDirection: { xs: "column", md: "row" },
+        flexDirection: { xs: "column", sm: "row" },
+        flexWrap: "wrap",
         justifyContent: { xs: "flex-start", md: "flex-start" },
         gap: { xs: 2, md: 1.5 },
         alignItems: { xs: "flex-start", md: "flex-start" },
@@ -27,7 +90,7 @@ export default function UploadImages({
       <Box
         sx={{
           width: "100%",
-          maxWidth: { xs: "100%", md: 350 },
+          maxWidth: { xs: "100%", sm: 350 },
           flex: { xs: "none", md: 1 },
         }}
       >
@@ -37,9 +100,9 @@ export default function UploadImages({
         >
           <Box
             sx={{
-              width: { xs: "100%", md: 350 },
+              width: { xs: "100%", sm: 350 },
               maxWidth: "100%",
-              height: { xs: 300, md: 350 },
+              height: { xs: 300, sm: 350 },
               borderRadius: 3,
               overflow: "hidden",
               position: "relative",
@@ -66,15 +129,33 @@ export default function UploadImages({
                 </Box>
               ) : (
                 <img
-                  src={
-                    cover.url ||
-                    (cover.file ? URL.createObjectURL(cover.file) : "")
-                  }
+                  src={coverSrc}
                   alt="Cover"
                   width="100%"
                   height="100%"
                   style={{ objectFit: "cover" }}
-                  onError={() => setCoverError(true)}
+                  loading="lazy"
+                  onError={(e) => {
+                    const imgSrc = e.target?.src || coverSrc;
+                    console.error('❌ Cover image load error:', {
+                      src: imgSrc,
+                      coverSrc,
+                      naturalWidth: e.target?.naturalWidth,
+                      naturalHeight: e.target?.naturalHeight,
+                      complete: e.target?.complete
+                    });
+                    // Устанавливаем ошибку только один раз, чтобы избежать мигания
+                    setCoverError((prev) => {
+                      if (!prev) {
+                        return true;
+                      }
+                      return prev;
+                    });
+                  }}
+                  onLoad={(e) => {
+                    // Сбрасываем ошибку при успешной загрузке
+                    setCoverError(false);
+                  }}
                 />
               )
             ) : (
@@ -121,8 +202,7 @@ export default function UploadImages({
         }}
       >
         {images.map((img, i) => {
-          const src =
-            img.url || (img.file ? URL.createObjectURL(img.file) : "");
+          const src = imageSrcs[i] || "";
           if (!src) return null;
           const imgKey = img.id || i;
           const hasError = imageErrors[imgKey];
@@ -158,12 +238,27 @@ export default function UploadImages({
                   src={src}
                   alt={`thumb-${i}`}
                   onClick={() => setCover(img)}
-                  onError={() =>
-                    setImageErrors((prev) => ({ ...prev, [imgKey]: true }))
-                  }
+                  onError={(e) => {
+                    console.error(`❌ Image ${i} load error:`, {
+                      src,
+                      imgKey,
+                      error: e,
+                      image: img
+                    });
+                    setImageErrors((prev) => ({ ...prev, [imgKey]: true }));
+                  }}
+                  onLoad={() => {
+                    if (imageErrors[imgKey]) {
+                      setImageErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors[imgKey];
+                        return newErrors;
+                      });
+                    }
+                  }}
                   sx={{
                     width: "100%",
-                    height: { xs: 100, md: 120 },
+                    height: { xs: 100, sm: 120 },
                     borderRadius: "8px",
                     border:
                       cover === img
@@ -199,7 +294,7 @@ export default function UploadImages({
           component="label"
           htmlFor="upload-image"
           sx={{
-            width: { xs: 100, md: "100%" },
+            width: { xs: 100, sm: "100%" },
             height: { xs: 100, md: 120 },
             borderRadius: "8px",
             border: "2px dashed #3F63AC",

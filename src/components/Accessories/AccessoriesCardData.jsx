@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectCartItems, addToCart} from "../../store/slice/cartSlice.jsx";
 import ClampText from "../ClampText.jsx";
 import { getProductPrice, formatPrice} from "../utils/priceUtils.jsx";
+import { buildImageUrl } from "../../components/utils/helpers.js";
 
 export default function AccessoriesCardData({ products, favorites, onToggleFavorite, isRecommended = false}) {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function AccessoriesCardData({ products, favorites, onToggleFavor
         
             <Box sx={{ position: "relative", width: "100%", height: { xs: 200, md: 300 }, mb: 1,}}>
               {photoUrl && (
-                <CardMedia component="img" image={photoUrl}
+                <CardMedia component="img" image={buildImageUrl(photoUrl)} alt={item.name} loading="lazy"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.style.display = "none";

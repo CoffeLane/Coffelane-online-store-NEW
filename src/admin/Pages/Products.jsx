@@ -80,48 +80,79 @@ export default function Products() {
 
   const fetchAllProducts = async (pageNumber = 1) => {
     try {
-      const productsRes = await apiWithAuth.get('/products', { params: { page: pageNumber } }).catch(() => {
-        return api.get('/products', { params: { page: pageNumber } });
+      let productsRes;
+      try {
+        // Для админ-панели не передаем currency - используем параметр _admin
+        productsRes = await apiWithAuth.get('/products', { 
+          params: { page: pageNumber, _admin: 'true' }
+        });
+      } catch (authError) {
+        // Если ошибка авторизации (401, 403), пробуем без авторизации
+        if (authError.response?.status === 401 || authError.response?.status === 403) {
+          productsRes = await api.get('/products', { 
+            params: { page: pageNumber, _admin: 'true' }
+          });
+        } else {
+          // Для сетевых ошибок (ERR_FAILED) или других ошибок пробрасываем дальше
+          throw authError;
+        }
+      }
+      
+      const accessoriesRes = await api.get('/accessories', {
+        params: { _admin: 'true' }
       });
-      const accessoriesRes = await api.get('/accessories');
 
       const combined = [
         ...productsRes.data.data.map(p => ({ ...p, type: 'product' })),
         ...accessoriesRes.data.data.map(a => ({ ...a, type: 'accessory' })),
       ];
       
-      // Логируем данные для отладки (продукт с ID 8)
-      const hiddenProduct = combined.find(p => p.id === 8);
-      if (hiddenProduct) {
-        console.log("🔍 Product 8 data after refresh:", {
-          id: hiddenProduct.id,
-          name: hiddenProduct.name,
-          status: hiddenProduct.status,
-          visible: hiddenProduct.visible,
-          hasStatus: 'status' in hiddenProduct,
-          hasVisible: 'visible' in hiddenProduct
-        });
-      }
-      
       setProducts(combined);
       setTotalPages(productsRes.data.total_pages);
       setSelectedIds([]);
     } catch (error) {
       console.error("Error fetching products:", error);
+      // Более детальная обработка ошибок
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('ERR_FAILED')) {
+        console.error("Network error. Please check your internet connection or server status.");
+      } else if (error.response?.status === 500) {
+        console.error("Server error (500). Please check backend logs.");
+      } else if (error.response?.status) {
+        console.error(`HTTP error: ${error.response.status} - ${error.response.statusText}`);
+      }
     }
   };
   const fetchAllProductsForFilter = async () => {
     try {
-      const firstPageRes = await apiWithAuth.get('/products', { params: { page: 1 } }).catch(() => {
-        return api.get('/products', { params: { page: 1 } });
-      });
+      let firstPageRes;
+      try {
+        firstPageRes = await apiWithAuth.get('/products', { 
+          params: { page: 1, _admin: 'true' }
+        });
+      } catch (authError) {
+        if (authError.response?.status === 401 || authError.response?.status === 403) {
+          firstPageRes = await api.get('/products', { 
+            params: { page: 1, _admin: 'true' }
+          });
+        } else {
+          throw authError;
+        }
+      }
+      
       const totalPages = firstPageRes.data.total_pages;
       
       const allPagesPromises = [];
       for (let p = 1; p <= totalPages; p++) {
         allPagesPromises.push(
-          apiWithAuth.get('/products', { params: { page: p } }).catch(() => {
-            return api.get('/products', { params: { page: p } });
+          apiWithAuth.get('/products', { 
+            params: { page: p, _admin: 'true' }
+          }).catch((authError) => {
+            if (authError.response?.status === 401 || authError.response?.status === 403) {
+              return api.get('/products', { 
+                params: { page: p, _admin: 'true' }
+              });
+            }
+            throw authError;
           })
         );
       }
@@ -129,7 +160,9 @@ export default function Products() {
       const allPagesRes = await Promise.all(allPagesPromises);
       const allProducts = allPagesRes.flatMap(res => res.data.data.map(p => ({ ...p, type: 'product' })));
       
-      const accessoriesRes = await api.get('/accessories');
+      const accessoriesRes = await api.get('/accessories', {
+        params: { _admin: 'true' }
+      });
       const allAccessories = accessoriesRes.data.data.map(a => ({ ...a, type: 'accessory' }));
       
       const combined = [...allProducts, ...allAccessories];
@@ -138,6 +171,9 @@ export default function Products() {
       setSelectedIds([]);
     } catch (error) {
       console.error("Error fetching products for filter:", error);
+      if (error.response?.status === 500) {
+        console.error("Server error (500). Please check backend logs.");
+      }
     }
   };
 
@@ -182,18 +218,6 @@ export default function Products() {
     const stockQuantity = item.supplies?.[0]?.quantity || item.quantity || 0;
     let productStatus = 'Active';
     
-    // Логируем данные для продукта с ID 8
-    if (item.id === 8) {
-      console.log("🔍 Product 8 in adminProducts:", {
-        id: item.id,
-        status: item.status,
-        visible: item.visible,
-        hasStatus: 'status' in item,
-        hasVisible: 'visible' in item,
-        stockQuantity
-      });
-    }
-    
     if (item.status) {
       productStatus = item.status;
     } else if (item.visible === false || item.visible === 'false' || item.visible === 0) {
@@ -202,11 +226,6 @@ export default function Products() {
       productStatus = 'Out of stock';
     } else if (stockQuantity > 0) {
       productStatus = 'Active';
-    }
-    
-    // Логируем вычисленный статус для продукта с ID 8
-    if (item.id === 8) {
-      console.log("🔍 Product 8 computed status:", productStatus);
     }
     
     return {
