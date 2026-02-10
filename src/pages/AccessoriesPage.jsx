@@ -23,6 +23,7 @@ export default function AccessoriesPage() {
   const { items, loading, error, totalPages, currentPage } = useSelector(state => state.accessories);
   const favorites = useSelector(state => state.favorites.favorites);
   const token = useSelector(state => state.auth.token);
+  console.log("items:", items);
 
   const favoritesMap = useMemo(() => {
     const map = {};

@@ -109,7 +109,6 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 });
             }
 
-            console.log("✅ Product hidden successfully");
             console.log("📊 Response data:", response.data);
             if (onProductUpdated) {
                 onProductUpdated(id, { status: 'Hidden', visible: false });
@@ -120,7 +119,6 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
                 if (typeof onRefresh === 'function') {
                     try {
                         onRefresh();
-                        console.log("✅ Product list refreshed");
                     } catch (e) {
                         console.warn("onRefresh failed, reloading page:", e);
                         window.location.reload();

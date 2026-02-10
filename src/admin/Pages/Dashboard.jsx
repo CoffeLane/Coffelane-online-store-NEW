@@ -51,10 +51,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (location.state?.refresh) {
+      console.log('🔄 Refreshing products list...');
+      // Увеличиваем задержку, чтобы дать серверу время обработать изменения
       const timer = setTimeout(() => {
+        console.log('📥 Fetching products after refresh...');
         fetchAllProducts();
         navigate(location.pathname, { replace: true, state: {} });
-      }, 2000);
+      }, 1500); // Увеличено для более надежного обновления
       return () => clearTimeout(timer);
     }
   }, [location.state, navigate, location.pathname]);
@@ -75,6 +78,7 @@ export default function Dashboard() {
 
   const fetchAllProducts = async () => {
     try {
+      console.log('📥 Fetching all products...');
       const firstPageRes = await apiWithAuth
         .get("/products", { params: { page: 1 } })
         .catch(() => {
@@ -93,6 +97,17 @@ export default function Dashboard() {
 
       const allPagesRes = await Promise.all(allPagesPromises);
       const allProducts = allPagesRes.flatMap((res) => res.data.data || []);
+      
+      // Логирование для продукта с ID 83
+      const product83 = allProducts.find(p => p.id === 83);
+      if (product83) {
+        console.log('🔍 Product 83 data:', {
+          id: product83.id,
+          name: product83.name,
+          product_photos: product83.product_photos,
+          photos_url: product83.photos_url
+        });
+      }
 
       const accessoriesRes = await api.get("/accessories");
       const allAccessories = accessoriesRes.data.data || [];
@@ -159,7 +174,32 @@ export default function Dashboard() {
       Array.isArray(item.product_photos) &&
       item.product_photos.length > 0
     ) {
-      imageUrl = extractPhotoUrl(item.product_photos[0]);
+      const firstPhoto = item.product_photos[0];
+      // Обрабатываем случай, когда photo.photo - это строка (относительный путь)
+      if (firstPhoto && typeof firstPhoto === 'object') {
+        // Приоритет: photo.photo > photo.url > extractPhotoUrl(firstPhoto)
+        if (firstPhoto.photo && typeof firstPhoto.photo === 'string') {
+          imageUrl = firstPhoto.photo;
+        } else if (firstPhoto.url && typeof firstPhoto.url === 'string') {
+          imageUrl = firstPhoto.url;
+        } else {
+          imageUrl = extractPhotoUrl(firstPhoto);
+        }
+      } else if (typeof firstPhoto === 'string') {
+        imageUrl = firstPhoto;
+      } else {
+        imageUrl = extractPhotoUrl(firstPhoto);
+      }
+      
+      // Логирование для отладки
+      if (item.id === 83) {
+        console.log('🔍 Product 83 photo extraction:', {
+          firstPhoto,
+          imageUrl,
+          product_photos: item.product_photos,
+          extractedUrl: imageUrl
+        });
+      }
     } else if (
       item.photos_url &&
       Array.isArray(item.photos_url) &&
@@ -203,9 +243,45 @@ export default function Dashboard() {
     if (
       imageUrl &&
       typeof imageUrl === "string" &&
-      !imageUrl.startsWith("http")
+      !imageUrl.startsWith("http") &&
+      !imageUrl.startsWith("blob:")
     ) {
-      imageUrl = `https://onlinestore-928b.onrender.com${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+      // Формируем полный URL для Cloudinary или обычного пути
+      const baseUrl = "https://onlinestore-928b.onrender.com";
+      
+      // Обрабатываем Cloudinary пути (image/upload/...)
+      if (imageUrl.startsWith("image/upload/")) {
+        // Путь Cloudinary - используем прямой путь через сервер (как в других компонентах)
+        const cleanPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+        imageUrl = `${baseUrl}${cleanPath}`;
+        
+        // Логирование для отладки
+        if (item.id === 83) {
+          console.log('🔍 Product 83 Cloudinary path processed (direct):', imageUrl);
+        }
+      } else {
+        // Обычный относительный путь
+        imageUrl = imageUrl.startsWith("/")
+          ? `${baseUrl}${imageUrl}`
+          : `${baseUrl}/${imageUrl}`;
+      }
+      
+      // Логирование для отладки
+      if (item.id === 83) {
+        console.log('🔍 Product 83 final imageUrl:', imageUrl);
+      }
+    }
+    
+    // Логирование для продукта 83, если imageUrl все еще null
+    if (!imageUrl && item.id === 83) {
+      console.warn('⚠️ Product 83 has no imageUrl after processing:', {
+        id: item.id,
+        name: item.name,
+        product_photos: item.product_photos,
+        photos_url: item.photos_url,
+        hasProductPhotos: !!item.product_photos && item.product_photos.length > 0,
+        firstPhoto: item.product_photos?.[0]
+      });
     }
 
     if (!imageUrl && item.type === "product" && products.indexOf(item) < 3) {

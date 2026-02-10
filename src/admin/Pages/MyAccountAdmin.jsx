@@ -444,7 +444,6 @@ export default function MyAccountAdmin() {
                   : `https://onlinestore-928b.onrender.com${listAvatarUrl.startsWith('/') ? '' : '/'}${listAvatarUrl}`;
                 setAvatar(fullListAvatarUrl);
                 localStorage.setItem('userAvatar', fullListAvatarUrl);
-                console.log("💾 Avatar saved to localStorage (from /users/list/{id}/):", fullListAvatarUrl);
                 URL.revokeObjectURL(tempAvatarUrl);
                 await dispatch(fetchProfile());
                 return;

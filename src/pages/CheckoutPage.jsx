@@ -47,6 +47,7 @@ import api, { apiWithAuth } from "../store/api/axios.js";
 import { formatPrice } from "../components/utils/priceUtils.jsx";
 import { fetchProfile } from "../store/slice/authSlice.jsx";
 
+
 export default function CheckoutPage() {
   const items = useSelector(selectCartItems);
   const total = useSelector(selectCartTotal);
@@ -816,7 +817,6 @@ export default function CheckoutPage() {
         </Box>
       </Box>
 
-      {}
       <LoginModal
         open={openLogin}
         handleClose={() => {

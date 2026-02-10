@@ -19,11 +19,19 @@ import { h3, h5 } from "../../styles/typographyStyles.jsx";
 import { useSelector, useDispatch } from "react-redux";
 import { formatPrice, getPrice } from "../utils/priceUtils.jsx";
 import { getActiveBasket } from "../../store/slice/basketSlice.jsx";
+import { buildImageUrl } from "../utils/helpers.js";
 
 const CartItemImage = ({ src, alt, isMobile }) => {
   const [hasError, setHasError] = useState(false);
 
-  if (!src || hasError) {
+  let finalSrc = src;
+  if (src && typeof src === "object") {
+    finalSrc = src.url || src.photo || src.image_url;
+  }
+
+  finalSrc = buildImageUrl(finalSrc);
+
+  if (!finalSrc || hasError) {
     return (
       <Box
         sx={{
@@ -48,7 +56,7 @@ const CartItemImage = ({ src, alt, isMobile }) => {
   return (
     <Box
       component="img"
-      src={src}
+      src={finalSrc}
       alt={alt}
       onError={() => setHasError(true)}
       sx={{
@@ -74,7 +82,7 @@ export default function BasketModal({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const currency = useSelector((state) => state.settings.currency);
-  const backendTotal = useSelector((state) => state.basket.totalAmount); // Сумма с бэкенда
+  const backendTotal = useSelector((state) => state.basket.totalAmount);
   const token = useSelector((state) => state.auth.token);
   const dispatch = useDispatch();
 
@@ -83,18 +91,21 @@ export default function BasketModal({
       dispatch(getActiveBasket());
     }
   }, [open, token, dispatch, items.length]);
-  
+
   const calculatedSubtotal = items.reduce(
     (s, it) => s + getPrice({ price: it.price }, currency) * it.qty,
     0,
   );
   const roundedSubtotal = Math.round(calculatedSubtotal * 100) / 100;
-  const subtotal = (backendTotal !== null && backendTotal !== undefined && Number(backendTotal) !== 0)
-    ? Number(backendTotal)
-    : roundedSubtotal;
+  const subtotal =
+    backendTotal !== null &&
+    backendTotal !== undefined &&
+    Number(backendTotal) !== 0
+      ? Number(backendTotal)
+      : roundedSubtotal;
   const discountVal = getPrice({ price: discount }, currency);
   const total = subtotal - discountVal;
-  
+ 
   return (
     <Drawer
       anchor="right"
@@ -145,7 +156,11 @@ export default function BasketModal({
                   }}
                 >
                   <CartItemImage
-                    src={item.img}
+                    src={
+                      item.img || 
+                      item.product?.product_photos?.[0]?.photo || 
+                      item.product?.photos_url?.[0]
+                    }
                     alt={item.name}
                     isMobile={isMobile}
                   />
@@ -240,7 +255,11 @@ export default function BasketModal({
                       </Box>
 
                       <Typography
-                        sx={{ ...h5, fontSize: { xs: "14px", md: "16px" }, fontWeight: 600 }}
+                        sx={{
+                          ...h5,
+                          fontSize: { xs: "14px", md: "16px" },
+                          fontWeight: 600,
+                        }}
                       >
                         {formatPrice(singleItemPrice * item.qty, currency)}
                       </Typography>

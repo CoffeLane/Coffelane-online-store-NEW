@@ -14,73 +14,83 @@ export default function ProductForm({
     productType = 'product',
     availableCategories = [], 
 }) {
+    // Determine if we should show the text field for a new category
+    const isCustomCategory = category === "custom" || (category && !availableCategories.includes(category));
+
     return (
-        <Box sx={{mt:3}}>
-            <Typography sx={{ ...h7 }} mb={1}>Product name</Typography>
-            <TextField fullWidth value={productName || ""}  onChange={(e) => setProductName(e.target.value)} sx={{ ...inputStyles, mb: 2 }}/>
+        <Box sx={{ mt: 3 }}>
+            <Typography sx={{ ...h7 }} mb={1}>Product Name</Typography>
+            <TextField 
+                fullWidth 
+                value={productName || ""}  
+                onChange={(e) => setProductName(e.target.value)} 
+                sx={{ ...inputStyles, mb: 2 }}
+                placeholder="Enter product name"
+            />
 
             <Typography sx={{ ...h7 }} mb={1}>Category</Typography>
-            {category && category !== "custom" && availableCategories && !availableCategories.includes(category) ? (
+            {isCustomCategory ? (
                 <TextField 
                     fullWidth 
-                    value={category} 
+                    value={category === "custom" ? "" : category} 
                     onChange={(e) => setCategory(e.target.value)} 
                     sx={{ ...inputStyles, mb: 2 }}
-                    placeholder="Enter category"
-                />
-            ) : category === "custom" ? (
-                <TextField 
-                    fullWidth 
-                    value="" 
-                    onChange={(e) => {
-                        const value = e.target.value;
-                        setCategory(value || "custom");
-                    }} 
-                    sx={{ ...inputStyles, mb: 2 }}
-                    placeholder="Enter new category"
+                    placeholder="Enter new category name..."
                     autoFocus
+                    helperText="Type the name. Clear the field to return to the selection list."
                 />
             ) : (
                 <FormControl fullWidth sx={{ ...h6, ...inputDropdown, ...inputStyles, mb: 2 }}>
                     <Select 
                         value={category || ""} 
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "custom") {
-                                setCategory("custom");
-                            } else {
-                                setCategory(value);
-                            }
-                        }} 
+                        onChange={(e) => setCategory(e.target.value)} 
                         MenuProps={selectMenuProps}
                         displayEmpty
                     >
                         <MenuItem value="">Select category</MenuItem>
-                        {availableCategories && availableCategories.length > 0 && availableCategories.map((cat) => (
+                        {availableCategories.map((cat) => (
                             <MenuItem key={cat} value={cat}>{cat}</MenuItem>
                         ))}
-                        <MenuItem value="custom">+ Add new category</MenuItem>
+                        <MenuItem value="custom" sx={{ fontStyle: 'italic', color: '#A4795B' }}>
+                            + Add new category
+                        </MenuItem>
                     </Select>
                 </FormControl>
             )}
 
-            <Typography sx={{ ...h7 }} mb={1}>Stock</Typography>
-            <TextField fullWidth type="number" value={stock || ""} onChange={(e) => setStock(Number(e.target.value))}  sx={{ ...inputStyles, mb: 2 }} />
+            <Typography sx={{ ...h7 }} mb={1}>Stock (Quantity)</Typography>
+            <TextField 
+                fullWidth 
+                type="number" 
+                value={stock === null ? "" : stock} 
+                onChange={(e) => setStock(e.target.value === "" ? null : Number(e.target.value))}  
+                sx={{ ...inputStyles, mb: 2 }} 
+                placeholder="0"
+            />
 
             <Typography sx={{ ...h7 }} mb={1}>Price</Typography>
-            <TextField fullWidth value={price || ""} onChange={(e) => setPrice(e.target.value)} sx={{ ...inputStyles, mb: 2 }}/>
+            <TextField 
+                fullWidth 
+                value={price || ""} 
+                onChange={(e) => setPrice(e.target.value)} 
+                sx={{ ...inputStyles, mb: 2 }}
+                placeholder="0.00"
+            />
 
             {productType !== 'accessory' && (
-                <>
-                    <Typography sx={{ ...h7 }} mb={1}>Total weight</Typography>
+                <Box mb={2}>
+                    <Typography sx={{ ...h7 }} mb={1}>Total Weight</Typography>
                     <WeightSelectorAdmin weight={weight} setWeight={setWeight}/>
-                </>
+                </Box>
             )}
 
             <Typography sx={{ ...h7, mt: 2 }} mb={1}>Description</Typography>
-            <TextField multiline  minRows={4} fullWidth
+            <TextField 
+                multiline  
+                minRows={4} 
+                fullWidth
                 placeholder="Write a short description highlighting benefits and features"
-                value={description}
+                value={description || ""}
                 onChange={(e) => setDescription(e.target.value)}
                 sx={{
                     "& .MuiOutlinedInput-root": {
@@ -92,14 +102,10 @@ export default function ProductForm({
                             wordBreak: "break-word",
                             whiteSpace: "pre-wrap",
                         },
-                        "&:hover .MuiOutlinedInput-input": { color: "#B88A6E !important" },
-                        "&.Mui-focused .MuiOutlinedInput-input": { color: "#A4795B !important" },
-                        "&.Mui-error .MuiOutlinedInput-input": { color: "#FF2F2F !important" },
+                        "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B88A6E" },
+                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#A4795B" },
                     },
                     "& .MuiOutlinedInput-notchedOutline": { borderColor: "#3E3027" },
-                    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#B88A6E !important" },
-                    "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#A4795B !important" },
-                    "& .Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "#FF2F2F !important" },
                 }}
             />
         </Box>

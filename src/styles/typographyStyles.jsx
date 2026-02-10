@@ -1,6 +1,5 @@
 export const headTitle = {
   fontWeight: 700,
-  fontSize: '48px',
   color: '#EAD9C9'
 }
 

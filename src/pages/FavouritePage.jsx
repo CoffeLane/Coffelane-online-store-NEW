@@ -16,46 +16,31 @@ import ClampText from "../components/ClampText.jsx";
 import LoginModal from "../components/Modal/LoginModal.jsx";
 import { formatPrice, getPrice, getProductPrice } from "../components/utils/priceUtils.jsx";
 import CoffeeIcon from '@mui/icons-material/Coffee';
+import { buildImageUrl } from "../components/utils/helpers.js";
 
-const FavoriteProductImage = ({ item}) => {
+const FavoriteProductImage = ({ item }) => {
   const [hasError, setHasError] = React.useState(false);
-  
-  let imageUrl = null;
-  
-  if (item.photos_url && Array.isArray(item.photos_url) && item.photos_url.length > 0) {
-    const firstPhoto = item.photos_url[0];
-    imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
+
+  const potentialPhotos = [
+    item.image,
+    ...(Array.isArray(item.photos_url) ? item.photos_url : []),
+    ...(Array.isArray(item.product_photos) ? item.product_photos : []),
+    ...(Array.isArray(item.accessory_photos) ? item.accessory_photos : [])
+  ];
+
+  let rawPhoto = potentialPhotos.find(p => p !== null && p !== undefined);
+
+  if (rawPhoto && typeof rawPhoto === 'object') {
+    rawPhoto = rawPhoto.url || rawPhoto.photo || rawPhoto.photo_url || rawPhoto.image_url;
   }
-  
-  if (!imageUrl && item.product_photos && Array.isArray(item.product_photos) && item.product_photos.length > 0) {
-    const firstPhoto = item.product_photos[0];
-    if (firstPhoto.photo) {
-      imageUrl = typeof firstPhoto.photo === 'string' ? firstPhoto.photo : (firstPhoto.photo.url || firstPhoto.photo.photo_url);
-    } else {
-      imageUrl = firstPhoto?.url || firstPhoto?.photo || null;
-    }
-  }
-  
-  if (!imageUrl && item.accessory_photos && Array.isArray(item.accessory_photos) && item.accessory_photos.length > 0) {
-    const firstPhoto = item.accessory_photos[0];
-    imageUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
-  }
-  
-  if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('http') && !imageUrl.startsWith('blob:')) {
-    const baseUrl = 'https://onlinestore-928b.onrender.com';
-    imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
-  }
+  const imageUrl = buildImageUrl(rawPhoto);
 
   if (!imageUrl || hasError) {
     return (
       <Box sx={{ 
-        width: "100%", 
-        height: "100%", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        bgcolor: "#f5f5f5",
-        borderRadius: "12px"
+        width: "100%", height: "100%", display: "flex", 
+        alignItems: "center", justifyContent: "center", 
+        bgcolor: "#f5f5f5", borderRadius: "12px" 
       }}>
         <CoffeeIcon sx={{ color: "#ccc", fontSize: 50 }} />
       </Box>

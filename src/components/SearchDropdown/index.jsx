@@ -12,7 +12,6 @@ import { useSelector } from "react-redux";
 import { getProductPrice, formatPrice } from "../utils/priceUtils";
 import { Link as RouterLink } from "react-router-dom";
 import NoResults from "../../assets/icons/noResults.svg";
-// Не забудьте импортировать иконку!
 import CoffeeIcon from "@mui/icons-material/Coffee";
 
 function SearchDropdown({ loading, query, onClose }) {
