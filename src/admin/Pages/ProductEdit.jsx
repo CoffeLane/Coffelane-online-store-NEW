@@ -19,20 +19,30 @@ import BottomButtons from "../AdminComponents/BottomButtons.jsx";
 import api, { apiWithAuth } from "../../store/api/axios.js";
 import { buildImageUrl } from "../../components/utils/helpers.js";
 
-const ALL_BRANDS = ['Lavazza', 'Blasercafe', 'Nescafé', 'Jacobs', "L'OR", 'Starbucks', 'Nespresso'];
+const ALL_BRANDS = [
+  "Lavazza",
+  "Blasercafe",
+  "Nescafé",
+  "Jacobs",
+  "L'OR",
+  "Starbucks",
+  "Nespresso",
+];
 
 const extractPhotoUrl = (photo) => {
   if (!photo) return null;
   if (typeof photo === "string") return photo;
   if (typeof photo === "object") {
-    return photo?.url || photo?.photo || photo?.photo_url || photo?.image_url || null;
+    return (
+      photo?.url || photo?.photo || photo?.photo_url || photo?.image_url || null
+    );
   }
   return null;
 };
 
 const processPhotoArray = (photos) => {
   if (!photos || !Array.isArray(photos) || photos.length === 0) return [];
-  
+
   return photos
     .map((photo) => {
       let photoUrl = null;
@@ -48,9 +58,9 @@ const processPhotoArray = (photos) => {
       } else {
         photoUrl = extractPhotoUrl(photo);
       }
-      
+
       photoUrl = buildImageUrl(photoUrl);
-      
+
       return {
         id: photo.id || photo.photo_id || null,
         url: photoUrl,
@@ -58,7 +68,6 @@ const processPhotoArray = (photos) => {
     })
     .filter((img) => img.url !== null);
 };
-
 
 export default function ProductEdit() {
   const { id } = useParams();
@@ -82,6 +91,47 @@ export default function ProductEdit() {
   const fetchingRef = useRef(false);
   const fetchedIdRef = useRef(null);
   const initialPhotoIdsRef = useRef([]);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+
+  // Функция для получения похожих товаров по бренду
+  const fetchRelatedProducts = async (currentBrand) => {
+    if (!currentBrand || currentBrand === "Category") {
+      setRelatedProducts([]);
+      return;
+    }
+
+    try {
+      const response = await api.get("/products", {
+        params: { brand: currentBrand, size: 10 },
+      });
+
+      // Смотрим в консоль: что именно пришло в массиве?
+      console.log("API Response for Related:", response.data.data);
+
+      const rawProducts = response.data.data || [];
+
+      const processed = rawProducts
+        .filter((p) => String(p.id) !== String(id)) // Убираем текущий товар
+        .map((p) => ({
+          ...p,
+          // Вытаскиваем цену из supplies специально для отображения
+          displayPrice: p.supplies?.[0]?.price || p.price || "0",
+        }));
+
+      setRelatedProducts(processed.slice(0, 4));
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+    }
+  };
+
+  useEffect(() => {
+    // Вызываем поиск похожих товаров, когда категория (бренд) загружена
+    if (category && category !== "Category") {
+      fetchRelatedProducts(category);
+    } else {
+      setRelatedProducts([]);
+    }
+  }, [category, id]);
 
   useEffect(() => {
     if (coverRef.current?.file && !cover?.file) {
@@ -107,18 +157,18 @@ export default function ProductEdit() {
     const fetchCategories = async () => {
       try {
         const firstPageRes = await api.get("/products", {
-          params: { page: 1, _admin: 'true' },
-          timeout: 5000
+          params: { page: 1, _admin: "true" },
+          timeout: 5000,
         });
         const totalPages = firstPageRes.data.total_pages || 1;
 
         const allPagesPromises = [];
         for (let p = 1; p <= totalPages; p++) {
           allPagesPromises.push(
-            api.get("/products", { 
-              params: { page: p, _admin: 'true' },
-              timeout: 5000
-            })
+            api.get("/products", {
+              params: { page: p, _admin: "true" },
+              timeout: 5000,
+            }),
           );
         }
 
@@ -126,8 +176,8 @@ export default function ProductEdit() {
         const allProducts = allPagesRes.flatMap((res) => res.data.data || []);
 
         const accessoriesRes = await api.get("/accessories", {
-          params: { _admin: 'true' },
-          timeout: 5000
+          params: { _admin: "true" },
+          timeout: 5000,
         });
         const allAccessories = accessoriesRes.data.data || [];
 
@@ -145,10 +195,14 @@ export default function ProductEdit() {
           }
         });
 
-        const allCategories = ['Category', ...ALL_BRANDS, ...Array.from(productCategories)];
+        const allCategories = [
+          "Category",
+          ...ALL_BRANDS,
+          ...Array.from(productCategories),
+        ];
         setAvailableCategories(Array.from(new Set(allCategories)));
       } catch (error) {
-        const allCategories = ['Category', ...ALL_BRANDS];
+        const allCategories = ["Category", ...ALL_BRANDS];
         setAvailableCategories(allCategories);
       }
     };
@@ -188,7 +242,6 @@ export default function ProductEdit() {
 
     const result =
       nameValid && categoryValid && priceValid && weightValid && hasPhoto;
-
 
     return result;
   }, [productName, category, price, weight, productType, cover, images]);
@@ -371,12 +424,24 @@ export default function ProductEdit() {
       );
 
       let imageUrls = [];
-      
-      if (product.product_photos && Array.isArray(product.product_photos) && product.product_photos.length > 0) {
+
+      if (
+        product.product_photos &&
+        Array.isArray(product.product_photos) &&
+        product.product_photos.length > 0
+      ) {
         imageUrls = processPhotoArray(product.product_photos);
-      } else if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
+      } else if (
+        product.photos_url &&
+        Array.isArray(product.photos_url) &&
+        product.photos_url.length > 0
+      ) {
         imageUrls = processPhotoArray(product.photos_url);
-      } else if (product.accessory_photos && Array.isArray(product.accessory_photos) && product.accessory_photos.length > 0) {
+      } else if (
+        product.accessory_photos &&
+        Array.isArray(product.accessory_photos) &&
+        product.accessory_photos.length > 0
+      ) {
         imageUrls = processPhotoArray(product.accessory_photos);
       } else if (product.images && Array.isArray(product.images)) {
         imageUrls = product.images
@@ -444,7 +509,7 @@ export default function ProductEdit() {
   }, [id, fetchProduct]);
 
   const handleDeletePhoto = async (photoId) => {
-    if (typeof photoId === 'object' && photoId !== null && !photoId.id) {
+    if (typeof photoId === "object" && photoId !== null && !photoId.id) {
       setImages((prev) => {
         const filtered = prev.filter((img) => img !== photoId);
         if (cover === photoId) {
@@ -467,9 +532,7 @@ export default function ProductEdit() {
           deleted = true;
         } catch (error) {
           const errorDetail =
-            error.response?.data?.detail ||
-            error.response?.data?.message ||
-            "";
+            error.response?.data?.detail || error.response?.data?.message || "";
           if (
             errorDetail.includes("No AccessoryPhotosModel matches") ||
             errorDetail.includes("not found") ||
@@ -491,9 +554,7 @@ export default function ProductEdit() {
           );
         }
       } else {
-        const endpoints = [
-          `/products/photo/${photoId}/deletion`,
-        ];
+        const endpoints = [`/products/photo/${photoId}/deletion`];
 
         for (const endpoint of endpoints) {
           try {
@@ -526,15 +587,16 @@ export default function ProductEdit() {
 
       setImages((prev) => {
         const filtered = prev.filter((img) => {
-          if (typeof photoId === 'object' && photoId !== null) {
+          if (typeof photoId === "object" && photoId !== null) {
             return img !== photoId;
           }
           return img.id !== photoId;
         });
-        const isCoverBeingDeleted = typeof photoId === 'object' && photoId !== null
-          ? cover === photoId
-          : cover?.id === photoId;
-          
+        const isCoverBeingDeleted =
+          typeof photoId === "object" && photoId !== null
+            ? cover === photoId
+            : cover?.id === photoId;
+
         if (isCoverBeingDeleted) {
           setCover(filtered[0] || null);
         }
@@ -631,34 +693,38 @@ export default function ProductEdit() {
 
     try {
       const productBrand = category || "General";
-      
+
+      const validatedPrice = parseFloat(price) || 0;
+      const cleanWeight = String(weight).replace(/[^\d.]/g, "");
+      const validatedWeight = parseFloat(cleanWeight) || 0;
+      const validatedQuantity = parseInt(stock) || 0;
+
       const productPayload = {
         name: productName.trim(),
         brand: productBrand,
-        sku: `SKU_${id}_${Date.now()}`, 
+        sku: `SKU_${id}_${Date.now()}`,
         description: description.trim(),
         is_special: !!isSpecial,
         status: visible ? "Active" : "Hidden",
         supplies: [
           {
-            serving_type: "Ground", 
-            price: price.toString(),
-            quantity: parseInt(stock) || 0,
-            weight: weight ? weight.toString() : "0.00"
-          }
+            serving_type: "Ground",
+            price: validatedPrice.toString(),
+            quantity: validatedQuantity,
+            weight: validatedWeight.toFixed(2),
+          },
         ],
-        flavor_profiles: [] 
+        flavor_profiles: [],
       };
 
-      const baseEndpoint = productType === "accessory" 
-        ? `/accessories/${id}` 
-        : `/products/product/${id}`;
+      const baseEndpoint =
+        productType === "accessory"
+          ? `/accessories/${id}`
+          : `/products/product/${id}`;
 
-      await apiWithAuth.put(
-        baseEndpoint,
-        productPayload,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      await apiWithAuth.put(baseEndpoint, productPayload, {
+        headers: { "Content-Type": "application/json" },
+      });
 
       const newImages = imagesForUpdate.filter((img) => img.file);
       const currentCover = coverRef.current || cover;
@@ -675,23 +741,29 @@ export default function ProductEdit() {
           photoFormData.append("cover", convertJfifToJpg(currentCover.file));
         }
 
-        const existingImages = imagesForUpdate.filter(img => img.id && !img.file);
-        existingImages.forEach(img => {
+        const existingImages = imagesForUpdate.filter(
+          (img) => img.id && !img.file,
+        );
+        existingImages.forEach((img) => {
           photoFormData.append("photo_ids", img.id.toString());
         });
 
-        const photoEndpoint = productType === "accessory"
-          ? `/accessories/${id}/photo`
-          : `/products/${id}/photo`;
+        const photoEndpoint =
+          productType === "accessory"
+            ? `/accessories/${id}/photo`
+            : `/products/${id}/photo`;
 
         await apiWithAuth.put(photoEndpoint, photoFormData, {
-          headers: { "Content-Type": "multipart/form-data" }
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
 
-      showNotification("The product has been updated successfully.!", "success");
-      imagesForUpdate.forEach(img => {
-        if (img.url && img.url.startsWith('blob:')) {
+      showNotification(
+        "The product has been updated successfully.!",
+        "success",
+      );
+      imagesForUpdate.forEach((img) => {
+        if (img.url && img.url.startsWith("blob:")) {
           URL.revokeObjectURL(img.url);
         }
       });
@@ -699,17 +771,16 @@ export default function ProductEdit() {
       setTimeout(() => {
         navigate("/admin/products", { state: { refresh: true } });
       }, 1500);
-
     } catch (error) {
       console.error("Update error:", error);
       const errorData = error.response?.data;
-    
+
       let errorMsg = "An error occurred while saving";
-      if (typeof errorData === 'string') errorMsg = errorData;
+      if (typeof errorData === "string") errorMsg = errorData;
       else if (errorData?.detail) errorMsg = errorData.detail;
       else if (errorData?.message) errorMsg = errorData.message;
       else if (error.message) errorMsg = error.message;
-      
+
       showNotification(`Error: ${errorMsg}`, "error");
     } finally {
       setLoading(false);
@@ -797,8 +868,6 @@ export default function ProductEdit() {
                       onChange={(e) => {
                         const newValue = e.target.checked;
                         setIsSpecial(newValue);
-
-                        // Проверяем наличие фото при установке isSpecial
                         if (newValue) {
                           const hasPhotos =
                             (images && images.length > 0) ||
@@ -854,9 +923,7 @@ export default function ProductEdit() {
             setVisible={setVisible}
             stock={stock}
           />
-          <RelatedItems
-            onAddItems={() => showNotification("Feature coming soon!", "info")}
-          />
+          <RelatedItems items={relatedProducts} />
           <BottomButtons
             isProductReady={isProductReady}
             onSave={handleUpdateProduct}
@@ -866,7 +933,7 @@ export default function ProductEdit() {
                 productType === "accessory"
                   ? `/accessories/product/${id}`
                   : `/coffee/product/${id}`;
-             navigate(path, { state: { preview: true } });
+              navigate(path, { state: { preview: true } });
             }}
           />
         </Grid>
@@ -886,7 +953,6 @@ export default function ProductEdit() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 }
