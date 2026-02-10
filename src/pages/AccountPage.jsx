@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { jwtDecode } from "jwt-decode";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";

@@ -31,6 +31,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import ScrollToTopButton from "../../components/ScrollToTopButton/ScrollToTopButton";
+import { buildImageUrl } from "../../components/utils/helpers.js";
 
 export default function AdminLayout() {
   const dispatch = useDispatch();
@@ -46,16 +47,22 @@ export default function AdminLayout() {
     const firstName = authUser?.first_name || "";
     const lastName = authUser?.last_name || "";
     return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "A";
-  }, [authUser?.first_name, authUser?.last_name]);
+  }, [authUser]);
 
   const avatar = useMemo(() => {
     const authAvatar = authUser?.avatar || authUser?.profile?.avatar;
+
     if (authAvatar) {
-      return authAvatar;
+      return buildImageUrl(authAvatar);
     }
+
     const savedAvatar = localStorage.getItem("userAvatar");
-    return savedAvatar || null;
-  }, [authUser?.avatar, authUser?.profile?.avatar]);
+    if (savedAvatar && savedAvatar !== "null") {
+      return buildImageUrl(savedAvatar);
+    }
+
+    return null;
+  }, [authUser]);
 
   useEffect(() => {
     setAvatarError(false);

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Button,
   Collapse,
@@ -13,287 +13,104 @@ import {
 } from "@mui/material";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import CoffeeIcon from "@mui/icons-material/Coffee";
+
 import { btnCart, btnInCart } from "../../styles/btnStyles.jsx";
 import { h4, h5, h6 } from "../../styles/typographyStyles.jsx";
 import { fetchUserOrders } from "../../store/slice/ordersSlice.jsx";
+import { default as api } from "../../store/api/axios.js";
+import { buildImageUrl } from "../utils/helpers.js";
+import { formatPrice } from "../utils/priceUtils.jsx";
+import PaginationControl from "../PaginationControl/PaginationControl.jsx";
+
 import deliveredImg from "../../assets/images/status/delivered.png";
 import deliveringImg from "../../assets/images/status/delivering.png";
 import cancelledImg from "../../assets/images/status/cancelled.png";
-import { useNavigate } from "react-router-dom";
-import { default as api } from "../../store/api/axios.js";
-import PaginationControl from "../PaginationControl/PaginationControl.jsx";
-import { formatPrice } from "../utils/priceUtils.jsx";
 
-const ordersPerPage = 5;
+const ORDERS_PER_PAGE = 5;
 
 export default function OrderHistory() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const location = useLocation();
   const dispatch = useDispatch();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const { orders, loading, error } = useSelector((state) => state.orders);
+  
   const [openOrderId, setOpenOrderId] = useState(null);
   const [photoCache, setPhotoCache] = useState(new Map());
   const [imageErrors, setImageErrors] = useState({});
   const [page, setPage] = useState(1);
 
+  const statusConfig = {
+    processing: { img: deliveringImg, label: "Processing", color: "#f5c407" },
+    preparing: { img: deliveringImg, label: "Preparing", color: "#FF9800" },
+    shipping: { img: deliveringImg, label: "Shipping", color: "#2196F3" },
+    in_transit: { img: deliveringImg, label: "In Transit", color: "#00BCD4" },
+    delivered: { img: deliveredImg, label: "Delivered", color: "#46d95b" },
+    delivering: { img: deliveredImg, label: "Delivered", color: "#46d95b" },
+    cancelled: { img: cancelledImg, label: "Cancelled", color: "#FD8888" },
+    canceled: { img: cancelledImg, label: "Cancelled", color: "#FD8888" },
+    default: { img: deliveringImg, label: "Processing", color: "#f5c407" }
+  };
+  
   useEffect(() => {
-    const token = localStorage.getItem("access");
-    if (token) {
-      dispatch(fetchUserOrders({ page: 1, size: 30 }));
-    }
+    dispatch(fetchUserOrders({ page: 1, size: 30 }));
   }, [dispatch]);
 
   useEffect(() => {
-    if (!orders || orders.length === 0) return;
-
-    const loadPhotos = async () => {
-      const productIds = new Set();
-      const accessoryIds = new Set();
-
-      orders.forEach((order) => {
-        (order.positions || []).forEach((position) => {
-          if (position.product?.id) {
-            productIds.add(position.product.id);
-          }
-          if (position.accessory?.id) {
-            accessoryIds.add(position.accessory.id);
+    if (!orders?.length) return;
+    const loadMissingPhotos = async () => {
+      const itemsToFetch = [];
+      orders.forEach(order => {
+        order.positions?.forEach(pos => {
+          const item = pos.product || pos.accessory;
+          const type = pos.product ? 'product' : 'accessory';
+          if (item?.id && !photoCache.has(`${type}-${item.id}`)) {
+            itemsToFetch.push({ id: item.id, type });
           }
         });
       });
-
-      setPhotoCache((prevCache) => {
-        const photoPromises = [];
-
-        productIds.forEach((productId) => {
-          if (!prevCache.has(`product-${productId}`)) {
-            photoPromises.push(
-              api
-                .get(`/products/${productId}`)
-                .then((response) => {
-                  const product = response.data;
-                  let photoUrl = null;
-
-                  if (
-                    product.photos_url &&
-                    Array.isArray(product.photos_url) &&
-                    product.photos_url.length > 0
-                  ) {
-                    const firstPhoto = product.photos_url[0];
-                    photoUrl =
-                      firstPhoto?.url ||
-                      firstPhoto?.photo ||
-                      (typeof firstPhoto === "string" ? firstPhoto : null);
-                  } else if (
-                    product.product_photos &&
-                    Array.isArray(product.product_photos) &&
-                    product.product_photos.length > 0
-                  ) {
-                    const firstPhoto = product.product_photos[0];
-                    if (firstPhoto.photo) {
-                      photoUrl =
-                        typeof firstPhoto.photo === "string"
-                          ? firstPhoto.photo
-                          : firstPhoto.photo.url || firstPhoto.photo.photo_url;
-                    } else {
-                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
-                    }
-                  }
-
-                  if (
-                    photoUrl &&
-                    typeof photoUrl === "string" &&
-                    !photoUrl.startsWith("http") &&
-                    !photoUrl.startsWith("blob:")
-                  ) {
-                    const baseUrl = "https://onlinestore-928b.onrender.com";
-                    photoUrl = photoUrl.startsWith("/")
-                      ? `${baseUrl}${photoUrl}`
-                      : `${baseUrl}/${photoUrl}`;
-                  }
-
-                  return {
-                    key: `product-${productId}`,
-                    photoUrl: photoUrl || null,
-                  };
-                })
-                .catch((err) => {
-                  console.warn(
-                    `Failed to load photo for product ${productId}:`,
-                    err,
-                  );
-                  return { key: `product-${productId}`, photoUrl: null };
-                }),
-            );
-          }
+      if (itemsToFetch.length === 0) return;
+      const results = await Promise.allSettled(
+        itemsToFetch.map(async ({ id, type }) => {
+          const endpoint = type === 'product' ? `/products/${id}` : `/accessories/${id}`;
+          const { data } = await api.get(endpoint);
+          const rawPath = data.photos_url?.[0]?.url || 
+                          data.photos_url?.[0]?.photo || 
+                          data.product_photos?.[0]?.photo ||
+                          data.accessory_photos?.[0]?.photo ||
+                          (typeof data.photos_url?.[0] === "string" ? data.photos_url[0] : null);
+          return { key: `${type}-${id}`, url: buildImageUrl(rawPath) };
+        })
+      );
+      setPhotoCache(prev => {
+        const next = new Map(prev);
+        results.forEach(res => {
+          if (res.status === 'fulfilled') next.set(res.value.key, res.value.url);
         });
-
-        accessoryIds.forEach((accessoryId) => {
-          if (!prevCache.has(`accessory-${accessoryId}`)) {
-            photoPromises.push(
-              api
-                .get(`/accessories/${accessoryId}`)
-                .then((response) => {
-                  const accessory = response.data;
-                  let photoUrl = null;
-
-                  if (
-                    accessory.photos_url &&
-                    Array.isArray(accessory.photos_url) &&
-                    accessory.photos_url.length > 0
-                  ) {
-                    const firstPhoto = accessory.photos_url[0];
-                    photoUrl =
-                      firstPhoto?.url ||
-                      firstPhoto?.photo ||
-                      (typeof firstPhoto === "string" ? firstPhoto : null);
-                  } else if (
-                    accessory.accessory_photos &&
-                    Array.isArray(accessory.accessory_photos) &&
-                    accessory.accessory_photos.length > 0
-                  ) {
-                    const firstPhoto = accessory.accessory_photos[0];
-                    photoUrl =
-                      firstPhoto?.url ||
-                      firstPhoto?.photo ||
-                      (typeof firstPhoto === "string" ? firstPhoto : null);
-                  }
-
-                  if (
-                    photoUrl &&
-                    typeof photoUrl === "string" &&
-                    !photoUrl.startsWith("http") &&
-                    !photoUrl.startsWith("blob:")
-                  ) {
-                    const baseUrl = "https://onlinestore-928b.onrender.com";
-                    photoUrl = photoUrl.startsWith("/")
-                      ? `${baseUrl}${photoUrl}`
-                      : `${baseUrl}/${photoUrl}`;
-                  }
-
-                  return {
-                    key: `accessory-${accessoryId}`,
-                    photoUrl: photoUrl || null,
-                  };
-                })
-                .catch((err) => {
-                  console.warn(
-                    `Failed to load photo for accessory ${accessoryId}:`,
-                    err,
-                  );
-                  return { key: `accessory-${accessoryId}`, photoUrl: null };
-                }),
-            );
-          }
-        });
-
-        if (photoPromises.length > 0) {
-          Promise.all(photoPromises).then((results) => {
-            setPhotoCache((currentCache) => {
-              const newCache = new Map(currentCache);
-              results.forEach(({ key, photoUrl }) => {
-                newCache.set(key, photoUrl);
-              });
-              return newCache;
-            });
-          });
-        }
-
-        return prevCache;
+        return next;
       });
     };
-
-    loadPhotos();
+    loadMissingPhotos();
   }, [orders]);
 
-  const location = useLocation();
+  const ordersList = useMemo(() => 
+    Array.isArray(orders) ? [...orders].sort((a, b) => b.id - a.id) : [], 
+  [orders]);
 
-  useEffect(() => {
-    if (location.state?.openOrderId) {
-      setOpenOrderId(location.state.openOrderId);
-      setTimeout(() => {
-        const element = document.getElementById(
-          `order-${location.state.openOrderId}`,
-        );
-        if (element) element.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }
-  }, [location.state]);
+  const paginatedOrders = useMemo(() => {
+    const start = (page - 1) * ORDERS_PER_PAGE;
+    return ordersList.slice(start, start + ORDERS_PER_PAGE);
+  }, [ordersList, page]);
 
-  const toggleOrder = (id) => {
-    setOpenOrderId(openOrderId === id ? null : id);
-  };
+  if (loading) return (
+    <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+      <CircularProgress sx={{ color: "#A4795B" }} />
+    </Box>
+  );
 
-  const statusImages = {
-    processing: deliveringImg,
-    delivered: deliveredImg,
-    shipping: deliveringImg,
-    preparing: deliveringImg,
-    in_transit: deliveringImg,
-    cancelled: cancelledImg,
-    canceled: cancelledImg,
-  };
-
-  const statusLabels = {
-    processing: "Processing",
-    preparing: "Preparing",
-    shipping: "Shipping",
-    in_transit: "In Transit",
-    delivered: "Delivered",
-    delivering: "Delivered",
-    cancelled: "Cancelled",
-    canceled: "Cancelled",
-  };
-
-  const statusColors = {
-    processing: "#f5c407",
-    preparing: "#FF9800",
-    shipping: "#2196F3",
-    in_transit: "#00BCD4",
-    delivered: "#46d95b",
-    delivering: "#46d95b",
-    cancelled: "#FD8888",
-    canceled: "#FD8888",
-  };
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: 200,
-        }}
-      >
-        <CircularProgress sx={{ color: "#A4795B" }} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error">
-        {typeof error === "string" ? error : "Failed to load orders."}
-      </Alert>
-    );
-  }
-
-  const ordersList = Array.isArray(orders)
-    ? [...orders].sort((a, b) => b.id - a.id)
-    : [];
-
-  const totalPages = Math.ceil(ordersList.length / ordersPerPage);
-  const startIndex = (page - 1) * ordersPerPage;
-  const endIndex = startIndex + ordersPerPage;
-  const paginatedOrders = ordersList.slice(startIndex, endIndex);
-
-  const handlePageChange = (event, value) => {
-    setPage(value);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  if (ordersList.length === 0) {
+ if (ordersList.length === 0) {
     return (
       <Box
         sx={{
@@ -324,270 +141,70 @@ export default function OrderHistory() {
     );
   }
 
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        px: isMobile ? 1 : 0,
-      }}
-    >
-      {paginatedOrders.map((order) => {
-        const currencyCode = order.currency || "USD";
-        const rawBaseAmount =
-          order.order_amount !== undefined &&
-          order.order_amount !== null &&
-          !isNaN(Number(order.order_amount))
-            ? Number(order.order_amount)
-            : order.total_price !== undefined &&
-                order.total_price !== null &&
-                !isNaN(Number(order.total_price))
-              ? Number(order.total_price)
-              : order.total !== undefined &&
-                  order.total !== null &&
-                  !isNaN(Number(order.total))
-                ? Number(order.total)
-                : 0;
 
-        const formattedTotal = formatPrice(rawBaseAmount, currencyCode);
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: isMobile ? 1 : 0 }}>
+      {paginatedOrders.map((order) => {
+        const status = statusConfig[order.status?.toLowerCase()] || statusConfig.default;
+        // Берем order_amount из вашего JSON (там 30)
+        const totalAmount = Number(order.order_amount) || 0;
+
         return (
-          <Box
-            key={order.id}
-            id={`order-${order.id}`}
-            sx={{
-              border: "1px solid #E0E0E0",
-              borderRadius: isMobile ? "16px" : "24px",
-              p: isMobile ? 2 : 3,
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: isMobile ? "column" : "row",
-                justifyContent: "space-between",
-                gap: isMobile ? 2 : 0,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)",
-                  gap: isMobile ? 2 : 4,
-                  flexGrow: 1,
-                }}
-              >
+          <Box key={order.id} sx={{ border: "1px solid #E0E0E0", borderRadius: isMobile ? "16px" : "24px", p: isMobile ? 2 : 3 }}>
+            <Box sx={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", gap: isMobile ? 2 : 0 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)", gap: isMobile ? 2 : 4, flexGrow: 1 }}>
+                <OrderHeaderItem label="Order number" value={`№ ${order.id}`} isBold />
+                <OrderHeaderItem label="Date placed" value={new Date(order.created_at).toLocaleDateString()} />
+                <OrderHeaderItem label="Total Amount" value={formatPrice(totalAmount, order.currency || "USD")} isBold />
                 <Box>
-                  <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>
-                    Order number
-                  </Typography>
-                  <Typography sx={{ fontWeight: 600 }}>№ {order.id}</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>
-                    Date placed
-                  </Typography>
-                  <Typography>
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>
-                    Total Amount
-                  </Typography>
-                  <Typography sx={{ fontWeight: 600 }}>
-                    {formattedTotal}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>
-                    Status
-                  </Typography>
+                  <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>Status</Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box
-                      component="img"
-                      src={
-                        statusImages[order.status?.toLowerCase()] ||
-                        deliveringImg
-                      }
-                      sx={{ width: 20, height: 20 }}
-                    />
-                    <Typography
-                      sx={{
-                        fontSize: "0.9rem",
-                        textTransform: "capitalize",
-                        color:
-                          statusColors[order.status?.toLowerCase()] ||
-                          "inherit",
-                      }}
-                    >
-                      {statusLabels[order.status?.toLowerCase()] ||
-                        order.status}
-                    </Typography>
+                    <Box component="img" src={status.img} sx={{ width: 20, height: 20 }} />
+                    <Typography sx={{ fontSize: "0.9rem", color: status.color, fontWeight: 500 }}>{status.label}</Typography>
                   </Box>
                 </Box>
               </Box>
-
               <Button
-                fullWidth={isMobile}
-                sx={
-                  openOrderId === order.id
-                    ? { ...btnInCart, mt: isMobile ? 1 : 0 }
-                    : { ...btnCart, mt: isMobile ? 1 : 0 }
-                }
-                onClick={() => toggleOrder(order.id)}
+                sx={openOrderId === order.id ? btnInCart : btnCart}
+                onClick={() => setOpenOrderId(openOrderId === order.id ? null : order.id)}
               >
                 {openOrderId === order.id ? "Hide details" : "View order"}
               </Button>
             </Box>
 
-            <Collapse
-              in={openOrderId === order.id}
-              timeout="auto"
-              unmountOnExit
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  mt: 3,
-                  pt: 2,
-                  borderTop: "1px solid #E0E0E0",
-                }}
-              >
-                {order.positions?.map((pos, index) => {
+            <Collapse in={openOrderId === order.id} timeout="auto" unmountOnExit>
+              <Box sx={{ mt: 3, pt: 2, borderTop: "1px solid #E0E0E0", display: "flex", flexDirection: "column", gap: 2 }}>
+                {order.positions?.map((pos, idx) => {
                   const item = pos.product || pos.accessory;
-                  const qty = pos.quantity || 1;
-                  const currencyCode = order.currency || "USD";
-                  let totalPrice = 0;
-                  if (pos.total_price) {
-                    totalPrice = Number(pos.total_price);
-                  } else if (pos.price) {
-                    totalPrice = Number(pos.price) * qty;
-                  } else if (order.positions.length === 1) {
-                    totalPrice = Number(
-                      order.order_amount || order.total_price,
-                    );
-                  } else {
-                    totalPrice =
-                      Number(pos.product?.price || pos.accessory?.price || 0) *
-                      qty;
-                  }
-
-                  const formattedPrice = formatPrice(totalPrice, currencyCode);
-                  let photoUrl = null;
-                  if (pos.product?.id) {
-                    photoUrl = photoCache.get(`product-${pos.product.id}`);
-                  } else if (pos.accessory?.id) {
-                    photoUrl = photoCache.get(`accessory-${pos.accessory.id}`);
-                  }
-
-                  if (!photoUrl && item) {
-                    if (
-                      item.photos_url &&
-                      Array.isArray(item.photos_url) &&
-                      item.photos_url.length > 0
-                    ) {
-                      const firstPhoto = item.photos_url[0];
-                      photoUrl =
-                        firstPhoto?.url ||
-                        firstPhoto?.photo ||
-                        (typeof firstPhoto === "string" ? firstPhoto : null);
-                    } else if (
-                      item.product_photos &&
-                      Array.isArray(item.product_photos) &&
-                      item.product_photos.length > 0
-                    ) {
-                      const firstPhoto = item.product_photos[0];
-                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
-                    } else if (
-                      item.accessory_photos &&
-                      Array.isArray(item.accessory_photos) &&
-                      item.accessory_photos.length > 0
-                    ) {
-                      const firstPhoto = item.accessory_photos[0];
-                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
-                    }
-                  }
-
-                  if (
-                    photoUrl &&
-                    typeof photoUrl === "string" &&
-                    !photoUrl.startsWith("http") &&
-                    !photoUrl.startsWith("blob:")
-                  ) {
-                    const baseUrl = "https://onlinestore-928b.onrender.com";
-                    photoUrl = photoUrl.startsWith("/")
-                      ? `${baseUrl}${photoUrl}`
-                      : `${baseUrl}/${photoUrl}`;
-                  }
-
-                  const imageKey = `${order.id}-${index}`;
-                  const hasImageError = imageErrors[imageKey];
+                  const type = pos.product ? 'product' : 'accessory';
+                  const photoUrl = photoCache.get(`${type}-${item?.id}`);
+                  const imageKey = `${order.id}-${idx}`;
+                  
+                  // ТЕПЕРЬ БЕРЕМ QUANTITY ИЗ ОБЪЕКТА ТОВАРА (как в вашем JSON)
+                  const finalQuantity = Number(item?.quantity) || Number(pos.quantity) || 1;
+                  
+                  // БЕРЕМ ТOTAL_PRICE ИЗ ОБЪЕКТА ТОВАРА
+                  const posTotalPrice = Number(item?.total_price) || 
+                                       Number(pos.total_price) || 
+                                       (Number(item?.price || 0) * finalQuantity);
 
                   return (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: isMobile ? 2 : 3,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: isMobile ? 50 : 60,
-                          height: isMobile ? 50 : 60,
-                          flexShrink: 0,
-                          borderRadius: "12px",
-                          backgroundColor: "#F5F5F5",
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {photoUrl && !hasImageError ? (
-                          <Box
-                            component="img"
-                            src={photoUrl}
-                            onError={() =>
-                              setImageErrors((prev) => ({
-                                ...prev,
-                                [imageKey]: true,
-                              }))
-                            }
-                            sx={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "contain",
-                            }}
+                    <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <Box sx={{ width: 60, height: 60, borderRadius: "12px", bgcolor: "#F5F5F5", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+                        {photoUrl && !imageErrors[imageKey] ? (
+                          <img 
+                            src={photoUrl} 
+                            style={{ width: "100%", height: "100%", objectFit: "contain" }} 
+                            onError={() => setImageErrors(prev => ({ ...prev, [imageKey]: true }))}
                           />
-                        ) : (
-                          <CoffeeIcon
-                            sx={{ color: "#CCC", fontSize: isMobile ? 25 : 30 }}
-                          />
-                        )}
+                        ) : <CoffeeIcon sx={{ color: "#CCC" }} />}
                       </Box>
-
                       <Box sx={{ flexGrow: 1 }}>
-                        <Typography
-                          sx={{
-                            fontSize: isMobile ? "0.9rem" : "1.1rem",
-                            fontWeight: 600,
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {item?.name}
-                        </Typography>
-                        <Typography sx={{ fontSize: "0.8rem", color: "gray" }}>
-                          Quantity: {qty}
-                        </Typography>
+                        <Typography sx={{ fontWeight: 600 }}>{item?.name}</Typography>
+                        <Typography sx={{ fontSize: "0.8rem", color: "gray" }}>Quantity: {finalQuantity}</Typography>
                       </Box>
-
                       <Typography sx={{ fontWeight: 600, color: "#16675C" }}>
-                        {formattedPrice}
+                        {formatPrice(posTotalPrice, order.currency || "USD")}
                       </Typography>
                     </Box>
                   );
@@ -597,15 +214,21 @@ export default function OrderHistory() {
           </Box>
         );
       })}
+      <PaginationControl
+        count={Math.ceil(ordersList.length / ORDERS_PER_PAGE)}
+        page={page}
+        onChange={(e, value) => setPage(value)}
+        sx={{ display: "flex", justifyContent: "center", mt: 3 }}
+      />
+    </Box>
+  );
+}
 
-      {totalPages > 1 && (
-        <PaginationControl
-          page={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          variant="admin"
-        />
-      )}
+function OrderHeaderItem({ label, value, isBold }) {
+  return (
+    <Box>
+      <Typography sx={{ ...h5, fontSize: "0.8rem", color: "gray" }}>{label}</Typography>
+      <Typography sx={{ fontWeight: isBold ? 600 : 400 }}>{value}</Typography>
     </Box>
   );
 }

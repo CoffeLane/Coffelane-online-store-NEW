@@ -10,31 +10,13 @@ import dashboard2 from "../../assets/admin/dashboard2.svg";
 import dashboard3 from "../../assets/admin/dashboard3.svg";
 import ProductsTable from "../AdminComponents/Dashboard/ProductsTable.jsx";
 import { checkboxStyles } from "../../styles/inputStyles.jsx";
-import api from "../../store/api/axios.js";
-import { apiWithAuth } from "../../store/api/axios.js";
+import api, { apiWithAuth } from "../../store/api/axios.js";
+import { buildImageUrl } from "../../components/utils/helpers.js";
 
 const salesCards = [
-  {
-    title: "Total Sales",
-    value: "$1k",
-    diff: "+8% from yesterday",
-    color: "#ffe5e9",
-    icon: dashboard1,
-  },
-  {
-    title: "Total Order",
-    value: "300",
-    diff: "+5% from yesterday",
-    color: "#e5ffe9",
-    icon: dashboard2,
-  },
-  {
-    title: "New Customers",
-    value: "8",
-    diff: "0.5% from yesterday",
-    color: "#efe5ff",
-    icon: dashboard3,
-  },
+  { title: "Total Sales", value: "$1k", diff: "+8% from yesterday", color: "#ffe5e9", icon: dashboard1 },
+  { title: "Total Order", value: "300", diff: "+5% from yesterday", color: "#e5ffe9", icon: dashboard2 },
+  { title: "New Customers", value: "8", diff: "0.5% from yesterday", color: "#efe5ff", icon: dashboard3 },
 ];
 
 export default function Dashboard() {
@@ -45,490 +27,106 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchAllProducts();
-  }, []);
-
-  useEffect(() => {
-    if (location.state?.refresh) {
-      console.log('🔄 Refreshing products list...');
-      // Увеличиваем задержку, чтобы дать серверу время обработать изменения
-      const timer = setTimeout(() => {
-        console.log('📥 Fetching products after refresh...');
-        fetchAllProducts();
-        navigate(location.pathname, { replace: true, state: {} });
-      }, 1500); // Увеличено для более надежного обновления
-      return () => clearTimeout(timer);
-    }
-  }, [location.state, navigate, location.pathname]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      const lastUpdate = sessionStorage.getItem("dashboardLastUpdate");
-      const now = Date.now();
-      if (!lastUpdate || now - parseInt(lastUpdate) > 30000) {
-        fetchAllProducts();
-        sessionStorage.setItem("dashboardLastUpdate", now.toString());
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, []);
-
   const fetchAllProducts = async () => {
     try {
-      console.log('📥 Fetching all products...');
-      const firstPageRes = await apiWithAuth
-        .get("/products", { params: { page: 1 } })
-        .catch(() => {
-          return api.get("/products", { params: { page: 1 } });
-        });
+      const firstPageRes = await apiWithAuth.get("/products", { params: { page: 1 } })
+        .catch(() => api.get("/products", { params: { page: 1 } }));
+      
       const totalPages = firstPageRes.data.total_pages || 1;
-
-      const allPagesPromises = [];
-      for (let p = 1; p <= totalPages; p++) {
-        allPagesPromises.push(
-          apiWithAuth.get("/products", { params: { page: p } }).catch(() => {
-            return api.get("/products", { params: { page: p } });
-          }),
-        );
-      }
+      const allPagesPromises = Array.from({ length: totalPages }, (_, i) => 
+        apiWithAuth.get("/products", { params: { page: i + 1 } }).catch(() => api.get("/products", { params: { page: i + 1 } }))
+      );
 
       const allPagesRes = await Promise.all(allPagesPromises);
       const allProducts = allPagesRes.flatMap((res) => res.data.data || []);
-      
-      // Логирование для продукта с ID 83
-      const product83 = allProducts.find(p => p.id === 83);
-      if (product83) {
-        console.log('🔍 Product 83 data:', {
-          id: product83.id,
-          name: product83.name,
-          product_photos: product83.product_photos,
-          photos_url: product83.photos_url
-        });
-      }
-
       const accessoriesRes = await api.get("/accessories");
       const allAccessories = accessoriesRes.data.data || [];
 
-      const combined = [
+      setProducts([
         ...allProducts.map((p) => ({ ...p, type: "product" })),
         ...allAccessories.map((a) => ({ ...a, type: "accessory" })),
-      ];
-
-      setProducts(combined);
-
-      if (allProducts.length > 0) {
-        const sampleProduct = allProducts[0];
-        console.log("📸 Sample product structure:", {
-          id: sampleProduct.id,
-          name: sampleProduct.name,
-          hasPhotosUrl: !!sampleProduct.photos_url,
-          photosUrl: sampleProduct.photos_url,
-          photosUrlLength: Array.isArray(sampleProduct.photos_url)
-            ? sampleProduct.photos_url.length
-            : "N/A",
-          hasProductPhotos: !!sampleProduct.product_photos,
-          productPhotos: sampleProduct.product_photos,
-          productPhotosLength: Array.isArray(sampleProduct.product_photos)
-            ? sampleProduct.product_photos.length
-            : "N/A",
-          hasAccessoryPhotos: !!sampleProduct.accessory_photos,
-          accessoryPhotos: sampleProduct.accessory_photos,
-          photoKeys: Object.keys(sampleProduct).filter(
-            (k) =>
-              k.toLowerCase().includes("photo") ||
-              k.toLowerCase().includes("image") ||
-              k.toLowerCase().includes("cover"),
-          ),
-        });
-      }
+      ]);
     } catch (error) {
       console.error("Error loading products:", error);
     }
   };
 
-  const adminProducts = products.map((item) => {
-    let imageUrl = null;
+  useEffect(() => {
+    fetchAllProducts();
+  }, []);
 
-    const extractPhotoUrl = (photo) => {
-      if (!photo) return null;
-      if (typeof photo === "string") return photo;
-      if (typeof photo === "object") {
-        return (
-          photo?.url ||
-          photo?.photo ||
-          photo?.photo_url ||
-          photo?.image_url ||
-          photo?.url_path ||
-          photo?.image ||
-          null
-        );
-      }
-      return null;
-    };
+ // 1. Используем ваш хелпер buildImageUrl внутри
+  const getImageUrl = (item) => {
+    if (!item) return null;
 
-    if (
-      item.product_photos &&
-      Array.isArray(item.product_photos) &&
-      item.product_photos.length > 0
-    ) {
-      const firstPhoto = item.product_photos[0];
-      // Обрабатываем случай, когда photo.photo - это строка (относительный путь)
-      if (firstPhoto && typeof firstPhoto === 'object') {
-        // Приоритет: photo.photo > photo.url > extractPhotoUrl(firstPhoto)
-        if (firstPhoto.photo && typeof firstPhoto.photo === 'string') {
-          imageUrl = firstPhoto.photo;
-        } else if (firstPhoto.url && typeof firstPhoto.url === 'string') {
-          imageUrl = firstPhoto.url;
-        } else {
-          imageUrl = extractPhotoUrl(firstPhoto);
-        }
-      } else if (typeof firstPhoto === 'string') {
-        imageUrl = firstPhoto;
-      } else {
-        imageUrl = extractPhotoUrl(firstPhoto);
-      }
-      
-      // Логирование для отладки
-      if (item.id === 83) {
-        console.log('🔍 Product 83 photo extraction:', {
-          firstPhoto,
-          imageUrl,
-          product_photos: item.product_photos,
-          extractedUrl: imageUrl
-        });
-      }
-    } else if (
-      item.photos_url &&
-      Array.isArray(item.photos_url) &&
-      item.photos_url.length > 0
-    ) {
-      imageUrl = extractPhotoUrl(item.photos_url[0]);
-    } else if (
-      item.accessory_photos &&
-      Array.isArray(item.accessory_photos) &&
-      item.accessory_photos.length > 0
-    ) {
-      imageUrl = extractPhotoUrl(item.accessory_photos[0]);
-    } else if (item.photo_url) {
-      imageUrl = item.photo_url;
-    } else if (item.image_url) {
-      imageUrl = item.image_url;
-    } else if (item.image) {
-      imageUrl = item.image;
-    } else if (item.cover_photo) {
-      imageUrl = extractPhotoUrl(item.cover_photo);
-    } else if (item.cover) {
-      imageUrl = extractPhotoUrl(item.cover);
-    } else {
-      const photoKeys = Object.keys(item).filter(
-        (k) =>
-          (k.toLowerCase().includes("photo") ||
-            k.toLowerCase().includes("image")) &&
-          k !== "photos_url" &&
-          k !== "accessory_photos" &&
-          k !== "product_photos",
-      );
-      for (const key of photoKeys) {
-        const value = item[key];
-        if (value) {
-          imageUrl = extractPhotoUrl(value);
-          if (imageUrl) break;
-        }
-      }
-    }
+    // Пытаемся найти сырую ссылку в разных местах (включая вложенный объект product)
+    const rawPhoto = 
+      item.img || 
+      item.product?.product_photos?.[0]?.photo || 
+      item.product?.photos_url?.[0] ||
+      item.product_photos?.[0]?.photo || 
+      item.product_photos?.[0] || 
+      item.photos_url?.[0] || 
+      item.accessory_photos?.[0] || 
+      item.photo_url || 
+      item.image;
 
-    if (
-      imageUrl &&
-      typeof imageUrl === "string" &&
-      !imageUrl.startsWith("http") &&
-      !imageUrl.startsWith("blob:")
-    ) {
-      // Формируем полный URL для Cloudinary или обычного пути
-      const baseUrl = "https://onlinestore-928b.onrender.com";
-      
-      // Обрабатываем Cloudinary пути (image/upload/...)
-      if (imageUrl.startsWith("image/upload/")) {
-        // Путь Cloudinary - используем прямой путь через сервер (как в других компонентах)
-        const cleanPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
-        imageUrl = `${baseUrl}${cleanPath}`;
-        
-        // Логирование для отладки
-        if (item.id === 83) {
-          console.log('🔍 Product 83 Cloudinary path processed (direct):', imageUrl);
-        }
-      } else {
-        // Обычный относительный путь
-        imageUrl = imageUrl.startsWith("/")
-          ? `${baseUrl}${imageUrl}`
-          : `${baseUrl}/${imageUrl}`;
-      }
-      
-      // Логирование для отладки
-      if (item.id === 83) {
-        console.log('🔍 Product 83 final imageUrl:', imageUrl);
-      }
-    }
-    
-    // Логирование для продукта 83, если imageUrl все еще null
-    if (!imageUrl && item.id === 83) {
-      console.warn('⚠️ Product 83 has no imageUrl after processing:', {
-        id: item.id,
-        name: item.name,
-        product_photos: item.product_photos,
-        photos_url: item.photos_url,
-        hasProductPhotos: !!item.product_photos && item.product_photos.length > 0,
-        firstPhoto: item.product_photos?.[0]
-      });
-    }
+    // Извлекаем строку, если пришел объект
+    let path = (typeof rawPhoto === "object" && rawPhoto !== null) 
+      ? (rawPhoto.photo || rawPhoto.url || rawPhoto.image) 
+      : rawPhoto;
 
-    if (!imageUrl && item.type === "product" && products.indexOf(item) < 3) {
-      console.log("🔍 Product without image:", {
-        id: item.id,
-        name: item.name,
-        hasPhotosUrl: !!item.photos_url,
-        photosUrlType: Array.isArray(item.photos_url)
-          ? "array"
-          : typeof item.photos_url,
-        photosUrlLength: Array.isArray(item.photos_url)
-          ? item.photos_url.length
-          : "N/A",
-        photosUrlFirst:
-          Array.isArray(item.photos_url) && item.photos_url.length > 0
-            ? item.photos_url[0]
-            : null,
-        hasProductPhotos: !!item.product_photos,
-        productPhotosType: Array.isArray(item.product_photos)
-          ? "array"
-          : typeof item.product_photos,
-        productPhotosLength: Array.isArray(item.product_photos)
-          ? item.product_photos.length
-          : "N/A",
-        productPhotosFirst:
-          Array.isArray(item.product_photos) && item.product_photos.length > 0
-            ? item.product_photos[0]
-            : null,
-        hasAccessoryPhotos: !!item.accessory_photos,
-        hasPhotoUrl: !!item.photo_url,
-        hasCoverPhoto: !!item.cover_photo,
-        allPhotoKeys: Object.keys(item).filter(
-          (k) =>
-            k.toLowerCase().includes("photo") ||
-            k.toLowerCase().includes("image"),
-        ),
-        sampleData: {
-          photos_url: item.photos_url,
-          product_photos: item.product_photos,
-          accessory_photos: item.accessory_photos,
-          photo_url: item.photo_url,
-          image_url: item.image_url,
-          cover_photo: item.cover_photo,
-          cover: item.cover,
-        },
-      });
-    }
+    // Прогоняем через ваш билд-хелпер для Cloudinary
+    return buildImageUrl(path);
+  };
 
-    return {
-      id: item.id,
-      image: imageUrl,
-      name: item.name,
-      category: item.brand || item.category || "Other",
-      price: item.supplies?.[0]?.price || item.price || 0,
-      stock: item.supplies?.[0]?.quantity || item.quantity || 0,
-      status:
-        (item.supplies?.[0]?.quantity || item.quantity || 0) > 0
-          ? "Active"
-          : "Out of stock",
-      type: item.type,
-    };
-  });
-
+  const adminProducts = products.map((item) => ({
+    id: item.id,
+    image: getImageUrl(item), // Теперь здесь всегда будет Cloudinary URL или ""
+    name: item.name,
+    category: item.brand || item.category || "Other",
+    price: item.supplies?.[0]?.price || item.price || 0,
+    stock: item.supplies?.[0]?.quantity || item.quantity || 0,
+    status: (item.supplies?.[0]?.quantity || item.quantity || 0) > 0 ? "Active" : "Out of stock",
+    type: item.type,
+  }));
   const rowsPerPage = 5;
-  const totalPages = Math.ceil(adminProducts.length / rowsPerPage);
-
-  const paginatedProducts = adminProducts.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage,
-  );
-
-  const allSelected = selectedIds.length === paginatedProducts.length;
-
-  const handleSelectAll = (e) => {
-    setSelectedIds(e.target.checked ? paginatedProducts.map((p) => p.id) : []);
-  };
-
-  const handleSelectOne = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  };
+  const paginatedProducts = adminProducts.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   const handleExport = () => {
-    try {
-      const exportData = adminProducts.map((product) => ({
-        ID: product.id,
-        Name: product.name,
-        Category: product.category,
-        Type: product.type,
-        Price: product.price,
-        Stock: product.stock,
-        Status: product.status,
-        Image: product.image || "",
-      }));
+    const headers = ["ID", "Name", "Category", "Price", "Stock", "Status"];
+    const csvContent = [
+      headers.join(","),
+      ...adminProducts.map(p => `${p.id},"${p.name}","${p.category}",${p.price},${p.stock},${p.status}`)
+    ].join("\n");
 
-      const headers = [
-        "ID",
-        "Name",
-        "Category",
-        "Type",
-        "Price",
-        "Stock",
-        "Status",
-        "Image",
-      ];
-      const csvContent = [
-        headers.join(","),
-        ...exportData.map((row) =>
-          headers
-            .map((header) => {
-              const value = row[header];
-              if (
-                typeof value === "string" &&
-                (value.includes(",") ||
-                  value.includes('"') ||
-                  value.includes("\n"))
-              ) {
-                return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
-            })
-            .join(","),
-        ),
-      ].join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `products_export_${new Date().toISOString().split("T")[0]}.csv`,
-      );
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Error exporting data:", error);
-    }
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `export_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
   };
 
   return (
     <Box sx={{ width: "100%", my: { xs: 2, md: 4 } }}>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          my: { xs: 2, md: 4 },
-        }}
-      >
-        <Typography sx={{ ...h3, fontSize: { xs: "16px", md: "32px" } }}>
-          Dashboard
-        </Typography>
-        <Button
-          onClick={handleExport}
-          sx={{
-            ...btnCart,
-            gap: 1,
-            display: "flex",
-            alignItems: "center",
-            fontSize: { xs: "12px", md: "14px" },
-            py: { xs: 0.75, md: 1 },
-            flexShrink: 0,
-          }}
-        >
-          <Box
-            component="img"
-            src={exportIcon}
-            sx={{ width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 } }}
-          />
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
+        <Typography sx={{ ...h3, fontSize: { xs: "20px", md: "32px" } }}>Dashboard</Typography>
+        <Button onClick={handleExport} sx={{ ...btnCart, gap: 1 }}>
+          <Box component="img" src={exportIcon} sx={{ width: 20 }} />
           Export
         </Button>
       </Box>
 
-      <Box
-        mb={4}
-        sx={{
-          backgroundColor: "#fff",
-          borderRadius: "24px",
-          p: { xs: 1.5, md: 2 },
-        }}
-      >
-        <Typography sx={{ ...h5, fontSize: { xs: "16px", md: "18px" } }}>
-          Today's Sales
-        </Typography>
-        <Typography
-          sx={{
-            ...h7,
-            color: "#999",
-            mb: 2,
-            fontSize: { xs: "12px", md: "14px" },
-          }}
-        >
-          Sales Summary
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: { xs: 1.5, md: 2 },
-          }}
-        >
+      <Box sx={{ bgcolor: "#fff", borderRadius: "24px", p: 2, mb: 4 }}>
+        <Typography sx={h5}>Today's Sales</Typography>
+        <Typography sx={{ ...h7, color: "#999", mb: 2 }}>Sales Summary</Typography>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 2 }}>
           {salesCards.map((c) => (
-            <Paper
-              key={c.title}
-              sx={{
-                flex: 1,
-                p: { xs: 1.5, md: 2 },
-                backgroundColor: c.color,
-                borderRadius: "24px",
-                display: "flex",
-                flexDirection: "column",
-                gap: { xs: 1.5, md: 2 },
-              }}
-            >
-              <Box
-                component="img"
-                src={c.icon}
-                sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 } }}
-              />
-              <Box>
-                <Typography
-                  variant="h6"
-                  sx={{ fontSize: { xs: "18px", md: "24px" } }}
-                >
-                  {c.value}
-                </Typography>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ fontSize: { xs: "14px", md: "16px" } }}
-                >
-                  {c.title}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="primary"
-                  sx={{ fontSize: { xs: "11px", md: "12px" } }}
-                >
-                  {c.diff}
-                </Typography>
-              </Box>
+            <Paper key={c.title} sx={{ flex: 1, p: 2, bgcolor: c.color, borderRadius: "24px" }}>
+              <Box component="img" src={c.icon} sx={{ width: 32, mb: 1 }} />
+              <Typography variant="h6">{c.value}</Typography>
+              <Typography variant="subtitle2">{c.title}</Typography>
+              <Typography variant="caption" color="primary">{c.diff}</Typography>
             </Paper>
           ))}
         </Box>
@@ -538,17 +136,17 @@ export default function Dashboard() {
       <ProductsTable
         products={paginatedProducts}
         selectedIds={selectedIds}
-        handleSelectAll={handleSelectAll}
-        handleSelectOne={handleSelectOne}
-        allSelected={allSelected}
-        h5={h5}
-        checkboxStyles={checkboxStyles}
+        handleSelectAll={(e) => setSelectedIds(e.target.checked ? paginatedProducts.map((p) => p.id) : [])}
+        handleSelectOne={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+        allSelected={selectedIds.length === paginatedProducts.length && paginatedProducts.length > 0}
         page={page}
-        totalPages={totalPages}
-        onPageChange={(e, newPage) => setPage(newPage)}
+        totalPages={Math.ceil(adminProducts.length / rowsPerPage)}
+        onPageChange={(_, newPage) => setPage(newPage)}
         variant="admin"
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
+        h5={h5}
+        checkboxStyles={checkboxStyles}
       />
     </Box>
   );

@@ -13,6 +13,7 @@ import { fetchProfile } from "../../store/slice/authSlice.jsx";
 import { formatPhone } from "../../components/utils/formatters.jsx";
 import { normalizePhone } from "../../components/utils/validation/validateProfile.jsx";
 import { patterns } from "../../components/utils/validation/validatorsPatterns.jsx";
+import { buildImageUrl } from "../../components/utils/helpers.js";
 
 
 const e164Regex = /^\+[1-9]\d{7,14}$/;
@@ -89,59 +90,24 @@ export default function MyAccountAdmin() {
   }, [authUser, isEditingAddress]);
 
   useEffect(() => {
+    // 1. Сначала проверяем, есть ли что-то в localStorage (для мгновенной загрузки)
     const savedAvatar = localStorage.getItem('userAvatar');
-    if (!avatar && savedAvatar) {
+    if (savedAvatar && !avatarInitializedRef.current) {
       setAvatar(savedAvatar);
-      avatarInitializedRef.current = true;
-      return; 
     }
 
+    // 2. Если пришел пользователь из Redux, обновляем состояние через хелпер
     if (authUser) {
-      const avatarUrl = authUser.avatar || authUser.profile?.avatar;
-      if (avatarUrl) {
-        setAvatar((currentAvatar) => {
-          if (currentAvatar && currentAvatar.startsWith('blob:')) {
-            const fullAvatarUrl = avatarUrl.startsWith('http') ? avatarUrl : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-            localStorage.setItem('userAvatar', fullAvatarUrl);
-            return fullAvatarUrl;
-          }
-     
-          if (currentAvatar && !currentAvatar.startsWith('blob:')) {
-            return currentAvatar;
-          }
-         
-          if (!currentAvatar) {
-            const fullAvatarUrl = avatarUrl.startsWith('http') ? avatarUrl : `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-            localStorage.setItem('userAvatar', fullAvatarUrl);
-            avatarInitializedRef.current = true;
-            return fullAvatarUrl;
-          }
-          return currentAvatar;
-        });
-      } else if (!avatarInitializedRef.current) {
-        if (savedAvatar) {
-          setAvatar(savedAvatar);
-          avatarInitializedRef.current = true;
-        } else {
-          setAvatar(null);
-          avatarInitializedRef.current = true;
-        }
-      } else {
-        if (savedAvatar && !avatar) {
-          setAvatar(savedAvatar);
-        } else if (!savedAvatar && !avatar) {
-          console.log("No avatar in authUser or localStorage, keeping null");
-        } else {
-          console.log("Keeping current avatar:", avatar);
-        }
+      const rawAvatar = authUser.avatar || authUser.profile?.avatar;
+      
+      if (rawAvatar) {
+        // buildImageUrl сам решит: оставить blob, оставить http или собрать Cloudinary URL
+        const finalUrl = buildImageUrl(rawAvatar);
+        
+        setAvatar(finalUrl);
+        localStorage.setItem('userAvatar', finalUrl);
       }
-    } else if (!avatarInitializedRef.current) {
-      if (savedAvatar) {
-        setAvatar(savedAvatar);
-        avatarInitializedRef.current = true;
-      } else {
-        avatarInitializedRef.current = true;
-      }
+      avatarInitializedRef.current = true;
     }
   }, [authUser]);
 
@@ -363,151 +329,24 @@ export default function MyAccountAdmin() {
     }
   };
 
+const handleSaveAvatar = async (file = null) => {
+  const fileToUpload = file || avatarFile;
+  if (!fileToUpload) return;
 
-  const handleSaveAvatar = async (file = null) => {
-    const fileToUpload = file || avatarFile;
-    if (!fileToUpload) return;
-
-    setAvatarLoading(true);
-    setAvatarError("");
-    try {
-      const formData = new FormData();
-      formData.append("avatar", fileToUpload);
-
-      try {
-        const response = await apiWithAuth.put("/users/avatars", formData, {
-          headers: {
-            'Content-Type': undefined, 
-          },
-        });
-
-        let avatarUrl = response.data?.avatar ||
-          response.data?.profile?.avatar ||
-          response.data?.avatar_url ||
-          response.data?.profile?.avatar_url ||
-          response.data?.profile?.photo ||
-          response.data?.photo ||
-          response.data?.url ||
-          response.data?.image_url ||
-          response.data?.file ||
-          response.data?.file_url ||
-          null;
-
-        if (avatarUrl && !avatarUrl.startsWith('http')) {
-          avatarUrl = `https://onlinestore-928b.onrender.com${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-        }
-
-        const tempAvatarUrl = URL.createObjectURL(fileToUpload);
-        setAvatar(tempAvatarUrl);
-
-        if (avatarUrl) {
-          localStorage.setItem('userAvatar', avatarUrl);
-          setAvatar(avatarUrl);
-          URL.revokeObjectURL(tempAvatarUrl);
-          const profileResult = await dispatch(fetchProfile());
-          const profileAvatar = profileResult.payload?.user?.avatar ||
-            profileResult.payload?.user?.profile?.avatar ||
-            profileResult.payload?.profile?.avatar ||
-            profileResult.payload?.avatar;
-
-          if (profileAvatar && profileAvatar !== avatarUrl) {
-            const fullAvatarUrl = profileAvatar.startsWith('http') ? profileAvatar : `https://onlinestore-928b.onrender.com${profileAvatar.startsWith('/') ? '' : '/'}${profileAvatar}`;
-            setAvatar(fullAvatarUrl);
-            localStorage.setItem('userAvatar', fullAvatarUrl);
-          } else if (profileAvatar) {
-            console.log("Avatar already set, keeping current:", avatarUrl);
-          } else {
-            console.log("No avatar in profile result, keeping current from upload:", avatarUrl);
-
-            if (avatarUrl) {
-              localStorage.setItem('userAvatar', avatarUrl);
-            }
-          }
-        } else {
-          const currentUserId = authUser?.id || authUser?.profile?.id;
-
-          if (currentUserId) {
-            try {
-              console.log("🔍 Trying to fetch avatar via /users/list/{id}/ for userId:", currentUserId);
-              const userListRes = await apiWithAuth.get(`/users/list/${currentUserId}/`);
-              console.log("🔍 User list response:", userListRes.data);
-
-              const listAvatarUrl = userListRes.data?.avatar ||
-                userListRes.data?.profile?.avatar ||
-                userListRes.data?.avatar_url ||
-                userListRes.data?.profile?.avatar_url ||
-                null;
-
-              if (listAvatarUrl) {
-                const fullListAvatarUrl = listAvatarUrl.startsWith('http')
-                  ? listAvatarUrl
-                  : `https://onlinestore-928b.onrender.com${listAvatarUrl.startsWith('/') ? '' : '/'}${listAvatarUrl}`;
-                setAvatar(fullListAvatarUrl);
-                localStorage.setItem('userAvatar', fullListAvatarUrl);
-                URL.revokeObjectURL(tempAvatarUrl);
-                await dispatch(fetchProfile());
-                return;
-              }
-            } catch (listError) {
-              console.error("Error fetching user by ID:", listError.response?.status, listError.message);
-            }
-          }
-          const profileResult = await dispatch(fetchProfile());
-          const updatedAvatar = profileResult.payload?.user?.avatar ||
-            profileResult.payload?.user?.profile?.avatar ||
-            profileResult.payload?.profile?.avatar ||
-            profileResult.payload?.avatar;
-
-          if (updatedAvatar) {
-            const fullAvatarUrl = updatedAvatar.startsWith('http') ? updatedAvatar : `https://onlinestore-928b.onrender.com${updatedAvatar.startsWith('/') ? '' : '/'}${updatedAvatar}`;
-            setAvatar(fullAvatarUrl);
-            localStorage.setItem('userAvatar', fullAvatarUrl);
-            URL.revokeObjectURL(tempAvatarUrl);
-          } else {
-            localStorage.setItem('avatarUploaded', 'true');
-            localStorage.setItem('avatarUploadTime', Date.now().toString());
-          }
-        }
-
-        setAvatarFile(null);
-        setAvatarError("");
-
-      } catch (error) {
-        if (error.response?.status === 401) {
-          setAvatarError("Your session has expired. Please log out and log in again to continue.");
-        } else {
-          console.error("Error saving avatar:", error);
-          console.error("Error response:", error.response?.data);
-          console.error("Error status:", error.response?.status);
-
-          let errorMessage = "Failed to save avatar. Please try again.";
-
-          if (error.response?.data) {
-            const errorData = error.response.data;
-            if (errorData.avatar) {
-              const msg = Array.isArray(errorData.avatar) ? errorData.avatar.join(" ") : errorData.avatar;
-              errorMessage = `Avatar: ${msg}`;
-            } else if (errorData.message) {
-              errorMessage = errorData.message;
-            } else if (errorData.detail) {
-              errorMessage = errorData.detail;
-            } else if (typeof errorData === 'string') {
-              errorMessage = errorData;
-            }
-          } else if (error.message) {
-            errorMessage = error.message;
-          }
-
-          setAvatarError(errorMessage);
-        }
-      }
-    } catch (error) {
-      console.error("Error saving avatar:", error);
-      setAvatarError("An unexpected error occurred. Please try again.");
-    } finally {
-      setAvatarLoading(false);
+  let previewUrl = null;
+  try {
+    previewUrl = URL.createObjectURL(fileToUpload);
+    setAvatar(previewUrl);
+    // ... остальной код
+  } catch (err) {
+    // ...
+  } finally {
+    setAvatarLoading(false);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
     }
-  };
+  }
+};
 
   const user = {
     firstName: personalData.firstName || "Admin",

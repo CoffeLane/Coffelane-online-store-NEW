@@ -1,287 +1,248 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Box, CircularProgress, Typography, Button } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
-import Search from '../../components/Search/index.jsx';
-import { h5 } from "../../styles/typographyStyles.jsx";
-import ProductsTableOrders from '../AdminComponents/ProductsTableOrders.jsx';
-import AdminBreadcrumbs from '../AdminBreadcrumbs/AdminBreadcrumbs.jsx';
-import OrderDetails from '../AdminComponents/OrderDetails.jsx';
-import { fetchOrders } from '../../store/slice/ordersSlice.jsx';
-import { default as api } from '../../store/api/axios.js';
+import React, { useState, useEffect, useMemo } from "react";
+import { Box, CircularProgress, Typography, Button } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
 
-const PRODUCT_PLACEHOLDER = 'https://via.placeholder.com/150?text=No+Product';
+// Компоненты
+import Search from "../../components/Search/index.jsx";
+import ProductsTableOrders from "../AdminComponents/ProductsTableOrders.jsx";
+import AdminBreadcrumbs from "../AdminBreadcrumbs/AdminBreadcrumbs.jsx";
+import OrderDetails from "../AdminComponents/OrderDetails.jsx";
+
+// Стили и Store
+import { h5 } from "../../styles/typographyStyles.jsx";
+import { fetchOrders } from "../../store/slice/ordersSlice.jsx";
+import { default as api } from "../../store/api/axios.js";
+
+// Утилиты
+import { buildImageUrl } from "../../components/utils/helpers.js";
+
+const PRODUCT_PLACEHOLDER = "https://via.placeholder.com/150?text=No+Product";
 
 export default function Orders() {
   const dispatch = useDispatch();
-  const { orders, loading, error, count } = useSelector((state) => state.orders);
-console.log('Orders from Redux store:', orders);
+  const { orders, loading, error, count } = useSelector(
+    (state) => state.orders,
+  );
+
   const [page, setPage] = useState(1);
   const rowsPerPage = 20;
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [photoCache, setPhotoCache] = useState(new Map()); 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [photoCache, setPhotoCache] = useState(new Map());
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // 1. Загрузка списка заказов при смене страницы
   useEffect(() => {
-    dispatch(fetchOrders({ page, size: rowsPerPage, ordering: '-id' }));
+    dispatch(fetchOrders({ page, size: rowsPerPage, ordering: "-id" }));
   }, [dispatch, page]);
 
+  // 2. Оптимизированная загрузка фотографий товаров
   useEffect(() => {
-    if (!orders || orders.length === 0) return;
+    if (!orders?.length) return;
 
     const loadPhotos = async () => {
-      const productIds = new Set();
-      const accessoryIds = new Set();
+      const itemsToFetch = [];
 
-      orders.forEach(order => {
-        (order.positions || []).forEach(position => {
-          if (position.product?.id) {
-            productIds.add(position.product.id);
-          }
-          if (position.accessory?.id) {
-            accessoryIds.add(position.accessory.id);
+      // Собираем ID товаров, которых еще нет в кэше
+      orders.forEach((order) => {
+        (order.positions || []).forEach((pos) => {
+          const item = pos.product || pos.accessory;
+          const type = pos.product ? "product" : "accessory";
+
+          if (item?.id && !photoCache.has(`${type}-${item.id}`)) {
+            // Проверка, чтобы не добавлять один и тот же товар в очередь дважды
+            if (
+              !itemsToFetch.find((i) => i.id === item.id && i.type === type)
+            ) {
+              itemsToFetch.push({ id: item.id, type });
+            }
           }
         });
       });
 
-      setPhotoCache(prevCache => {
-        const photoPromises = [];
-        
-        productIds.forEach(productId => {
-          if (!prevCache.has(`product-${productId}`)) {
-            photoPromises.push(
-              api.get(`/products/${productId}`)
-                .then(response => {
-                  const product = response.data;
-                  let photoUrl = null;
-                  
-                  if (product.photos_url && Array.isArray(product.photos_url) && product.photos_url.length > 0) {
-                    const firstPhoto = product.photos_url[0];
-                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
-                  } else if (product.product_photos && Array.isArray(product.product_photos) && product.product_photos.length > 0) {
-                    const firstPhoto = product.product_photos[0];
-                    if (firstPhoto.photo) {
-                      photoUrl = typeof firstPhoto.photo === 'string' ? firstPhoto.photo : (firstPhoto.photo.url || firstPhoto.photo.photo_url);
-                    } else {
-                      photoUrl = firstPhoto?.url || firstPhoto?.photo || null;
-                    }
-                  }
-                  
-                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
-                    const baseUrl = 'https://onlinestore-928b.onrender.com';
-                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
-                  }
-                  
-                  return { key: `product-${productId}`, photoUrl: photoUrl || PRODUCT_PLACEHOLDER };
-                })
-                .catch(err => {
-                  console.warn(`Failed to load photo for product ${productId}:`, err);
-                  return { key: `product-${productId}`, photoUrl: PRODUCT_PLACEHOLDER };
-                })
-            );
+      if (itemsToFetch.length === 0) return;
+
+      const results = await Promise.allSettled(
+        itemsToFetch.map(async ({ id, type }) => {
+          try {
+            const endpoint =
+              type === "product" ? `/products/${id}` : `/accessories/${id}`;
+            const { data } = await api.get(endpoint);
+
+            // Ищем путь к фото в разных полях (универсально для разных моделей)
+            const rawPath =
+              data.photos_url?.[0]?.url ||
+              data.photos_url?.[0]?.photo ||
+              data.product_photos?.[0]?.photo ||
+              data.accessory_photos?.[0]?.photo ||
+              (typeof data.photos_url?.[0] === "string"
+                ? data.photos_url[0]
+                : null) ||
+              data.image ||
+              data.photo;
+
+            return {
+              key: `${type}-${id}`,
+              url: rawPath ? buildImageUrl(rawPath) : PRODUCT_PLACEHOLDER,
+            };
+          } catch (err) {
+            console.warn(`Failed to fetch photo for ${type} ${id}`);
+            return { key: `${type}-${id}`, url: PRODUCT_PLACEHOLDER };
+          }
+        }),
+      );
+
+      // Обновляем кэш одной пачкой
+      setPhotoCache((prev) => {
+        const next = new Map(prev);
+        results.forEach((res) => {
+          if (res.status === "fulfilled") {
+            next.set(res.value.key, res.value.url);
           }
         });
-
-        accessoryIds.forEach(accessoryId => {
-          if (!prevCache.has(`accessory-${accessoryId}`)) {
-            photoPromises.push(
-              api.get(`/accessories/${accessoryId}`)
-                .then(response => {
-                  const accessory = response.data;
-                  let photoUrl = null;
-                  
-                  if (accessory.photos_url && Array.isArray(accessory.photos_url) && accessory.photos_url.length > 0) {
-                    const firstPhoto = accessory.photos_url[0];
-                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
-                  } else if (accessory.accessory_photos && Array.isArray(accessory.accessory_photos) && accessory.accessory_photos.length > 0) {
-                    const firstPhoto = accessory.accessory_photos[0];
-                    photoUrl = firstPhoto?.url || firstPhoto?.photo || (typeof firstPhoto === 'string' ? firstPhoto : null);
-                  }
-                  
-                  if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('http') && !photoUrl.startsWith('blob:')) {
-                    const baseUrl = 'https://onlinestore-928b.onrender.com';
-                    photoUrl = photoUrl.startsWith('/') ? `${baseUrl}${photoUrl}` : `${baseUrl}/${photoUrl}`;
-                  }
-                  
-                  return { key: `accessory-${accessoryId}`, photoUrl: photoUrl || PRODUCT_PLACEHOLDER };
-                })
-                .catch(err => {
-                  console.warn(`Failed to load photo for accessory ${accessoryId}:`, err);
-                  return { key: `accessory-${accessoryId}`, photoUrl: PRODUCT_PLACEHOLDER };
-                })
-            );
-          }
-        });
-
-        if (photoPromises.length > 0) {
-          Promise.all(photoPromises).then(results => {
-            setPhotoCache(currentCache => {
-              const newCache = new Map(currentCache);
-              results.forEach(({ key, photoUrl }) => {
-                newCache.set(key, photoUrl);
-              });
-              return newCache;
-            });
-          });
-        }
-        
-        return prevCache; 
+        return next;
       });
     };
 
     loadPhotos();
   }, [orders]);
 
-  const transformedOrders = (orders || [])
-    .slice()
-    .sort((a, b) => b.id - a.id) 
-    .map((order) => {
-      
-      const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) 
-          ? 'N/A' 
-          : date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      };
+  // 3. Подготовка данных для таблицы (Трансформация)
+  const transformedOrders = useMemo(() => {
+    const statusLabels = {
+      processing: "Processing",
+      preparing: "Preparing",
+      shipping: "Shipping",
+      in_transit: "In Transit",
+      delivered: "Delivered",
+      delivering: "Delivered",
+      cancelled: "Cancelled",
+      canceled: "Cancelled",
+    };
 
-      const customerName = order.first_name && order.last_name
-        ? `${order.first_name} ${order.last_name}`
-        : `Customer #${order.customer || 'N/A'}`;
+    return (orders || [])
+      .map((order) => {
+        // Форматирование даты
+        const date = new Date(order.created_at);
+        const displayDate = isNaN(date.getTime())
+          ? "N/A"
+          : date.toLocaleDateString("en-GB");
 
-      const itemsList = (order.positions || []).map((position) => {
-        const itemData = position.product || position.accessory || {};
-        
-        let photoUrl = PRODUCT_PLACEHOLDER;
-        
-        if (position.product?.id) {
-          const cacheKey = `product-${position.product.id}`;
-          photoUrl = photoCache.get(cacheKey) || PRODUCT_PLACEHOLDER;
-        } else if (position.accessory?.id) {
-          const cacheKey = `accessory-${position.accessory.id}`;
-          photoUrl = photoCache.get(cacheKey) || PRODUCT_PLACEHOLDER;
-        }
+        // Формирование списка позиций внутри заказа
+        const itemsList = (order.positions || []).map((pos) => {
+          const itemData = pos.product || pos.accessory || {};
+          const type = pos.product ? "product" : "accessory";
+          const cacheKey = `${type}-${itemData.id}`;
+
+          // Используем вложенные данные из твоего JSON (quantity и total_price)
+          const quantity = Number(itemData.quantity || pos.quantity || 1);
+          const price = Number(itemData.price || pos.price || 0);
+
+          const totalPrice = Number(
+            itemData.total_price || pos.total_price || price * quantity,
+          );
+
+          return {
+            name: itemData.name || "Unknown Item",
+            quantity: quantity,
+            price: totalPrice, // Теперь здесь будет 40, а не 20
+            image: photoCache.get(cacheKey) || PRODUCT_PLACEHOLDER,
+          };
+        });
 
         return {
-          name: itemData.name || 'Unknown Product',
-          quantity: position.quantity || 1,
-          price: Number(itemData.price || position.price || 0),
-          image: photoUrl,
+          id: order.id,
+          ID: String(order.id),
+          status: statusLabels[order.status?.toLowerCase()] || "Pending",
+          date: displayDate,
+          customer: order.first_name
+            ? `${order.first_name} ${order.last_name || ""}`
+            : `ID: ${order.customer}`,
+          total: Number(order.order_amount || 0),
+          items: itemsList.reduce((sum, item) => sum + item.quantity, 0),
+          itemsList,
+          originalOrder: order, // сохраняем оригинал для OrderDetails
         };
-      });
+      })
+      .sort((a, b) => b.id - a.id);
+  }, [orders, photoCache]);
 
-      const totalItemsCount = itemsList.reduce((sum, item) => sum + (item.quantity || 0), 0);
-
-      const statusLabels = {
-        processing: 'Processing',
-        preparing: 'Preparing',
-        shipping: 'Shipping',
-        in_transit: 'In Transit',
-        delivered: 'Delivered',
-        delivering: 'Delivered',
-        cancelled: 'Cancelled',
-        canceled: 'Cancelled',
-      };
-      
-      const orderStatus = (order.status || '').toLowerCase();
-      const displayStatus = statusLabels[orderStatus] || (order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending');
-
-      return {
-        id: order.id,
-        ID: String(order.id),
-        status: displayStatus,
-        date: formatDate(order.created_at),
-        customer: customerName,
-        customerPhoto: order.customer_data?.avatar || null, 
-        customerId: String(order.customer || 'N/A'),
-        itemsList: itemsList,
-        total: order.order_amount || 0,
-        items: totalItemsCount,
-        originalOrder: order, 
-      };
-    });
-
-  const normalize = (v) => String(v ?? '').trim().toLowerCase();
+  // 4. Поиск/Фильтрация
   const filteredOrders = useMemo(() => {
-    const q = normalize(searchQuery);
+    const q = searchQuery.trim().toLowerCase();
     if (!q) return transformedOrders;
-    return transformedOrders.filter((o) => {
-      const haystack = [
-        o.ID,
-        o.customer,
-        o.customerId,
-        o.status,
-        o.date,
-        o.total,
-        o.items,
-        ...(o.itemsList || []).flatMap((it) => [it.name]),
-      ]
-        .map(normalize)
-        .join(' ');
-      return haystack.includes(q);
-    });
+    return transformedOrders.filter(
+      (o) =>
+        o.ID.includes(q) ||
+        o.customer.toLowerCase().includes(q) ||
+        o.status.toLowerCase().includes(q),
+    );
   }, [transformedOrders, searchQuery]);
 
-  const totalPages = Math.ceil((count || 0) / rowsPerPage);
-
+  // Обработчики
   const handlePageChange = (e, newPage) => {
     setPage(newPage);
-    setSelectedOrder(null); 
+    setSelectedOrder(null);
   };
 
-  const handleSelectOrder = (order) => {
-    setSelectedOrder(order);
-  };
-
+  // Рендеринг загрузки
   if (loading && orders.length === 0) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error && orders.length === 0) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography sx={{ color: '#c62828', mb: 2 }}>
-          Error loading orders: {error?.detail || error?.message || 'Unknown error'}
-        </Typography>
-        <Button variant="outlined" onClick={() => window.location.reload()}>Retry</Button>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+        <CircularProgress sx={{ color: "#A4795B" }} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, width: '100%', gap: { xs: 2, md: 3 }, my: { xs: 2, md: 3 } }}>
-    
-      <Box sx={{ flex: selectedOrder ? { xs: 'none', lg: '2 1 0%' } : '1 1 100%', display: 'flex', flexDirection: 'column', minWidth: 0, transition: 'flex 0.3s ease', width: { xs: '100%', lg: 'auto' } }}>
-        <Box mb={3} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 2, sm: 0 } }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", lg: "row" },
+        width: "100%",
+        gap: 3,
+        my: 3,
+      }}
+    >
+      {/* Левая часть: Таблица */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box
+          mb={3}
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
           <AdminBreadcrumbs />
-          <Box display="flex" gap={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Search value={searchQuery} onChange={(v) => {
+          <Search
+            value={searchQuery}
+            onChange={(v) => {
               setSearchQuery(v);
               setSelectedOrder(null);
-            }} />
-          </Box>
-        </Box>
-
-        <Box sx={{ flex: 1, minHeight: 0 }}>
-          <ProductsTableOrders
-            products={filteredOrders}
-            h5={h5}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            variant="admin"
-            onRowClick={handleSelectOrder}
-            selectedOrderId={selectedOrder?.id}
+            }}
           />
         </Box>
+
+        <ProductsTableOrders
+          products={filteredOrders}
+          h5={h5}
+          page={page}
+          totalPages={Math.ceil((count || 0) / rowsPerPage)}
+          onPageChange={handlePageChange}
+          variant="admin"
+          onRowClick={setSelectedOrder}
+          selectedOrderId={selectedOrder?.id}
+        />
       </Box>
 
+      {/* Правая часть: Детали (появляется при клике) */}
       {selectedOrder && (
-        <Box sx={{ width: { xs: '100%', lg: 400 }, minWidth: { xs: '100%', lg: 350 }, maxWidth: { xs: '100%', lg: 450 }, display: 'flex', flexDirection: 'column'}}>
-          <OrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+        <Box sx={{ width: { xs: "100%", lg: 400 }, flexShrink: 0 }}>
+          <OrderDetails
+            order={selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+          />
         </Box>
       )}
     </Box>
