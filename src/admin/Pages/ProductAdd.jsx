@@ -40,6 +40,8 @@ export default function ProductsAdd() {
   const [cover, setCover] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [caffeineType, setCaffeineType] = useState("Caffeine");
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -50,15 +52,15 @@ export default function ProductsAdd() {
   const [sort, setSort] = useState("");
   const [roast, setRoast] = useState("");
   const [isSpecial, setIsSpecial] = useState(false);
-  const [caffeineType, setCaffeineType] = useState("Caffeine");
-  const [servingType, setServingType] = useState("Ground"); 
+  const [servingType, setServingType] = useState("Ground");
   const [availableCategories, setAvailableCategories] = useState([]);
-
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const firstPageRes = await api.get("/products", { params: { page: 1 } });
+        const firstPageRes = await api.get("/products", {
+          params: { page: 1 },
+        });
         const totalPages = firstPageRes.data.total_pages || 1;
         const allPagesPromises = [];
         for (let p = 1; p <= totalPages; p++) {
@@ -95,14 +97,21 @@ export default function ProductsAdd() {
     const nameValid = productName && productName.trim().length > 0;
     const categoryValid = category && category.trim().length > 0;
     const priceValid = !isNaN(parseFloat(price)) && parseFloat(price) > 0;
-    const weightValid = productType === "accessory" ? true : (weight && weight.toString().trim().length > 0);
+    const weightValid =
+      productType === "accessory"
+        ? true
+        : weight && weight.toString().trim().length > 0;
     return nameValid && categoryValid && priceValid && weightValid;
   }, [productName, category, price, weight, productType]);
 
   const handleImageUpload = (e) => {
     const files = e.target.files;
     if (files) {
-      const newFiles = Array.from(files).map((file) => ({ id: null, url: URL.createObjectURL(file), file }));
+      const newFiles = Array.from(files).map((file) => ({
+        id: null,
+        url: URL.createObjectURL(file),
+        file,
+      }));
       setImages((prev) => [...prev, ...newFiles]);
       if (!cover) setCover(newFiles[0]);
     }
@@ -119,97 +128,117 @@ export default function ProductsAdd() {
 
   const handleDeletePhoto = (photoIdOrImg) => {
     setImages((prev) => {
-      const filtered = prev.filter((img) => img !== photoIdOrImg && img.id !== photoIdOrImg);
+      const filtered = prev.filter(
+        (img) => img !== photoIdOrImg && img.id !== photoIdOrImg,
+      );
       if (cover === photoIdOrImg) setCover(filtered[0] || null);
       return filtered;
     });
   };
 
   const handleSaveProduct = async () => {
-  if (!isProductReady) {
-    setError("Please fill in all required fields!");
-    return;
-  }
+    if (!isProductReady) {
+      setError("Please fill in all required fields!");
+      return;
+    }
 
-  setLoading(true);
-  setError("");
+    setLoading(true);
+    setError("");
 
-  try {
-    let response;
-    const priceNum = parseFloat(price);
-    const stockNum = parseInt(stock) || 0;
+    try {
+      let response;
+      const priceNum = parseFloat(price);
+      const stockNum = parseInt(stock) || 0;
 
-    if (productType === "product") {
-      const sku = `${productName.trim().substring(0, 10).toUpperCase()}_${Date.now()}`;
-      const productData = {
-        sku,
-        name: productName.trim(),
-        brand: brand || category,
-        category: category === "custom" ? "" : category,
-        description: description.trim(),
-        caffeine_type: caffeineType,
-        sort: sort || null,
-        roast: roast || null,
-        is_special: isSpecial,
-        status: visible ? "Active" : "Hidden",
-        supplies: [{
-          serving_type: servingType,
+      if (productType === "product") {
+        const sku = `${productName.trim().substring(0, 10).toUpperCase()}_${Date.now()}`;
+        const productData = {
+          sku,
+          name: productName.trim(),
+          brand: brand || category,
+          category: category === "custom" ? "" : category,
+          description: description.trim(),
+          caffeine_type: caffeineType,
+          sort: sort || null,
+          roast: roast || null,
+          is_special: isSpecial,
+          status: visible ? "Active" : "Hidden",
+          flavor_profiles: [],
+          supplies: [
+            {
+              serving_type: servingType,
+              price: priceNum.toString(),
+              quantity: stockNum,
+              weight: parseFloat(weight) || 0,
+            },
+          ],
+        };
+
+        response = await apiWithAuth.post("/products/product", productData);
+        const productId = response.data.id;
+
+        if (images.some((img) => img.file) || cover?.file) {
+          const photoFormData = new FormData();
+
+          images
+            .filter((img) => img.file)
+            .forEach((img) => {
+              photoFormData.append("photo", img.file);
+            });
+
+          if (cover?.file) {
+            photoFormData.append("cover", cover.file);
+          }
+
+          await apiWithAuth.put(`/products/${productId}/photo`, photoFormData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
+      } else {
+        const sku = `ACC_${productName.trim().substring(0, 5).toUpperCase()}_${Date.now()}`;
+
+        const accessoryData = {
+          sku: sku,
+          name: productName.trim(),
+          category: category,
           price: priceNum.toString(),
           quantity: stockNum,
-          weight: weight.toString(),
-        }],
-      };
+          description: description.trim(),
+          visible: visible,
+        };
+        response = await apiWithAuth.post(
+          "/accessories/new_accessory",
+          accessoryData,
+        );
+        const accessoryId = response.data.id;
 
-      response = await apiWithAuth.post("/products/product", productData);
-      const productId = response.data.id;
+        if (images.some((img) => img.file) || cover?.file) {
+          const photoFormData = new FormData();
+          images
+            .filter((img) => img.file)
+            .forEach((img) => photoFormData.append("photo", img.file));
+          if (cover?.file) photoFormData.append("cover", cover.file);
 
-      if (images.some(img => img.file) || cover?.file) {
-        const photoFormData = new FormData();
-        images.filter(img => img.file).forEach(img => photoFormData.append("images", img.file));
-        if (cover?.file) photoFormData.append("cover", cover.file);
-        
-        await apiWithAuth.patch(`/products/product/${productId}`, photoFormData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+          await apiWithAuth.put(
+            `/accessories/${accessoryId}/photo`,
+            photoFormData,
+            {
+              headers: { "Content-Type": "multipart/form-data" },
+            },
+          );
+        }
       }
 
-    } else {
-
-  const sku = `ACC_${productName.trim().substring(0, 5).toUpperCase()}_${Date.now()}`;
-
-  const accessoryData = {
-    sku: sku, 
-    name: productName.trim(),
-    category: category,
-    price: priceNum.toString(),
-    quantity: stockNum,
-    description: description.trim(),
-    visible: visible
+      showNotification("Successfully created!", "success");
+      setTimeout(() => navigate("/admin/products"), 2000);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Error saving item");
+      showNotification("Error saving item", "error");
+    } finally {
+      setLoading(false);
+    }
   };
-  response = await apiWithAuth.post("/accessories/new_accessory", accessoryData);
-  const accessoryId = response.data.id;
-
-  if (images.some(img => img.file) || cover?.file) {
-    const photoFormData = new FormData();
-    images.filter(img => img.file).forEach(img => photoFormData.append("images", img.file));
-    if (cover?.file) photoFormData.append("cover", cover.file);
-
-    await apiWithAuth.put(`/accessories/${accessoryId}/photo`, photoFormData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  }
-}
-
-    showNotification("Successfully created!", "success");
-    setTimeout(() => navigate("/admin/products"), 2000);
-  } catch (err) {
-    console.error(err);
-    setError(err.response?.data?.message || "Error saving item");
-    showNotification("Error saving item", "error");
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     <Box
@@ -274,7 +303,7 @@ export default function ProductsAdd() {
                   }}
                   MenuProps={selectMenuProps}
                 >
-                  <MenuItem value="product">Product (Coffee/Accessory)</MenuItem>
+                  <MenuItem value="product">Coffee</MenuItem>
                   <MenuItem value="accessory">Accessory</MenuItem>
                 </Select>
               </FormControl>
@@ -303,6 +332,10 @@ export default function ProductsAdd() {
               setDescription={setDescription}
               productType={productType}
               availableCategories={availableCategories}
+              caffeineType={caffeineType}
+              setCaffeineType={setCaffeineType}
+              servingType={servingType}
+              setServingType={setServingType}
             />
 
             {productType === "product" && (
