@@ -21,16 +21,20 @@ export const buildImageUrl = (photoUrl) => {
 };
 
 
-export const getProductPhoto = (item) => {
-  if (item.img) return item.img;
-  
-  if (item.product?.product_photos?.[0]?.photo) {
-    return item.product.product_photos[0].photo;
-  }
-  
-  if (item.product?.photos_url?.[0]) {
-    return item.product.photos_url[0];
+export const getProductPhoto = (cartItem) => {
+  if (!cartItem || !cartItem.product) return null;
+  const p = cartItem.product;
+
+  const photoArray = 
+    (p.accessory_photos?.length ? p.accessory_photos : null) || 
+    (p.product_photos?.length ? p.product_photos : null) || 
+    (p.photos_url?.length ? p.photos_url : null);
+
+  if (photoArray && photoArray[0]) {
+    const first = photoArray[0];
+
+    return first?.photo || first?.url || (typeof first === "string" ? first : null);
   }
 
-  return null; 
+  return p.image || p.photo || p.cover || p.img;
 };

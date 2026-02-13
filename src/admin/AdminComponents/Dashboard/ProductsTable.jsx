@@ -95,7 +95,7 @@ export default function ProductsTable({
     });
   }, [products, categoryFilter, searchQuery]);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 25;
   const shouldLocalPaginate =
     (categoryFilter !== "Category" && !!categoryFilter) ||
     !!normalize(searchQuery);
@@ -336,6 +336,7 @@ export default function ProductsTable({
                           }
                           onRefresh={onRefresh}
                           onProductUpdated={onProductUpdated}
+                          products={products}
                         />
                       </Box>
                       <Box

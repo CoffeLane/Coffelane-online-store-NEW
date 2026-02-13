@@ -10,6 +10,7 @@ import { fetchAccessories } from '../store/slice/accessoriesSlice.jsx';
 import { fetchFavorites, toggleFavoriteItem } from "../store/slice/favoritesSlice.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import LoginModal from '../components/Modal/LoginModal.jsx';
+import { buildImageUrl } from "../components/utils/helpers.js";
 
 
 const itemsPerPage = 12;
@@ -23,7 +24,6 @@ export default function AccessoriesPage() {
   const { items, loading, error, totalPages, currentPage } = useSelector(state => state.accessories);
   const favorites = useSelector(state => state.favorites.favorites);
   const token = useSelector(state => state.auth.token);
-  console.log("items:", items);
 
   const favoritesMap = useMemo(() => {
     const map = {};
@@ -81,6 +81,20 @@ export default function AccessoriesPage() {
 
   if (error) return <p>{error?.detail || error || "Error"}</p>;
 
+  const preparedItems = useMemo(() => {
+  return items.map(item => {
+    const photoSource = item.accessory_photos?.[0]?.photo || 
+                        item.product_photos?.[0]?.photo || 
+                        item.image || 
+                        item.photo;
+
+    return {
+      ...item,
+      displayImage: buildImageUrl(photoSource)
+    };
+  });
+}, [items]);
+
   return (
     <Grid container sx={{ p: { xs: 2, sm: 2, md: 4 } }}>
       <Grid size={12}>
@@ -101,7 +115,7 @@ export default function AccessoriesPage() {
           </Box>
         ) : (
           <>
-            <AccessoriesCardData products={items} favorites={favoritesMap} onToggleFavorite={handleToggleFavorite}/>
+            <AccessoriesCardData products={preparedItems} favorites={favoritesMap} onToggleFavorite={handleToggleFavorite}/>
             <LoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
           </>
         )}

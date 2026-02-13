@@ -11,10 +11,11 @@ export default function ProductForm({
     price, setPrice,
     weight, setWeight,
     description, setDescription,
+    caffeineType, setCaffeineType,
+    servingType, setServingType,
     productType = 'product',
     availableCategories = [], 
 }) {
-    // Determine if we should show the text field for a new category
     const isCustomCategory = category === "custom" || (category && !availableCategories.includes(category));
 
     return (
@@ -56,6 +57,41 @@ export default function ProductForm({
                         </MenuItem>
                     </Select>
                 </FormControl>
+            )}
+
+            {productType !== 'accessory' && (
+                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ ...h7 }} mb={1}>Caffeine Type</Typography>
+                        <FormControl fullWidth sx={{ ...inputDropdown, ...inputStyles }}>
+                            <Select 
+                                value={caffeineType || "Caffeine"} 
+                                onChange={(e) => setCaffeineType(e.target.value)}
+                                MenuProps={selectMenuProps}
+                            >
+                                <MenuItem value="Caffeine">Caffeine</MenuItem>
+                                <MenuItem value="Caffeine Medium">Caffeine Medium</MenuItem>
+                                <MenuItem value="Decaffeinated">Decaffeinated</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+
+                    <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ ...h7 }} mb={1}>Serving Type</Typography>
+                        <FormControl fullWidth sx={{ ...inputDropdown, ...inputStyles }}>
+                            <Select 
+                                value={servingType || "Ground"} 
+                                onChange={(e) => setServingType(e.target.value)}
+                                MenuProps={selectMenuProps}
+                            >
+                                <MenuItem value="Ground">Ground</MenuItem>
+                                <MenuItem value="In grains">In grains</MenuItem>
+                                <MenuItem value="Soluble">Soluble</MenuItem>
+                                <MenuItem value="In capsules">In capsules</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+                </Box>
             )}
 
             <Typography sx={{ ...h7 }} mb={1}>Stock (Quantity)</Typography>

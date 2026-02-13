@@ -92,6 +92,8 @@ export default function ProductEdit() {
   const fetchedIdRef = useRef(null);
   const initialPhotoIdsRef = useRef([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [caffeineType, setCaffeineType] = useState("Caffeine");
+  const [servingType, setServingType] = useState("Ground");
 
   // Функция для получения похожих товаров по бренду
   const fetchRelatedProducts = async (currentBrand) => {
@@ -678,114 +680,123 @@ export default function ProductEdit() {
   };
 
   const handleUpdateProduct = async (imagesToUse = null) => {
-    const imagesForUpdate = Array.isArray(imagesToUse)
-      ? imagesToUse
-      : Array.isArray(images)
-        ? images
-        : [];
+  const imagesForUpdate = Array.isArray(imagesToUse)
+    ? imagesToUse
+    : Array.isArray(images)
+      ? images
+      : [];
 
-    if (!isProductReady) {
-      showNotification("Please fill in all required fields!", "warning");
-      return;
+  if (!isProductReady) {
+    showNotification("Please fill in all required fields!", "warning");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const productBrand = category || "General";
+    const validatedPrice = parseFloat(price) || 0;
+    const cleanWeight = String(weight).replace(/[^\d.]/g, "");
+    const validatedWeight = parseFloat(cleanWeight) || 0;
+    const validatedQuantity = parseInt(stock) || 0;
+
+    // 1. Базовый payload (общие поля)
+    let productPayload = {
+      name: productName.trim(),
+      brand: productBrand,
+      description: description.trim(),
+      is_special: !!isSpecial,
+      // Генерируем или сохраняем SKU
+      sku: productName.trim().toUpperCase().replace(/\s+/g, '_') + '_' + id,
+    };
+
+    // 2. Логика распределения полей (Аксессуары vs Кофе)
+    if (productType === "accessory") {
+      // Для аксессуаров цена и кол-во в корне
+      productPayload.price = validatedPrice.toString();
+      productPayload.quantity = validatedQuantity;
+    } else {
+      // Для кофе (продуктов) используем массив supplies и тип кофеина
+      productPayload.supplies = [
+        {
+          serving_type: servingType || "Ground", // Используем значение из Select
+          price: validatedPrice.toString(),
+          quantity: validatedQuantity,
+          weight: validatedWeight.toFixed(2),
+        },
+      ];
+      
+      // Добавляем специфические поля для кофе
+      productPayload.caffeine_type = caffeineType || "Caffeine"; 
+      productPayload.status = visible ? "Active" : "Hidden";
+      productPayload.flavor_profiles = []; // если есть стейт для вкусов, подставьте его сюда
     }
 
-    setLoading(true);
+    // 3. Определение эндпоинта (БЕЗ слэша в конце, как требует Swagger)
+    const baseEndpoint =
+      productType === "accessory"
+        ? `/accessories/${id}/update`
+        : `/products/product/${id}`;
 
-    try {
-      const productBrand = category || "General";
+    // 4. Отправка основного запроса (PATCH)
+    await apiWithAuth.patch(baseEndpoint, productPayload, {
+      headers: { "Content-Type": "application/json" },
+    });
 
-      const validatedPrice = parseFloat(price) || 0;
-      const cleanWeight = String(weight).replace(/[^\d.]/g, "");
-      const validatedWeight = parseFloat(cleanWeight) || 0;
-      const validatedQuantity = parseInt(stock) || 0;
+    // 5. Логика обновления фотографий
+    const newImages = imagesForUpdate.filter((img) => img.file);
+    const currentCover = coverRef.current || cover;
+    
+    if (newImages.length > 0 || currentCover?.file) {
+      const photoFormData = new FormData();
 
-      const productPayload = {
-        name: productName.trim(),
-        brand: productBrand,
-        sku: `SKU_${id}_${Date.now()}`,
-        description: description.trim(),
-        is_special: !!isSpecial,
-        status: visible ? "Active" : "Hidden",
-        supplies: [
-          {
-            serving_type: "Ground",
-            price: validatedPrice.toString(),
-            quantity: validatedQuantity,
-            weight: validatedWeight.toFixed(2),
-          },
-        ],
-        flavor_profiles: [],
-      };
-
-      const baseEndpoint =
-        productType === "accessory"
-          ? `/accessories/${id}`
-          : `/products/product/${id}`;
-
-      await apiWithAuth.put(baseEndpoint, productPayload, {
-        headers: { "Content-Type": "application/json" },
+      newImages.forEach((img) => {
+        if (img.file) {
+          photoFormData.append("images", convertJfifToJpg(img.file));
+        }
       });
 
-      const newImages = imagesForUpdate.filter((img) => img.file);
-      const currentCover = coverRef.current || cover;
-      if (newImages.length > 0 || currentCover?.file) {
-        const photoFormData = new FormData();
-
-        newImages.forEach((img) => {
-          if (img.file) {
-            photoFormData.append("images", convertJfifToJpg(img.file));
-          }
-        });
-
-        if (currentCover?.file) {
-          photoFormData.append("cover", convertJfifToJpg(currentCover.file));
-        }
-
-        const existingImages = imagesForUpdate.filter(
-          (img) => img.id && !img.file,
-        );
-        existingImages.forEach((img) => {
-          photoFormData.append("photo_ids", img.id.toString());
-        });
-
-        const photoEndpoint =
-          productType === "accessory"
-            ? `/accessories/${id}/photo`
-            : `/products/${id}/photo`;
-
-        await apiWithAuth.put(photoEndpoint, photoFormData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+      if (currentCover?.file) {
+        photoFormData.append("cover", convertJfifToJpg(currentCover.file));
       }
 
-      showNotification(
-        "The product has been updated successfully.!",
-        "success",
+      const existingImages = imagesForUpdate.filter(
+        (img) => img.id && !img.file,
       );
-      imagesForUpdate.forEach((img) => {
-        if (img.url && img.url.startsWith("blob:")) {
-          URL.revokeObjectURL(img.url);
-        }
+      existingImages.forEach((img) => {
+        photoFormData.append("photo_ids", img.id.toString());
       });
 
-      setTimeout(() => {
-        navigate("/admin/products", { state: { refresh: true } });
-      }, 1500);
-    } catch (error) {
-      console.error("Update error:", error);
-      const errorData = error.response?.data;
+      const photoEndpoint =
+        productType === "accessory"
+          ? `/accessories/${id}/photo`
+          : `/products/${id}/photo`;
 
-      let errorMsg = "An error occurred while saving";
-      if (typeof errorData === "string") errorMsg = errorData;
-      else if (errorData?.detail) errorMsg = errorData.detail;
-      else if (errorData?.message) errorMsg = errorData.message;
-      else if (error.message) errorMsg = error.message;
-
-      showNotification(`Error: ${errorMsg}`, "error");
-    } finally {
-      setLoading(false);
+      await apiWithAuth.put(photoEndpoint, photoFormData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
     }
-  };
+
+    showNotification("Successfully updated!", "success");
+    imagesForUpdate.forEach((img) => {
+      if (img.url && img.url.startsWith("blob:")) {
+        URL.revokeObjectURL(img.url);
+      }
+    });
+
+    setTimeout(() => {
+      navigate("/admin/products", { state: { refresh: true } });
+    }, 1500);
+
+  } catch (error) {
+    console.error("Update error:", error);
+    const errorData = error.response?.data;
+    let errorMsg = errorData?.detail || errorData?.message || error.message || "Update failed";
+    showNotification(`Error: ${errorMsg}`, "error");
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <Box
       sx={{
@@ -857,6 +868,10 @@ export default function ProductEdit() {
               description={description}
               setDescription={setDescription}
               productType={productType}
+              caffeineType={caffeineType}
+              setCaffeineType={setCaffeineType}
+              servingType={servingType}
+              setServingType={setServingType}
             />
 
             {productType === "product" && (
