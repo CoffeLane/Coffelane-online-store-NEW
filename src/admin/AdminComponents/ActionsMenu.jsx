@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiWithAuth } from '../../store/api/axios.js';
 
-export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh, onViewOrder, onProductUpdated }) {
+export default function ActionsMenu({ id, type = 'product', productType = 'coffee', onRefresh, onViewOrder, onProductUpdated, products }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -76,75 +76,68 @@ export default function ActionsMenu({ id, type = 'product', productType = 'coffe
         }
     };
 
-    const handleHide = async () => {
-        handleClose();
-        
-        if (type !== 'product') {
-            alert("Hide action is only available for products");
-            return;
-        }
+   const handleHide = async () => {
+    handleClose();
+    
+    if (type !== 'product') {
+        alert("Hide action is only available for products");
+        return;
+    }
 
-        setLoading(true);
-        try {
-            let response;
-            try {
-                response = await apiWithAuth.patch(`/products/product/${id}`, {
+    setLoading(true);
+    try {
+        let endpoint;
+        let method = 'patch';
+        let payload = { visible: false, status: 'Hidden' };
+
+        if (productType === 'accessory') {
+            endpoint = `/accessories/${id}/update`;
+            method = 'put'; 
+            const currentAcc = products?.find(p => p.id === id);
+
+            if (currentAcc) {
+                payload = {
+                    name: currentAcc.name,
+                    price: currentAcc.price,
+                    quantity: currentAcc.stock || currentAcc.quantity || 0,
+                    sku: currentAcc.sku || "N/A", 
                     visible: false,
                     status: 'Hidden'
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-            } catch (jsonError) {
-                console.warn("JSON request failed, trying FormData:", jsonError);
-                const formData = new FormData();
-                formData.append("visible", "false");
-                formData.append("status", "Hidden");
-                
-                response = await apiWithAuth.patch(`/products/product/${id}`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
+                };
             }
-
-            console.log("📊 Response data:", response.data);
-            if (onProductUpdated) {
-                onProductUpdated(id, { status: 'Hidden', visible: false });
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            if (onRefresh) {
-                if (typeof onRefresh === 'function') {
-                    try {
-                        onRefresh();
-                    } catch (e) {
-                        console.warn("onRefresh failed, reloading page:", e);
-                        window.location.reload();
-                    }
-                } else {
-                    window.location.reload();
-                }
-            } else {
-                window.location.reload();
-            }
-        } catch (error) {
-            console.error("Error hiding product:", error.response?.data || error.message);
-            console.error("Error details:", {
-                status: error.response?.status,
-                data: error.response?.data,
-                message: error.message
-            });
-            const errorMessage = error.response?.data?.detail || 
-                               error.response?.data?.message || 
-                               "Error when hiding product. Please try again.";
-            alert(errorMessage);
-        } finally {
-            setLoading(false);
+        } else {
+            endpoint = `/products/product/${id}`;
+            method = 'patch';
         }
-    };
 
+        const response = await apiWithAuth[method](endpoint, payload, {
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        console.log("📊 Success! Response:", response.data);
+
+        if (onProductUpdated) {
+            onProductUpdated(id, { status: 'Hidden', visible: false });
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (onRefresh && typeof onRefresh === 'function') {
+            onRefresh();
+        } else {
+            window.location.reload();
+        }
+
+    } catch (error) {
+        console.error("Error details:", error.response?.data);
+        const errorMessage = typeof error.response?.data === 'object' 
+            ? JSON.stringify(error.response.data) 
+            : error.response?.data?.detail || "Error hiding product.";
+        alert(errorMessage);
+    } finally {
+        setLoading(false);
+    }
+};
     return (
         <>
             <IconButton size="small" onClick={handleClick} disabled={loading}>

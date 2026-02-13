@@ -283,9 +283,9 @@ const CoffeeBanner = () => {
                 <Box
                   sx={{
                     position: "relative",
-                    width: { xs: 200, sm: 300, md: 400 },
-                    height: { xs: 200, sm: 300, md: 400 },
-                    mr: { xs: 0, md: 8 },
+                    width: { xs: 200, sm: 300, md: 450 },
+                    height: { xs: 200, sm: 300, md: 450 },
+                    mr: { xs: 0, md: 6 },
                     mb: { xs: 2, md: 0 },
                     padding: { xs: 1, md: 2 },
                     display: "flex",
@@ -328,15 +328,6 @@ const CoffeeBanner = () => {
                           opacity: 0.6,
                         }}
                       />
-                      <Typography
-                        sx={{
-                          fontSize: "14px",
-                          color: "#EAD9C9",
-                          opacity: 0.6,
-                        }}
-                      >
-                        No Image
-                      </Typography>
                     </Box>
                   )}
                 </Box>

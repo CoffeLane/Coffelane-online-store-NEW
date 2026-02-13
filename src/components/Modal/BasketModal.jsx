@@ -105,7 +105,7 @@ export default function BasketModal({
       : roundedSubtotal;
   const discountVal = getPrice({ price: discount }, currency);
   const total = subtotal - discountVal;
- 
+
   return (
     <Drawer
       anchor="right"
@@ -146,6 +146,21 @@ export default function BasketModal({
           {items.map((item, index) => {
             const singleItemPrice = getPrice({ price: item.price }, currency);
 
+            // Универсальный поиск фото
+            const productData = item.product || {};
+            const photoSource =
+              item.img ||
+              (productData.accessory_photos?.length
+                ? productData.accessory_photos[0].photo
+                : null) ||
+              (productData.product_photos?.length
+                ? productData.product_photos[0].photo
+                : null) ||
+              (productData.photos_url?.length
+                ? productData.photos_url[0]
+                : null) ||
+              productData.image ||
+              productData.photo;
             return (
               <Box key={item.id}>
                 <Box
@@ -156,11 +171,7 @@ export default function BasketModal({
                   }}
                 >
                   <CartItemImage
-                    src={
-                      item.img || 
-                      item.product?.product_photos?.[0]?.photo || 
-                      item.product?.photos_url?.[0]
-                    }
+                   src={photoSource}
                     alt={item.name}
                     isMobile={isMobile}
                   />
