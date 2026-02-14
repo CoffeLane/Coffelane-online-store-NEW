@@ -706,44 +706,39 @@ export default function ProductEdit() {
       brand: productBrand,
       description: description.trim(),
       is_special: !!isSpecial,
-      // Генерируем или сохраняем SKU
       sku: productName.trim().toUpperCase().replace(/\s+/g, '_') + '_' + id,
     };
 
     // 2. Логика распределения полей (Аксессуары vs Кофе)
     if (productType === "accessory") {
-      // Для аксессуаров цена и кол-во в корне
       productPayload.price = validatedPrice.toString();
       productPayload.quantity = validatedQuantity;
     } else {
       // Для кофе (продуктов) используем массив supplies и тип кофеина
       productPayload.supplies = [
         {
-          serving_type: servingType || "Ground", // Используем значение из Select
+          serving_type: servingType || "Ground", 
           price: validatedPrice.toString(),
           quantity: validatedQuantity,
           weight: validatedWeight.toFixed(2),
         },
       ];
       
-      // Добавляем специфические поля для кофе
       productPayload.caffeine_type = caffeineType || "Caffeine"; 
       productPayload.status = visible ? "Active" : "Hidden";
-      productPayload.flavor_profiles = []; // если есть стейт для вкусов, подставьте его сюда
+      productPayload.flavor_profiles = []; 
     }
-
-    // 3. Определение эндпоинта (БЕЗ слэша в конце, как требует Swagger)
     const baseEndpoint =
       productType === "accessory"
         ? `/accessories/${id}/update`
         : `/products/product/${id}`;
 
-    // 4. Отправка основного запроса (PATCH)
+    // 3. Отправка основного запроса (PATCH)
     await apiWithAuth.patch(baseEndpoint, productPayload, {
       headers: { "Content-Type": "application/json" },
     });
 
-    // 5. Логика обновления фотографий
+    // 4. Логика обновления фотографий
     const newImages = imagesForUpdate.filter((img) => img.file);
     const currentCover = coverRef.current || cover;
     
