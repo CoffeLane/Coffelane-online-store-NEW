@@ -47,15 +47,14 @@ import api, { apiWithAuth } from "../store/api/axios.js";
 import { formatPrice } from "../components/utils/priceUtils.jsx";
 import { fetchProfile } from "../store/slice/authSlice.jsx";
 
-
 export default function CheckoutPage() {
   const items = useSelector(selectCartItems);
   const total = useSelector(selectCartTotal);
-  const { creating: isCreatingOrder } = useSelector(
-    (state) => state.orders,
-  );
+  const { creating: isCreatingOrder } = useSelector((state) => state.orders);
   const user = useSelector((state) => state.auth.user);
   const token = useSelector((state) => state.auth.token);
+  const isLoggedIn = !!token;
+  console.log("CheckoutPage render - isLoggedIn:", isLoggedIn, "user:", user);
   const isAdmin = useSelector((state) => state.auth.isAdmin);
   const currency = useSelector((state) => state.settings.currency);
 
@@ -177,7 +176,15 @@ export default function CheckoutPage() {
         }
       }, 500);
     }
-  }, [ user, token, openLogin, dispatch, navigate, discountCode, discountAmount]);
+  }, [
+    user,
+    token,
+    openLogin,
+    dispatch,
+    navigate,
+    discountCode,
+    discountAmount,
+  ]);
 
   const handleContinue = () => {
     const contactErrors = validateContact({
@@ -385,6 +392,7 @@ export default function CheckoutPage() {
           </Box>
 
           <ContactDetailsForm
+            isLoggedIn={isLoggedIn}
             step={step}
             firstName={firstName}
             setFirstName={setFirstName}

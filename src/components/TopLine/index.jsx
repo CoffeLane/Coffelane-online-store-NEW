@@ -7,7 +7,7 @@ export default function TopLine() {
         {Array.from({ length: 20 }).map((_, index) => (
           <Typography key={index} component="span" sx={{ marginRight: { xs: "16px", md: "32px" }, fontSize: { xs: "12px", sm: "14px", md: "16px" }, fontWeight: 400, fontFamily: "Montserrat, sans-serif", color: '#fff', }}>
             Coffee Lane is open! Use{" "}
-            <strong style={{ fontWeight: 500, fontSize: { xs: "14px", md: "18px" } }}>NEWCODE</strong> for 10% off
+            <strong style={{ fontWeight: 500, fontSize: { xs: "14px", md: "18px" } }}>NEWCODE</strong> for off
             your first order!
           </Typography>
         ))}
