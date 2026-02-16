@@ -69,6 +69,14 @@ const processPhotoArray = (photos) => {
     .filter((img) => img.url !== null);
 };
 
+const convertJfifToJpg = (file) => {
+  if (file.name.toLowerCase().endsWith(".jfif")) {
+    const newFileName = file.name.replace(/\.jfif$/i, ".jpg");
+    return new File([file], newFileName, { type: "image/jpeg" });
+  }
+  return file;
+};
+
 export default function ProductEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -94,8 +102,8 @@ export default function ProductEdit() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [caffeineType, setCaffeineType] = useState("Caffeine");
   const [servingType, setServingType] = useState("Ground");
+  const [supplyId, setSupplyId] = useState(null);
 
-  // Функция для получения похожих товаров по бренду
   const fetchRelatedProducts = async (currentBrand) => {
     if (!currentBrand || currentBrand === "Category") {
       setRelatedProducts([]);
@@ -107,16 +115,12 @@ export default function ProductEdit() {
         params: { brand: currentBrand, size: 10 },
       });
 
-      // Смотрим в консоль: что именно пришло в массиве?
-      console.log("API Response for Related:", response.data.data);
-
       const rawProducts = response.data.data || [];
 
       const processed = rawProducts
-        .filter((p) => String(p.id) !== String(id)) // Убираем текущий товар
+        .filter((p) => String(p.id) !== String(id)) 
         .map((p) => ({
           ...p,
-          // Вытаскиваем цену из supplies специально для отображения
           displayPrice: p.supplies?.[0]?.price || p.price || "0",
         }));
 
@@ -127,7 +131,6 @@ export default function ProductEdit() {
   };
 
   useEffect(() => {
-    // Вызываем поиск похожих товаров, когда категория (бренд) загружена
     if (category && category !== "Category") {
       fetchRelatedProducts(category);
     } else {
@@ -354,6 +357,9 @@ export default function ProductEdit() {
         Array.isArray(product.supplies) &&
         product.supplies.length > 0
       ) {
+
+        setSupplyId(product.supplies[0].id); 
+        console.log("Existing Supply ID found and saved:", product.supplies[0].id);
         const supplyPrice = product.supplies[0].price;
         if (supplyPrice !== undefined && supplyPrice !== null) {
           productPrice = supplyPrice.toString();
@@ -361,6 +367,7 @@ export default function ProductEdit() {
           productPrice = product.price.toString();
         }
       } else {
+        setSupplyId(null); 
         if (product.price !== undefined && product.price !== null) {
           productPrice = product.price.toString();
         }
@@ -510,181 +517,114 @@ export default function ProductEdit() {
     };
   }, [id, fetchProduct]);
 
-  const handleDeletePhoto = async (photoId) => {
-    if (typeof photoId === "object" && photoId !== null && !photoId.id) {
-      setImages((prev) => {
-        const filtered = prev.filter((img) => img !== photoId);
-        if (cover === photoId) {
-          setCover(filtered[0] || null);
-        }
-        return filtered;
-      });
-      showNotification("Photo removed from preview!", "success");
-      return;
-    }
+ const handleDeletePhoto = async (photoId) => {
+  if (typeof photoId === "object" && photoId !== null && !photoId.id) {
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img !== photoId);
+      if (cover === photoId) setCover(filtered[0] || null);
+      return filtered;
+    });
+    showNotification("Local photo removed!", "success");
+    return;
+  }
 
-    let deleted = false;
-    try {
-      if (productType === "accessory") {
-        // DELETE /accessories/{id}/remove_photo
-        try {
-          await apiWithAuth.delete(`/accessories/${id}/remove_photo`, {
-            data: { photo_id: photoId },
-          });
+  let deleted = false;
+  try {
+    if (productType === "accessory") {
+      try {
+        await apiWithAuth.delete(`/accessories/${id}/photos/${photoId}`);
+        deleted = true;
+      } catch (error) {
+        if (error.response?.status === 404) {
           deleted = true;
-        } catch (error) {
-          const errorDetail =
-            error.response?.data?.detail || error.response?.data?.message || "";
-          if (
-            errorDetail.includes("No AccessoryPhotosModel matches") ||
-            errorDetail.includes("not found") ||
-            errorDetail.includes("does not exist") ||
-            (error.response?.status === 404 && errorDetail.includes("No"))
-          ) {
-            deleted = true;
-          } else if (error.response?.status === 404) {
-            deleted = true;
-          } else {
-            throw error;
-          }
-        }
-
-        if (!deleted) {
-          showNotification(
-            "Photo removed from preview. Click 'Publish' to save changes and remove it from the server.",
-            "info",
-          );
-        }
-      } else {
-        const endpoints = [`/products/photo/${photoId}/deletion`];
-
-        for (const endpoint of endpoints) {
-          try {
-            await apiWithAuth.delete(endpoint);
-            deleted = true;
-            break;
-          } catch (error) {
-            const errorDetail =
-              error.response?.data?.detail ||
-              error.response?.data?.message ||
-              "";
-            if (
-              errorDetail.includes("not found") ||
-              errorDetail.includes("does not exist") ||
-              (errorDetail.includes("No") && errorDetail.includes("matches"))
-            ) {
-              deleted = true;
-              break;
-            }
-          }
-        }
-
-        if (!deleted) {
-          showNotification(
-            "Photo removed from preview. Note: API endpoint for photo deletion may not be available.",
-            "info",
-          );
+        } else {
+          throw error;
         }
       }
+    } else {
+      try {
+        await apiWithAuth.delete(`/products/photo/${photoId}/deletion`);
+        deleted = true;
+      } catch (error) {
+        if (error.response?.status === 404) {
+          deleted = true;
+        } else {
+          throw error;
+        }
+      }
+    }
 
+    if (deleted) {
       setImages((prev) => {
-        const filtered = prev.filter((img) => {
-          if (typeof photoId === "object" && photoId !== null) {
-            return img !== photoId;
-          }
-          return img.id !== photoId;
-        });
-        const isCoverBeingDeleted =
-          typeof photoId === "object" && photoId !== null
-            ? cover === photoId
-            : cover?.id === photoId;
-
-        if (isCoverBeingDeleted) {
+        const filtered = prev.filter((img) => img.id !== photoId);
+        if (cover?.id === photoId) {
           setCover(filtered[0] || null);
         }
         return filtered;
       });
-      if (productType !== "accessory" || deleted) {
-        showNotification("Photo deleted successfully!", "success");
-      }
-    } catch (error) {
-      showNotification(
-        error.response?.data?.detail ||
-          error.response?.data?.message ||
-          "Error deleting photo. Please try again.",
-        "error",
-      );
+      showNotification("Photo deleted from server!", "success");
     }
-  };
+  } catch (error) {
+    console.error("Delete error:", error);
+    showNotification(
+      error.response?.data?.detail || "Error deleting photo from server.",
+      "error"
+    );
+  }
+};
 
-  const handleImageUpload = (e) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const newFiles = Array.from(files).map((file) => ({
+const handleImageUpload = (e) => {
+  const files = e.target.files;
+  if (files && files.length > 0) {
+    const newFiles = Array.from(files).map((file) => {
+      const convertedFile = convertJfifToJpg(file);
+      return {
         id: null,
-        url: URL.createObjectURL(file),
-        file,
-      }));
-      setImages((prev) => [...prev, ...newFiles]);
-      if (!cover) setCover(newFiles[0]);
-    }
-  };
-  const convertJfifToJpg = (file) => {
-    if (file.name.toLowerCase().endsWith(".jfif")) {
-      const newFileName = file.name.replace(/\.jfif$/i, ".jpg");
-      return new File([file], newFileName, { type: "image/jpeg" });
-    }
-    return file;
-  };
-
-  const handleCoverUpload = async (e) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const originalFile = files[0];
-      const file = convertJfifToJpg(originalFile);
-      const newCover = {
-        id: null,
-        url: URL.createObjectURL(file),
-        file,
+        url: URL.createObjectURL(convertedFile),
+        file: convertedFile,
       };
+    });
+    
+    setImages((prev) => [...prev, ...newFiles]);
+    if (!cover) setCover(newFiles[0]);
+  }
+  e.target.value = ""; 
+};
 
-      const currentCover = coverRef.current;
+const handleCoverUpload = async (e) => {
+  const files = e.target.files;
+  if (files && files.length > 0) {
+    const originalFile = files[0];
+    const file = convertJfifToJpg(originalFile);
+    
+    const newCover = {
+      id: null,
+      url: URL.createObjectURL(file),
+      file,
+    };
 
-      if (currentCover?.id) {
-        setImages((prev) => prev.filter((img) => img.id !== currentCover.id));
+    const oldCover = cover;
+    setCover(newCover);
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img !== oldCover);
+      return [newCover, ...filtered];
+    });
 
-        try {
-          await handleDeletePhoto(currentCover.id);
-        } catch (error) {
-          // Error handled silently
-        }
+    if (oldCover?.id && typeof oldCover.id !== 'undefined') {
+      try {
+        await handleDeletePhoto(oldCover.id);
+      } catch (error) {
+        console.error("Failed to delete old cover from server", error);
       }
-
-      setCover(newCover);
-      coverRef.current = newCover;
-
-      setImages((prev) => {
-        const filtered = prev.filter(
-          (img) => !currentCover || img.id !== currentCover.id,
-        );
-        return [newCover, ...filtered];
-      });
-
-      e.target.value = "";
-
-      showNotification(
-        "Cover photo replaced. Click 'Publish' to update the product.",
-        "info",
-      );
     }
-  };
 
-  const handleUpdateProduct = async (imagesToUse = null) => {
-  const imagesForUpdate = Array.isArray(imagesToUse)
-    ? imagesToUse
-    : Array.isArray(images)
-      ? images
-      : [];
+    e.target.value = "";
+    showNotification("Cover photo updated", "info");
+  }
+};
+
+const handleUpdateProduct = async (imagesToUse = null) => {
+  const imagesForUpdate = Array.isArray(imagesToUse) ? imagesToUse : images || [];
 
   if (!isProductReady) {
     showNotification("Please fill in all required fields!", "warning");
@@ -694,56 +634,53 @@ export default function ProductEdit() {
   setLoading(true);
 
   try {
-    const productBrand = category || "General";
     const validatedPrice = parseFloat(price) || 0;
-    const cleanWeight = String(weight).replace(/[^\d.]/g, "");
-    const validatedWeight = parseFloat(cleanWeight) || 0;
+    const validatedWeight = parseFloat(String(weight).replace(/[^\d.]/g, "")) || 0;
     const validatedQuantity = parseInt(stock) || 0;
 
-    // 1. Базовый payload (общие поля)
     let productPayload = {
       name: productName.trim(),
-      brand: productBrand,
+      brand: category || "General",
       description: description.trim(),
       is_special: !!isSpecial,
-      // Генерируем или сохраняем SKU
-      sku: productName.trim().toUpperCase().replace(/\s+/g, '_') + '_' + id,
+      sku: (productName.trim().toUpperCase().replace(/\s+/g, '_').substring(0, 30) + '_' + id),
     };
 
-    // 2. Логика распределения полей (Аксессуары vs Кофе)
     if (productType === "accessory") {
-      // Для аксессуаров цена и кол-во в корне
       productPayload.price = validatedPrice.toString();
       productPayload.quantity = validatedQuantity;
     } else {
-      // Для кофе (продуктов) используем массив supplies и тип кофеина
-      productPayload.supplies = [
-        {
-          serving_type: servingType || "Ground", // Используем значение из Select
-          price: validatedPrice.toString(),
-          quantity: validatedQuantity,
-          weight: validatedWeight.toFixed(2),
-        },
-      ];
-      
-      // Добавляем специфические поля для кофе
-      productPayload.caffeine_type = caffeineType || "Caffeine"; 
+      productPayload.caffeine_type = caffeineType || "Caffeine";
       productPayload.status = visible ? "Active" : "Hidden";
-      productPayload.flavor_profiles = []; // если есть стейт для вкусов, подставьте его сюда
+      productPayload.flavor_profiles = [];
     }
 
-    // 3. Определение эндпоинта (БЕЗ слэша в конце, как требует Swagger)
-    const baseEndpoint =
-      productType === "accessory"
-        ? `/accessories/${id}/update`
-        : `/products/product/${id}`;
+    const baseEndpoint = productType === "accessory"
+      ? `/accessories/${id}/update`
+      : `/products/product/${id}`;
 
-    // 4. Отправка основного запроса (PATCH)
-    await apiWithAuth.patch(baseEndpoint, productPayload, {
-      headers: { "Content-Type": "application/json" },
-    });
+    await apiWithAuth.patch(baseEndpoint, productPayload);
 
-    // 5. Логика обновления фотографий
+    if (productType !== "accessory" && supplyId) {
+      const supplyPayload = {
+        serving_type: servingType || "Ground",
+        price: validatedPrice.toString(),
+        quantity: validatedQuantity,
+        weight: validatedWeight.toFixed(2),
+      };
+      
+      await apiWithAuth.patch(`/supplies/${supplyId}`, supplyPayload);
+
+    } else if (productType !== "accessory" && !supplyId) {
+       const supplyPayload = {
+        serving_type: servingType || "Ground",
+        price: validatedPrice.toString(),
+        quantity: validatedQuantity,
+        weight: validatedWeight.toFixed(2),
+      };
+      await apiWithAuth.post(`/supplies/products/${id}`, supplyPayload);
+    }
+
     const newImages = imagesForUpdate.filter((img) => img.file);
     const currentCover = coverRef.current || cover;
     
@@ -797,6 +734,7 @@ export default function ProductEdit() {
     setLoading(false);
   }
 };
+
   return (
     <Box
       sx={{
